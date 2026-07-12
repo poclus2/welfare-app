@@ -7,7 +7,7 @@ import Link from "next/link";
 /* ─────────────────────────────────────────
    ANIMATION VARIANTS
 ───────────────────────────────────────── */
-const cardVariants = {
+const cardVariants: any = {
   hidden: { opacity: 0, y: 24 },
   visible: (delay: number) => ({
     opacity: 1,
