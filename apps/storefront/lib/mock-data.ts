@@ -4,7 +4,7 @@ export const MOCK_PRODUCTS = [
     title: "Haruharu Wonder Black Rice Moisture Airyfit Sunscreen",
     price_fcfa: 14500,
     category: "Protections Solaires",
-    image: "/product-serum.png", // Fallback images for now
+    image: "/products/1.png", // Fallback images for now
     metadata: {
       usage_instructions: "Appliquer généreusement en dernière étape de la routine matinale, 15 minutes avant l'exposition au soleil.",
       precautions: "Renouveler l'application toutes les 2 heures en cas d'exposition prolongée.",
@@ -24,7 +24,7 @@ export const MOCK_PRODUCTS = [
     title: "Medicube Red Moisture Real Sun Cream",
     price_fcfa: 15000,
     category: "Solaires",
-    image: "/product-cream.png",
+    image: "/products/2.png",
     metadata: {
       usage_instructions: "Appliquer uniformément sur le visage et le cou tous les matins.",
       precautions: "Usage externe uniquement.",
@@ -43,7 +43,7 @@ export const MOCK_PRODUCTS = [
     title: "Medicube TXA Niacinamide Cream",
     price_fcfa: 18500,
     category: "Hydratants",
-    image: "/product-cream.png",
+    image: "/products/3.png",
     metadata: {
       usage_instructions: "Appliquer une quantité modérée sur le visage après le sérum, matin et soir.",
       precautions: "L'utilisation stricte d'un écran solaire (SPF) est obligatoire la journée.",
@@ -63,7 +63,7 @@ export const MOCK_PRODUCTS = [
     title: "Cos de Baha TN (Tranexamic Acid + Niacinamide) Serum",
     price_fcfa: 12000,
     category: "Sérums & Ampoules",
-    image: "/product-serum.png",
+    image: "/products/4.png",
     metadata: {
       usage_instructions: "Appliquer 2-3 gouttes sur une peau propre après le toner.",
       precautions: "Effectuer un patch test avant utilisation.",
@@ -83,7 +83,7 @@ export const MOCK_PRODUCTS = [
     title: "Cos de Baha TT Serum",
     price_fcfa: 12000,
     category: "Sérums & Ampoules",
-    image: "/product-serum.png",
+    image: "/products/1.png",
     metadata: {
       usage_instructions: "Appliquer quelques gouttes sur les zones ciblées ou sur l'ensemble du visage.",
       precautions: "Commencer par 2 à 3 fois par semaine pour vérifier la tolérance cutanée.",
@@ -102,7 +102,7 @@ export const MOCK_PRODUCTS = [
     title: "Cos de Baha T15 Serum",
     price_fcfa: 12500,
     category: "Sérums & Ampoules",
-    image: "/product-serum.png",
+    image: "/products/2.png",
     metadata: {
       usage_instructions: "Appliquer le soir sur une peau nettoyée.",
       precautions: "Peut augmenter la sensibilité au soleil. SPF obligatoire le lendemain.",
@@ -121,7 +121,7 @@ export const MOCK_PRODUCTS = [
     title: "Happy Bath Deep Clean Body Wash",
     price_fcfa: 9500,
     category: "Nettoyants",
-    image: "/product-toner.png",
+    image: "/products/3.png",
     metadata: {
       usage_instructions: "Faire mousser sur une éponge de bain ou entre les mains, masser sur le corps et rincer.",
       precautions: "Éviter le contact avec les yeux.",
@@ -140,7 +140,7 @@ export const MOCK_PRODUCTS = [
     title: "Mumchit Melting Body Lotion",
     price_fcfa: 11000,
     category: "Hydratants",
-    image: "/product-cream.png",
+    image: "/products/4.png",
     metadata: {
       usage_instructions: "Appliquer généreusement sur le corps après la douche pour retenir l'hydratation.",
       precautions: "Conserver à l'abri de la lumière directe du soleil.",
@@ -159,7 +159,7 @@ export const MOCK_PRODUCTS = [
     title: "Mumchit Body Wash",
     price_fcfa: 9000,
     category: "Nettoyants",
-    image: "/product-toner.png",
+    image: "/products/1.png",
     metadata: {
       usage_instructions: "Masser sur peau humide pour créer une mousse onctueuse, puis rincer.",
       precautions: "En cas d'irritation, cesser l'utilisation.",
@@ -178,7 +178,7 @@ export const MOCK_PRODUCTS = [
     title: "Medicube Kojic Acid Turmeric Body Wash",
     price_fcfa: 16000,
     category: "Nettoyants",
-    image: "/product-toner.png",
+    image: "/products/2.png",
     metadata: {
       usage_instructions: "Masser sur le corps et laisser agir 1 à 2 minutes sur les zones hyperpigmentées avant de rincer.",
       precautions: "Peut tacher les éponges claires à cause du curcuma. Utiliser une protection solaire si les zones traitées sont exposées.",
