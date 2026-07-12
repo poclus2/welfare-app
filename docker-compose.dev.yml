@@ -1,0 +1,71 @@
+version: "3.9"
+
+# ══════════════════════════════════════════════════════
+#  THE WELFARE SHOP — Docker Compose DEV
+#  Uniquement la couche DATA pour le dev local.
+#  Les apps (Next.js, Medusa, ai-service) tournent
+#  directement avec pnpm dev (hot-reload).
+# ══════════════════════════════════════════════════════
+
+services:
+
+  # ─── PostgreSQL + pgvector ─────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: welfare_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: welfare
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-welfare_dev_secret}
+      POSTGRES_DB: welfare_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U welfare -d welfare_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis ─────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: welfare_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Meilisearch ───────────────────────────────────
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    container_name: welfare_meilisearch
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-welfare_meili_dev_key}
+      MEILI_ENV: development
+    ports:
+      - "7700:7700"
+    volumes:
+      - meili_data:/meili_data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--spider", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+  meili_data:
+
+networks:
+  default:
+    name: welfare_network

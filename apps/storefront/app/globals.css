@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #F4EAEB; /* Attenuated pink for the card */
+  --color-foreground: #2A2424; /* Very dark pink/brown */
+  --color-primary: #E5B6B9;
+  --color-primary-foreground: #2A2424;
+  --color-primary-hover: #D4A5A8;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #2C2424;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --font-sans: var(--font-sans);
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
+  --radius-4xl: 2.5rem;
+  --shadow-glass: 0 4px 30px rgba(0, 0, 0, 0.05);
+}
+
+@layer base {
+  :root {
+    --background: #F4EAEB;
+    --foreground: #2A2424;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: #1A1516;
+      --foreground: #F5EBEB;
+    }
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .glass-effect {
+    background-color: rgb(255 255 255 / 0.4);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgb(255 255 255 / 0.2);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+  }
+}

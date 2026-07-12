@@ -1,0 +1,27 @@
+{
+  "name": "api",
+  "version": "1.0.0",
+  "description": "The Welfare Shop — Medusa.js v2 Backend",
+  "private": true,
+  "scripts": {
+    "dev": "medusa develop",
+    "build": "medusa build",
+    "start": "node .medusa/server/src/main.js",
+    "migrate": "medusa db:migrate",
+    "seed": "medusa exec ./src/scripts/seed.ts",
+    "lint": "eslint src/**/*.ts"
+  },
+  "dependencies": {
+    "@medusajs/core-flows": "2.x",
+    "@medusajs/framework": "2.x",
+    "@medusajs/medusa": "2.x",
+    "@mikro-orm/postgresql": "~6.6.14",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "^22.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.0"
+  }
+}

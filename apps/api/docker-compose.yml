@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  medusa_db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: medusa_welfare
+      POSTGRES_USER: medusa
+      POSTGRES_PASSWORD: medusa_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - medusa_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medusa"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  medusa_redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - medusa_redis_data:/data
+
+volumes:
+  medusa_db_data:
+  medusa_redis_data:
