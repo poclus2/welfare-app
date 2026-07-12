@@ -74,7 +74,7 @@ const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 28 },
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true, margin: "-50px" },
-  transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1], delay },
+  transition: { duration: 0.7, ease: [0.22, 1, 0.36, 1] as any, delay },
 });
 
 /* ─────────────────────────────────────────
@@ -133,7 +133,7 @@ function Toast({ visible, name }: { visible: boolean; name: string }) {
           initial={{ opacity: 0, y: 60, scale: 0.92 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 40, scale: 0.95 }}
-          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] as any }}
           className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-4 text-white pl-5 pr-7 py-4 rounded-2xl shadow-2xl"
           style={{
             background: S.dark,

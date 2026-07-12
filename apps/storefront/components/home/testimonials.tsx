@@ -64,7 +64,7 @@ const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 24 },
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true, margin: "-60px" },
-  transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1], delay },
+  transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] as any, delay },
 });
 
 function Stars({ count, color }: { count: number; color: string }) {
@@ -156,7 +156,7 @@ export function Testimonials() {
           {/* Featured testimonial — col-span-2, row-span-2 */}
           <motion.div
             {...fadeUp(0.1)}
-            key={testimonials[0].id}
+            key={testimonials[0]?.id}
             className="md:col-span-2 md:row-span-2 rounded-[1.5rem] bg-[#2A2424] p-8 lg:p-10 flex flex-col justify-between relative overflow-hidden"
           >
             <>
@@ -166,18 +166,18 @@ export function Testimonials() {
 
               <div className="relative z-10">
                 <p className="text-xl lg:text-2xl text-white leading-relaxed font-light mb-8">
-                  "{testimonials[0].quote}"
+                  "{testimonials[0]!.quote}"
                 </p>
                 <div className="flex items-center gap-4">
                   <img
-                    src={testimonials[0].avatar}
-                    alt={testimonials[0].name}
+                    src={testimonials[0]!.avatar}
+                    alt={testimonials[0]!.name}
                     className="w-14 h-14 rounded-[0.75rem] object-cover"
                   />
                   <div>
-                    <p className="font-semibold text-white text-base">{testimonials[0].name}</p>
-                    <p className="text-white/50 text-sm mb-1.5">{testimonials[0].role}</p>
-                    <Stars count={testimonials[0].rating} color="text-[#E5B6B9]" />
+                    <p className="font-semibold text-white text-base">{testimonials[0]!.name}</p>
+                    <p className="text-white/50 text-sm mb-1.5">{testimonials[0]!.role}</p>
+                    <Stars count={testimonials[0]!.rating} color="text-[#E5B6B9]" />
                   </div>
                 </div>
               </div>
@@ -192,17 +192,17 @@ export function Testimonials() {
             <>
               <Quote className="w-6 h-6 text-[#E5B6B9] mb-3" strokeWidth={1.5} />
               <p className="text-sm text-[#2A2424]/80 leading-relaxed line-clamp-3 flex-1">
-                "{testimonials[1].quote}"
+                "{testimonials[1]!.quote}"
               </p>
               <div className="flex items-center gap-3 mt-5">
                 <img
-                  src={testimonials[1].avatar}
-                  alt={testimonials[1].name}
+                  src={testimonials[1]!.avatar}
+                  alt={testimonials[1]!.name}
                   className="w-10 h-10 rounded-[0.6rem] object-cover"
                 />
                 <div>
-                  <p className="font-semibold text-[#2A2424] text-sm">{testimonials[1].name}</p>
-                  <Stars count={testimonials[1].rating} color="text-amber-400" />
+                  <p className="font-semibold text-[#2A2424] text-sm">{testimonials[1]!.name}</p>
+                  <Stars count={testimonials[1]!.rating} color="text-amber-400" />
                 </div>
               </div>
             </>
@@ -216,17 +216,17 @@ export function Testimonials() {
             <>
               <Quote className="w-6 h-6 text-[#E5B6B9] mb-3" strokeWidth={1.5} />
               <p className="text-sm text-[#2A2424]/80 leading-relaxed line-clamp-3 flex-1">
-                "{testimonials[2].quote}"
+                "{testimonials[2]!.quote}"
               </p>
               <div className="flex items-center gap-3 mt-5">
                 <img
-                  src={testimonials[2].avatar}
-                  alt={testimonials[2].name}
+                  src={testimonials[2]!.avatar}
+                  alt={testimonials[2]!.name}
                   className="w-10 h-10 rounded-[0.6rem] object-cover"
                 />
                 <div>
-                  <p className="font-semibold text-[#2A2424] text-sm">{testimonials[2].name}</p>
-                  <Stars count={testimonials[2].rating} color="text-amber-400" />
+                  <p className="font-semibold text-[#2A2424] text-sm">{testimonials[2]!.name}</p>
+                  <Stars count={testimonials[2]!.rating} color="text-amber-400" />
                 </div>
               </div>
             </>
@@ -268,33 +268,33 @@ export function Testimonials() {
             key={activeIndex}
             initial={{ opacity: 0, x: 30 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className={`rounded-[1.5rem] ${testimonials[activeIndex].bg} p-7 relative overflow-hidden flex flex-col justify-between min-h-[300px]`}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] as any }}
+            className={`rounded-[1.5rem] ${testimonials[activeIndex]!.bg} p-7 relative overflow-hidden flex flex-col justify-between min-h-[300px]`}
           >
             <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white/5 -translate-y-1/3 translate-x-1/3 pointer-events-none" />
 
             <div>
-              <Quote className={`w-7 h-7 ${testimonials[activeIndex].quoteColor} mb-4`} strokeWidth={1} />
-              <p className={`text-base ${testimonials[activeIndex].textColor} leading-relaxed font-light`}>
-                "{testimonials[activeIndex].quote}"
+              <Quote className={`w-7 h-7 ${testimonials[activeIndex]!.quoteColor} mb-4`} strokeWidth={1} />
+              <p className={`text-base ${testimonials[activeIndex]!.textColor} leading-relaxed font-light`}>
+                "{testimonials[activeIndex]!.quote}"
               </p>
             </div>
 
             <div className="flex items-center justify-between mt-7">
               <div className="flex items-center gap-3">
                 <img
-                  src={testimonials[activeIndex].avatar}
-                  alt={testimonials[activeIndex].name}
+                  src={testimonials[activeIndex]!.avatar}
+                  alt={testimonials[activeIndex]!.name}
                   className="w-12 h-12 rounded-[0.75rem] object-cover"
                 />
                 <div>
-                  <p className={`font-semibold ${testimonials[activeIndex].textColor} text-sm`}>
-                    {testimonials[activeIndex].name}
+                  <p className={`font-semibold ${testimonials[activeIndex]!.textColor} text-sm`}>
+                    {testimonials[activeIndex]!.name}
                   </p>
-                  <p className={`${testimonials[activeIndex].subColor} text-xs mb-1`}>
-                    {testimonials[activeIndex].role}
+                  <p className={`${testimonials[activeIndex]!.subColor} text-xs mb-1`}>
+                    {testimonials[activeIndex]!.role}
                   </p>
-                  <Stars count={testimonials[activeIndex].rating} color={testimonials[activeIndex].starColor} />
+                  <Stars count={testimonials[activeIndex]!.rating} color={testimonials[activeIndex]!.starColor} />
                 </div>
               </div>
 
