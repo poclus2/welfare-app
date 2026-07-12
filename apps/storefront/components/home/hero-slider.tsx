@@ -57,23 +57,23 @@ const slides = [
 /* ─────────────────────────────────────────
    ANIMATION VARIANTS
 ───────────────────────────────────────── */
-const textVariants = {
+const textVariants: any = {
   enter: { opacity: 0, x: -32, y: 0 },
   center: { opacity: 1, x: 0, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } },
   exit: { opacity: 0, x: 20, y: 0, transition: { duration: 0.3, ease: "easeIn" } },
 };
 
-const imageVariants = {
+const imageVariants: any = {
   enter: (dir: number) => ({ clipPath: dir > 0 ? "inset(0 100% 0 0)" : "inset(0 0 0 100%)", scale: 1.08 }),
   center: { clipPath: "inset(0 0% 0 0)", scale: 1, transition: { duration: 0.9, ease: [0.77, 0, 0.175, 1] } },
   exit: (dir: number) => ({ clipPath: dir > 0 ? "inset(0 0 0 100%)" : "inset(0 100% 0 0)", scale: 1, transition: { duration: 0.6, ease: [0.77, 0, 0.175, 1] } }),
 };
 
-const staggerChildren = {
+const staggerChildren: any = {
   center: { transition: { staggerChildren: 0.07, delayChildren: 0.15 } },
 };
 
-const childFade = {
+const childFade: any = {
   enter: { opacity: 0, x: -32, y: 0 },
   center: { opacity: 1, x: 0, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } },
   exit: { opacity: 0, x: 20, y: 0 },
