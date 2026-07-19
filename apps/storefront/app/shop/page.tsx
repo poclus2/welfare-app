@@ -18,6 +18,7 @@ import Link from "next/link";
 import { AnnouncementBar } from "@/components/ui/announcement-bar";
 import { Footer } from "@/components/home/footer";
 import { SearchModal } from "@/components/ui/search-modal";
+import { Navbar } from "@/components/ui/navbar";
 
 /* ═══════════════════════════════════════════════════════
    DATA
@@ -179,40 +180,7 @@ export default function ShopHubPage() {
       {/* ════════════════════════════════════
           NAVBAR
       ════════════════════════════════════ */}
-      <div className="w-full bg-[#F4EAEB] z-40 relative pt-4 md:pt-5 pb-4 border-b border-[#E5B6B9]/20">
-        <header className="flex items-center justify-between px-5 md:px-10 h-14 lg:h-18 w-full max-w-[1400px] mx-auto">
-          <div className="flex items-center gap-10 lg:gap-16">
-            <Link href="/" className="flex items-center relative z-50">
-              <img src="/logo.png" alt="The Welfare Shop" className="h-10 lg:h-16 w-auto object-contain lg:scale-[1.6] origin-left" />
-            </Link>
-            <div className="hidden lg:flex items-center gap-8 text-[14px] font-medium text-[#2A2424]/70">
-              <Link href="/" className="hover:text-[#2A2424] transition-colors">Écosystème</Link>
-              <span className="text-[#2A2424] font-semibold">Boutique</span>
-              <Link href="/routines" className="flex items-center gap-1 hover:text-[#2A2424] transition-colors">
-                Routines <sup className="text-[10px] bg-[#E5B6B9]/30 px-1.5 rounded-full text-[#2A2424]">Nouveau</sup>
-              </Link>
-              <Link href="/about" className="hover:text-[#2A2424] transition-colors">Conseils</Link>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 lg:gap-5">
-            {/* Search bar desktop */}
-            <div className="hidden md:flex items-center relative cursor-text group" onClick={() => setIsSearchOpen(true)}>
-              <div className="absolute inset-0 bg-white/60 border border-white/80 rounded-full transition-all group-hover:bg-white group-hover:shadow-sm pointer-events-none" />
-              <span className="pl-10 pr-5 py-2 text-sm text-[#2A2424]/50 relative z-10 w-[220px] lg:w-[300px]">Rechercher…</span>
-              <Search className="w-3.5 h-3.5 absolute left-3.5 text-[#2A2424]/40 z-10" />
-              <span className="absolute right-3 z-10 text-[10px] text-[#2A2424]/30 bg-black/5 px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">Ctrl K</span>
-            </div>
-            <button className="md:hidden p-2 text-[#2A2424]" onClick={() => setIsSearchOpen(true)}>
-              <Search className="w-5 h-5" />
-            </button>
-            <button className="p-2 text-[#2A2424] relative group">
-              <ShoppingBag className="w-5 h-5 group-hover:scale-110 transition-transform" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#2A2424] rounded-full border-2 border-[#F4EAEB]" />
-            </button>
-            <button className="lg:hidden p-2 text-[#2A2424]"><Menu className="w-5 h-5" /></button>
-          </div>
-        </header>
-      </div>
+      <Navbar />
 
       <div className="w-full max-w-[1400px] mx-auto px-4 md:px-10 py-6 flex flex-col gap-5">
 

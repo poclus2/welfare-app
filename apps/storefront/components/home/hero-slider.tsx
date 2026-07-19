@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ChevronLeft, ChevronRight, Search, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { SearchModal } from "@/components/ui/search-modal";
+import { Navbar } from "@/components/ui/navbar";
 
 /* ─────────────────────────────────────────
    SLIDES DATA
@@ -133,70 +134,7 @@ export function HeroSlider() {
     >
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
 
-      {/* ── MOBILE Navbar (Medicube style) ── */}
-      <header className="lg:hidden relative z-50 flex items-center justify-between px-5 h-16 w-full bg-transparent shrink-0">
-        {/* Hamburger */}
-        <button className="flex flex-col gap-[5px] p-2">
-          <span className="w-[22px] h-[1.5px] bg-[#2A2424] block rounded-full" />
-          <span className="w-[22px] h-[1.5px] bg-[#2A2424] block rounded-full" />
-          <span className="w-[22px] h-[1.5px] bg-[#2A2424] block rounded-full" />
-        </button>
-
-        {/* Centered Logo */}
-        <Link href="/" className="absolute left-1/2 -translate-x-1/2">
-          <img src="/logo.png" alt="The Welfare Shop" className="h-16 w-auto object-contain scale-[1.4] origin-center" />
-        </Link>
-
-        {/* Right Icons */}
-        <div className="flex items-center gap-3">
-          <button 
-            className="p-1.5 text-[#2A2424]"
-            onClick={() => setIsSearchOpen(true)}
-          >
-            <Search className="w-[22px] h-[22px]" />
-          </button>
-          <button className="p-1.5 text-[#2A2424] relative">
-            <ShoppingBag className="w-[22px] h-[22px]" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-[#2A2424] rounded-full border border-white" />
-          </button>
-        </div>
-      </header>
-
-      {/* ── DESKTOP Navbar ── */}
-      <header className="hidden lg:flex relative z-50 items-center justify-between px-12 h-24 w-full max-w-[1600px] mx-auto mt-4 shrink-0">
-        <div className="flex items-center gap-16">
-          <Link href="/" className="flex items-center">
-            <img src="/logo.png" alt="The Welfare Shop" className="h-18 w-auto object-contain scale-[1.6] origin-left" />
-          </Link>
-          <nav className="flex items-center gap-7 text-[14px] font-medium text-[#2A2424]/60">
-            <Link href="/" className="hover:text-[#2A2424] transition-colors">Écosystème</Link>
-            <Link href="/shop" className="hover:text-[#2A2424] transition-colors">Boutique</Link>
-            <Link href="/routines" className="flex items-center gap-1 hover:text-[#2A2424] transition-colors">
-              Routines <sup className="text-[9px] bg-[#2A2424]/10 px-1.5 rounded-full text-[#2A2424]">Nouveau</sup>
-            </Link>
-            <Link href="/about" className="hover:text-[#2A2424] transition-colors">Conseils</Link>
-          </nav>
-        </div>
-        <div className="flex items-center gap-4">
-          <div 
-            className="flex items-center relative cursor-text group"
-            onClick={() => setIsSearchOpen(true)}
-          >
-            <div className="absolute inset-0 bg-white/60 border border-white/80 rounded-full transition-all group-hover:bg-white group-hover:shadow-md pointer-events-none" />
-            <span className="pl-10 pr-5 py-2.5 text-sm text-[#2A2424]/50 relative z-10 w-[380px] flex items-center">
-              Rechercher un produit, une marque...
-            </span>
-            <Search className="w-4 h-4 absolute left-3.5 text-[#2A2424]/50 z-10 group-hover:text-[#2A2424] transition-colors" />
-            <div className="absolute right-4 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <span className="text-[10px] font-semibold text-[#2A2424]/40 bg-black/5 px-2 py-1 rounded">Ctrl K</span>
-            </div>
-          </div>
-          <button className="p-2.5 text-[#2A2424] hover:bg-white/60 rounded-full transition-colors relative">
-            <ShoppingBag className="w-5 h-5" />
-            <span className="absolute top-2 right-2 w-2 h-2 bg-[#2A2424] rounded-full border-2 border-white/60" />
-          </button>
-        </div>
-      </header>
+      <Navbar />
 
       {/* ── Main content ── */}
       <div className="flex-1 flex flex-col lg:flex-row items-stretch w-full max-w-[1600px] mx-auto px-6 md:px-12 pb-10 gap-8 lg:gap-0 min-h-0">
