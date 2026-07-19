@@ -1,6 +1,7 @@
 {
   "name": "ai-service",
   "version": "1.0.0",
+  "type": "module",
   "description": "My Skin Coach — AI Service for The Welfare Shop",
   "main": "dist/index.js",
   "scripts": {
