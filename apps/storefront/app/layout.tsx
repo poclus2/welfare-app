@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import { Navbar } from "@/components/ui/navbar";
+import { AnnouncementBar } from "@/components/ui/announcement-bar";
 
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -16,8 +18,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" suppressHydrationWarning>
-      <body className={`${jakarta.variable} font-sans bg-background text-foreground antialiased`}>
-        {children}
+      <body className={`${jakarta.variable} font-sans bg-background text-foreground antialiased flex flex-col min-h-screen`}>
+        <AnnouncementBar />
+        <div className="sticky top-0 z-50">
+          <Navbar />
+        </div>
+        <div className="flex-1 flex flex-col w-full">
+          {children}
+        </div>
       </body>
     </html>
   );

@@ -3,15 +3,13 @@
 import { useAuthStore } from "@/store/auth";
 import { LandingAmbassadrice } from "@/components/ambassadrices/landing";
 import { DashboardInfluenceur } from "@/components/ambassadrices/dashboard";
-import { Navbar } from "@/components/ui/navbar";
 import { Footer } from "@/components/home/footer";
 
 export default function AmbassadricesPage() {
   const { role, setRole } = useAuthStore();
 
   return (
-    <main className="min-h-screen bg-[#FDFDFC] flex flex-col w-full">
-      <Navbar />
+    <main className="flex flex-col w-full bg-[#FDFDFC]">
       
       <div className="flex-1">
         {role === "INFLUENCEUR" ? <DashboardInfluenceur /> : <LandingAmbassadrice />}

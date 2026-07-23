@@ -14,9 +14,7 @@ import {
   ChevronLeft,
 } from "lucide-react";
 import Link from "next/link";
-import { AnnouncementBar } from "@/components/ui/announcement-bar";
 import { Footer } from "@/components/home/footer";
-import { SearchModal } from "@/components/ui/search-modal";
 import { MOCK_PRODUCTS, FILTER_OPTIONS } from "@/lib/mock-data";
 import { useEffect, use } from "react";
 
@@ -149,44 +147,6 @@ export default function CategoryPage({
 
   return (
     <main className="min-h-screen bg-white flex flex-col w-full relative">
-      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-      <AnnouncementBar />
-
-      {/* Navbar */}
-      <div className="w-full bg-[#F4EAEB] z-40 relative pt-4 md:pt-6 pb-4 border-b border-[#E5B6B9]/20">
-        <header className="flex items-center justify-between px-5 md:px-12 h-16 lg:h-20 w-full max-w-[1600px] mx-auto">
-          <div className="flex items-center gap-12 lg:gap-20">
-            <Link href="/" className="flex items-center relative z-50">
-              <img src="/logo.png" alt="The Welfare Shop" className="h-12 lg:h-20 w-auto object-contain lg:scale-[1.8] origin-left" />
-            </Link>
-            <div className="hidden lg:flex items-center gap-8 text-[15px] font-medium text-[#2A2424]/70 mt-2">
-              <Link href="/" className="hover:text-[#2A2424] transition-colors">Écosystème</Link>
-              <Link href="/shop" className="text-[#2A2424] font-semibold transition-colors">Boutique</Link>
-              <Link href="/routines" className="flex items-center gap-1 hover:text-[#2A2424] transition-colors">
-                Routines <sup className="text-[10px] bg-[#E5B6B9]/30 px-1.5 rounded-full text-[#2A2424]">Nouveau</sup>
-              </Link>
-              <Link href="/about" className="hover:text-[#2A2424] transition-colors">Conseils</Link>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 lg:gap-6">
-            <div className="hidden md:flex items-center relative cursor-text group" onClick={() => setIsSearchOpen(true)}>
-              <div className="absolute inset-0 bg-white/60 border border-white/80 rounded-full transition-all group-hover:bg-white group-hover:shadow-md pointer-events-none" />
-              <span className="pl-12 pr-6 py-2.5 text-sm text-[#2A2424]/50 relative z-10 w-[250px] lg:w-[350px] flex items-center">Rechercher un produit...</span>
-              <Search className="w-4 h-4 absolute left-4 text-[#2A2424]/50 z-10 group-hover:text-[#2A2424] transition-colors" />
-            </div>
-            <button className="md:hidden p-2 text-[#2A2424] hover:bg-white/60 rounded-full transition-colors" onClick={() => setIsSearchOpen(true)}>
-              <Search className="w-5 h-5" />
-            </button>
-            <button className="p-2 lg:p-3 text-[#2A2424] hover:bg-white/60 rounded-full transition-colors relative group">
-              <ShoppingBag className="w-5 h-5 lg:w-6 lg:h-6 group-hover:scale-110 transition-transform" />
-              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-[#2A2424] rounded-full border-2 border-[#F4EAEB]" />
-            </button>
-            <button className="lg:hidden p-2 text-[#2A2424] hover:bg-white/60 rounded-full transition-colors">
-              <Menu className="w-5 h-5" />
-            </button>
-          </div>
-        </header>
-      </div>
 
       {/* Category Header */}
       <div className="relative w-full bg-[#F4EAEB] px-5 lg:px-12 py-10 md:py-16 overflow-hidden">

@@ -1,0 +1,32 @@
+{
+  "salesChannel": [
+    {
+      "id": "sc_01KXZ8HFZCD3P5PZSHBW819M5A",
+      "name": "Default Sales Channel",
+      "description": "Created by Medusa",
+      "is_disabled": false,
+      "metadata": null,
+      "created_at": "2026-07-20T07:58:39.084Z",
+      "updated_at": "2026-07-20T07:58:39.084Z",
+      "deleted_at": null
+    }
+  ],
+  "apiKeys": [
+    {
+      "id": "apk_01KXZ8HG4PVHVDMTKQXKDSMNPC",
+      "token": "pk_a444d1be79f71d0d6530d64a99c9639cf892b40452874ecefa30ff900404e489",
+      "salt": "",
+      "redacted": "pk_a44***489",
+      "title": "Default Publishable API Key",
+      "type": "publishable",
+      "last_used_at": null,
+      "created_by": "",
+      "created_at": "2026-07-20T07:58:39.254Z",
+      "revoked_by": null,
+      "revoked_at": null,
+      "updated_at": "2026-07-20T07:58:39.254Z",
+      "deleted_at": null
+    }
+  ],
+  "productLinks": []
+}

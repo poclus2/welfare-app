@@ -23,74 +23,7 @@ export function HeroBento() {
 
   return (
     <div className="w-full min-h-screen bg-[#F4EAEB] flex flex-col items-center justify-start overflow-hidden">
-        <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-        
-        {/* Navbar */}
-        <div className="w-full bg-transparent z-40 relative pt-4 md:pt-6">
-          <header className="flex items-center justify-between px-8 md:px-12 h-20 lg:h-24 w-full max-w-[1600px] mx-auto">
-            
-            {/* Logo and Links Group */}
-            <div className="flex items-center gap-12 lg:gap-20">
-              <Link href="/" className="flex items-center relative z-50">
-                <img 
-                  src="/logo.png" 
-                  alt="The Welfare Shop" 
-                  className="h-16 lg:h-20 w-auto object-contain scale-[1.3] lg:scale-[1.8] origin-left" 
-                />
-              </Link>
 
-              <div className="hidden lg:flex items-center gap-8 text-[15px] font-medium text-[#2A2424]/70">
-                <Link href="/" className="hover:text-[#2A2424] transition-colors">Ecosystem</Link>
-                <Link href="/shop" className="hover:text-[#2A2424] transition-colors">Products</Link>
-                <Link href="/routines" className="flex items-center gap-1 hover:text-[#2A2424] transition-colors">
-                  Routines <sup className="text-[10px] bg-[#E5B6B9]/30 px-1.5 rounded-full text-[#2A2424]">New</sup>
-                </Link>
-                <Link href="/about" className="hover:text-[#2A2424] transition-colors">
-                  Learn
-                </Link>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-6">
-              {/* Selectors */}
-              <div className="hidden lg:flex items-center gap-3 text-xs font-bold text-[#2A2424]/60 mr-2">
-                <select className="bg-transparent focus:outline-none cursor-pointer hover:text-[#2A2424] transition-colors appearance-none">
-                  <option>FR</option>
-                  <option>EN</option>
-                </select>
-                <select className="bg-transparent focus:outline-none cursor-pointer hover:text-[#2A2424] transition-colors appearance-none">
-                  <option>FCFA</option>
-                  <option>EUR</option>
-                  <option>USD</option>
-                </select>
-              </div>
-
-              {/* Search Bar - Enlarged */}
-              <div 
-                className="hidden md:flex items-center relative cursor-text group"
-                onClick={() => setIsSearchOpen(true)}
-              >
-                <div className="absolute inset-0 bg-white/60 border border-white/80 rounded-full transition-all group-hover:bg-white group-hover:shadow-md pointer-events-none" />
-                <span className="pl-12 pr-6 py-3 text-sm text-[#2A2424]/50 relative z-10 w-[300px] lg:w-[450px] flex items-center">
-                  Rechercher un produit, une marque...
-                </span>
-                <Search className="w-5 h-5 absolute left-4 text-[#2A2424]/50 z-10 group-hover:text-[#2A2424] transition-colors" />
-                
-                {/* Shortcut hint */}
-                <div className="absolute right-4 z-10 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <span className="text-[10px] font-semibold text-[#2A2424]/40 bg-black/5 px-2 py-1 rounded">Ctrl K</span>
-                </div>
-              </div>
-
-              {/* Cart Button */}
-              <button className="p-3 text-[#2A2424] hover:bg-white/60 rounded-full transition-colors relative group">
-                <ShoppingBag className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#2A2424] rounded-full border-2 border-white"></span>
-              </button>
-            </div>
-          </header>
-        </div>
 
         {/* Hero Content */}
         <div className="flex flex-col lg:flex-row px-8 md:px-12 pb-12 pt-4 gap-12 lg:gap-8 min-h-[750px] w-full max-w-[1600px] mx-auto">

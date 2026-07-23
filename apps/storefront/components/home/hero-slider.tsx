@@ -2,10 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, ChevronLeft, ChevronRight, Search, ShoppingBag } from "lucide-react";
 import Link from "next/link";
-import { SearchModal } from "@/components/ui/search-modal";
-import { Navbar } from "@/components/ui/navbar";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 
 /* ─────────────────────────────────────────
    SLIDES DATA
@@ -127,15 +125,11 @@ export function HeroSlider() {
 
   return (
     <div
-      className="w-full min-h-screen flex flex-col overflow-hidden relative"
-      style={{ background: slide.bg, transition: "background 0.7s ease" }}
+      className="w-full flex flex-col overflow-hidden relative"
+      style={{ background: slide.bg, transition: "background 0.7s ease", minHeight: "calc(100vh - 120px)" }}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-
-      <Navbar />
-
       {/* ── Main content ── */}
       <div className="flex-1 flex flex-col lg:flex-row items-stretch w-full max-w-[1600px] mx-auto px-6 md:px-12 pb-10 gap-8 lg:gap-0 min-h-0">
 

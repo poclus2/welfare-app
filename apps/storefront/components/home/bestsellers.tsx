@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, ShoppingBag, Star } from "lucide-react";
+import { ArrowRight, ShoppingBag, Star, Heart } from "lucide-react";
 import Link from "next/link";
 
 const products = [
@@ -82,7 +82,9 @@ const products = [
   }
 ];
 
-export function BestSellers() {
+export function BestSellers({ products: customProducts }: { products?: any[] }) {
+  const displayProducts = customProducts && customProducts.length > 0 ? customProducts : products;
+
   return (
     <section className="w-full bg-[#F4EAEB] py-20 md:py-32 flex flex-col items-center overflow-hidden">
       <div className="w-full max-w-[1600px] mx-auto px-8 md:px-12">
@@ -108,7 +110,7 @@ export function BestSellers() {
 
         {/* Products Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 md:gap-8">
-          {products.map((product, index) => (
+          {displayProducts.map((product, index) => (
             <motion.div
               key={product.id}
               initial={{ opacity: 0, y: 20 }}
@@ -117,50 +119,76 @@ export function BestSellers() {
               transition={{ duration: 0.5, delay: index * 0.1 }}
               className="group flex flex-col"
             >
-              {/* Product Image Box */}
-              <Link href={`/shop/${product.id}`} className="block relative bg-[#F4F2EE] rounded-2xl md:rounded-[2rem] aspect-[4/5] mb-3 md:mb-6 overflow-hidden">
-                {product.badge && (
-                  <div className="absolute top-3 left-3 z-10">
-                    <span className="inline-flex items-center bg-[#2A2424]/80 backdrop-blur-sm text-white text-[9px] font-bold tracking-[0.15em] uppercase px-2.5 py-1 rounded-full">
-                      {product.badge}
-                    </span>
+              <Link
+                href={`/shop/product/${product.id}`}
+                className="group flex flex-col bg-white rounded-[20px] md:rounded-[32px] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-[#F4EAEB] hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition-all duration-300 h-full"
+              >
+                {/* TOP HEADER */}
+                <div className="bg-[#F4EAEB] px-3 md:px-5 py-2.5 md:py-3.5 flex justify-between items-center shrink-0">
+                  <div className="flex items-center gap-1 md:gap-1.5 text-[9px] md:text-[11px] font-bold text-[#2A2424] uppercase tracking-wider">
+                    <Star className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 fill-[#2A2424]" />
+                    <span className="truncate">{product.badge || "BEST SELLER"}</span>
                   </div>
-                )}
-                
-                <img 
-                  src={product.image} 
-                  alt={product.name} 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 mix-blend-multiply" 
-                />
-                
-                {/* Add to Cart Overlay Button */}
-                <div className="absolute bottom-2 md:bottom-4 left-1/2 -translate-x-1/2 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-20 w-[92%] md:w-[90%]">
-                  <button className="w-full bg-[#2A2424] text-white py-2 md:py-3.5 rounded-full flex items-center justify-center gap-1.5 md:gap-2 text-[11px] md:text-sm font-medium hover:bg-black/80 transition-colors shadow-lg">
-                    <ShoppingBag className="w-3 h-3 md:w-4 md:h-4" />
-                    <span className="hidden sm:inline">Ajouter au panier</span>
-                    <span className="inline sm:hidden">Ajouter</span>
+                  <div className="hidden md:flex items-center gap-1 text-[10px] font-bold">
+                    <span className="bg-[#2A2424] text-white px-1.5 py-0.5 rounded min-w-[20px] text-center">00</span>
+                    <span className="text-[#2A2424]">:</span>
+                    <span className="bg-[#2A2424] text-white px-1.5 py-0.5 rounded min-w-[20px] text-center">24</span>
+                    <span className="text-[#2A2424]">:</span>
+                    <span className="bg-[#2A2424] text-white px-1.5 py-0.5 rounded min-w-[20px] text-center">02</span>
+                  </div>
+                </div>
+
+                {/* IMAGE SECTION */}
+                <div className="relative bg-[#F8F5F2] rounded-b-[20px] md:rounded-b-[32px] overflow-hidden aspect-[4/5] shrink-0">
+                  <button 
+                    onClick={(e) => e.preventDefault()}
+                    className="absolute top-2 left-2 md:top-4 md:left-4 z-10 text-[#2A2424] hover:text-[#E5B6B9] transition-colors bg-white/50 md:bg-transparent rounded-full p-1.5 md:p-0 backdrop-blur-md md:backdrop-blur-none"
+                  >
+                    <Heart className="w-[14px] h-[14px] md:w-[22px] md:h-[22px]" />
                   </button>
+                  <div className="absolute top-2 right-2 md:top-4 md:right-4 z-10 text-[9px] md:text-[11px] font-bold text-[#2A2424] bg-white/50 backdrop-blur-md px-2 py-0.5 md:px-2.5 md:py-1 rounded-full">
+                    1 / 3
+                  </div>
+                  <img 
+                    src={product.image} 
+                    className="w-full h-full object-contain p-4 md:p-8 mix-blend-multiply transition-transform duration-700 group-hover:scale-105" 
+                    alt={product.name} 
+                  />
+                </div>
+
+                {/* TEXT SECTION */}
+                <div className="px-3 pt-3 pb-3 md:px-5 md:pt-5 md:pb-5 flex flex-col flex-1 bg-white">
+                  {/* Tag */}
+                  <div className="flex items-center gap-1 md:gap-1.5 bg-[#F8F5F2] text-[#2A2424] w-fit px-2 py-1 md:px-3 md:py-1.5 rounded-full mb-2 md:mb-3">
+                    <span className="text-[#E5B6B9] text-[8px] md:text-[10px]">✦</span>
+                    <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider line-clamp-1">{product.category || "Soin Visage"}</span>
+                  </div>
+                  
+                  {/* Title */}
+                  <h3 className="text-[13px] md:text-[19px] font-bold text-[#2A2424] leading-tight md:leading-snug line-clamp-2 mb-2 md:mb-4">
+                    {product.name}
+                  </h3>
+
+                  <div className="w-full border-t border-dashed border-[#EDE0E0] mb-2 md:mb-4 mt-auto" />
+
+                  {/* Price & Cart */}
+                  <div className="flex items-end justify-between gap-1">
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-transparent text-[9px] md:text-[11px] font-bold mb-0 md:mb-0.5 hidden md:block">-</span>
+                      <span className="text-[14px] md:text-[22px] font-bold text-[#2A2424] leading-none truncate">
+                        {product.price.toLocaleString("fr-FR")} <span className="text-[9px] md:text-[13px]">FCFA</span>
+                      </span>
+                    </div>
+                    <button 
+                      onClick={(e) => e.preventDefault()}
+                      className="bg-[#2A2424] text-white w-8 h-8 md:w-auto md:h-auto md:px-5 md:py-3 rounded-full flex items-center justify-center gap-1.5 md:gap-2 text-[10px] md:text-xs font-bold hover:bg-black transition-colors shrink-0"
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                      <span className="hidden md:inline">Ajouter</span>
+                    </button>
+                  </div>
                 </div>
               </Link>
-              
-              {/* Product Info */}
-              <div className="flex flex-col px-1 md:px-2">
-                <div className="flex items-center gap-1 mb-1 md:mb-1.5">
-                  <Star className="w-3 h-3 md:w-3.5 md:h-3.5 fill-[#E5B6B9] text-[#E5B6B9]" />
-                  <span className="text-xs md:text-sm font-medium text-[#2A2424]">{product.rating}</span>
-                  <span className="text-[10px] md:text-sm text-[#2A2424]/40">({product.reviews})</span>
-                </div>
-                
-                <h3 className="text-sm md:text-lg font-medium text-[#2A2424] mb-0.5 md:mb-1 group-hover:text-[#E5B6B9] transition-colors line-clamp-2 md:line-clamp-none leading-tight md:leading-normal">
-                  <Link href={`/shop/${product.id}`}>{product.name}</Link>
-                </h3>
-                
-                <p className="text-[11px] md:text-sm text-[#2A2424]/60 mb-2 md:mb-3">{product.category}</p>
-                
-                <span className="text-sm md:text-lg font-semibold text-[#2A2424]">
-                  {product.price.toLocaleString('fr-FR')} FCFA
-                </span>
-              </div>
             </motion.div>
           ))}
         </div>

@@ -2,6 +2,7 @@ import { defineLink } from "@medusajs/framework/utils";
 import ProductModule from "@medusajs/medusa/product";
 import WelfareCatalogModule from "../modules/welfare-catalog";
 
+/* 
 // Link Product to ProductMetadata (1 to 1)
 export const ProductMetadataLink = defineLink(
   ProductModule.linkable.product,
@@ -29,3 +30,4 @@ export const ProductActiveIngredientLink = defineLink(
     isList: true,
   }
 );
+*/

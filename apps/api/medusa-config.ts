@@ -22,5 +22,34 @@ module.exports = defineConfig({
     {
       resolve: "./src/modules/welfare-catalog",
     },
+    {
+      resolve: "@rokmohar/medusa-plugin-meilisearch",
+      options: {
+        config: {
+          host: process.env.MEILISEARCH_HOST || "http://localhost:7700",
+          apiKey: process.env.MEILISEARCH_API_KEY || "meilisearch_super_secret",
+        },
+        settings: {
+          products: {
+            indexSettings: {
+              searchableAttributes: ["title", "description", "variant_sku"],
+              displayedAttributes: ["id", "title", "description", "variant_sku", "thumbnail", "handle", "price"],
+            },
+            primaryKey: "id",
+            transformer: (product) => {
+              const brand = product.collection?.title;
+              const formattedTitle = brand ? `${brand} - ${product.title}` : product.title;
+              return {
+                id: product.id,
+                title: formattedTitle,
+                description: product.description,
+                thumbnail: product.thumbnail,
+                handle: product.handle,
+              };
+            },
+          },
+        },
+      },
+    },
   ],
 });
