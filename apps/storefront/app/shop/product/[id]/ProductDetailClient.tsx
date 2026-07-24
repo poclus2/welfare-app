@@ -570,7 +570,7 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
 
               <Accordion title="Conseils d'utilisation">
                 <div className="pt-2 pb-1">
-                  {data.layering_steps.map((step, i) => {
+                  {data.layering_steps.map((step: any, i: number) => {
                     const iconMap: Record<string, React.ReactNode> = {
                       droplets: <Droplets className="w-4 h-4" />,
                       wind: <Wind className="w-4 h-4" />,
