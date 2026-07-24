@@ -62,6 +62,7 @@ services:
         NEXT_PUBLIC_MEDUSA_BACKEND_URL: https://api.thewelfare.store
         NEXT_PUBLIC_MEILISEARCH_HOST: https://thewelfare.store/meili
         NEXT_PUBLIC_MEILISEARCH_API_KEY: ${MEILISEARCH_API_KEY:-votre_cle_meilisearch_master_tres_longue_ici}
+        NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${MEDUSA_PUBLISHABLE_KEY:-pk_a444d1be79f71d0d6530d64a99c9639cf892b40452874ecefa30ff900404e489}
     container_name: welfare-storefront
     depends_on:
       - medusa-api
@@ -69,6 +70,7 @@ services:
       - NODE_ENV=production
       - NEXT_PUBLIC_MEDUSA_BACKEND_URL=${MEDUSA_BACKEND_URL}
       - NEXT_PUBLIC_BASE_URL=${STORE_URL}
+      - NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=${MEDUSA_PUBLISHABLE_KEY:-pk_a444d1be79f71d0d6530d64a99c9639cf892b40452874ecefa30ff900404e489}
     ports:
       - "3005:3000" # Exposes 3005 to host for Nginx to route to
     restart: unless-stopped
