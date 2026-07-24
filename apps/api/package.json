@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "medusa develop",
     "build": "medusa build",
-    "start": "medusa start",
+    "start": "medusa db:migrate && medusa start",
     "migrate": "medusa db:migrate",
     "seed": "medusa exec ./src/scripts/seed.ts",
     "lint": "eslint src/**/*.ts"
