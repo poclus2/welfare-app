@@ -146,18 +146,43 @@ function ConfirmationContent() {
         </div>
 
         {/* Delivery info */}
-        {order?.form && (
+        {order && (
           <div className="bg-white rounded-2xl border border-[#EDE0E0] p-5 mb-6">
             <p className="text-[10px] font-bold uppercase tracking-widest text-[#2A2424]/40 mb-3">
-              Livraison prévue à
+              {order.delivery?.mode === "retrait" ? "Retrait prévu au magasin" : "Livraison prévue à"}
             </p>
-            <p className="text-sm font-semibold text-[#2A2424]">
-              {order.form.firstName} {order.form.lastName}
-            </p>
-            <p className="text-xs text-[#2A2424]/60 mt-1">{order.form.address}</p>
-            <p className="text-xs text-[#2A2424]/60">{order.form.city}, {order.form.country}</p>
+            {order.identity && (
+              <p className="text-sm font-semibold text-[#2A2424] mb-2">
+                {order.identity.firstName} {order.identity.lastName}
+              </p>
+            )}
+            {order.delivery?.mode === "retrait" ? (
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">
+                  {order.delivery.store === "hippodrome" ? "🏇" : "🛍️"}
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-[#2A2424]">
+                    {order.delivery.store === "hippodrome"
+                      ? "The Welfare Hippodrome"
+                      : "The Welfare Playce"}
+                  </p>
+                  <p className="text-xs text-[#2A2424]/60 mt-0.5">
+                    {order.delivery.store === "hippodrome"
+                      ? "Route de l'Hippodrome, Dakar"
+                      : "Playce Dakar, Almadies"}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-[#2A2424]/60">{order.delivery?.address}</p>
+                <p className="text-xs text-[#2A2424]/60">{order.delivery?.city}, {order.delivery?.country}</p>
+              </>
+            )}
           </div>
         )}
+
 
         {/* CTA back to shop */}
         <Link
