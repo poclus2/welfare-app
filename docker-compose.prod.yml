@@ -58,6 +58,10 @@ services:
     build:
       context: .
       dockerfile: apps/storefront/Dockerfile
+      args:
+        NEXT_PUBLIC_MEDUSA_BACKEND_URL: https://api.thewelfare.store
+        NEXT_PUBLIC_MEILISEARCH_HOST: https://thewelfare.store/meili
+        NEXT_PUBLIC_MEILISEARCH_API_KEY: ${MEILISEARCH_API_KEY:-votre_cle_meilisearch_master_tres_longue_ici}
     container_name: welfare-storefront
     depends_on:
       - medusa-api
