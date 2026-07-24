@@ -14,12 +14,7 @@ export default async function run({ container }: { container: MedusaContainer })
   
   const productModule = container.resolve("product");
   for (const p of products) {
-    await productModule.updateProducts([
-      {
-        id: p.id,
-        title: p.title,
-      }
-    ]);
+    await productModule.updateProducts(p.id, { title: p.title });
   }
   console.log("Done.");
 }
