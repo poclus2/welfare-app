@@ -36,6 +36,7 @@ COPY --from=builder /app/apps/api/package.json ./apps/api/
 COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=builder /app/apps/api/.medusa ./apps/api/.medusa
 COPY --from=builder /app/apps/api/medusa-config.ts ./apps/api/
+COPY --from=builder /app/apps/api/tsconfig.json ./apps/api/
 
 WORKDIR /app/apps/api
 
