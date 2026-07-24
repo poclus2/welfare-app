@@ -36,6 +36,8 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     container_name: welfare-api
+    volumes:
+      - welfare-static:/app/apps/api/static
     depends_on:
       - postgres
       - redis
@@ -79,3 +81,4 @@ services:
 volumes:
   welfare-pgdata:
   welfare-meili-data:
+  welfare-static:

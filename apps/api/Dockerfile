@@ -38,6 +38,7 @@ COPY --from=builder /app/apps/api/.medusa ./apps/api/.medusa
 COPY --from=builder /app/apps/api/medusa-config.ts ./apps/api/
 COPY --from=builder /app/apps/api/tsconfig.json ./apps/api/
 COPY --from=builder /app/apps/api/src ./apps/api/src
+COPY --from=builder /app/apps/api/static ./apps/api/static
 
 WORKDIR /app/apps/api
 
