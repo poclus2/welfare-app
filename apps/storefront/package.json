@@ -11,7 +11,7 @@
     "check-types": "next typegen && tsc --noEmit"
   },
   "dependencies": {
-    "@medusajs/js-sdk": "^2.17.2",
+    "@medusajs/js-sdk": "^2.18.0",
     "@meilisearch/instant-meilisearch": "^0.31.2",
     "@repo/ui": "workspace:*",
     "@supabase/ssr": "^0.5.0",
