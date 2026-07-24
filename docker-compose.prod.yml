@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: welfare-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-welfare_db}
+    volumes:
+      - welfare-pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    # We do not expose 5432 to host to avoid conflicts with existing VPS databases
+
+  redis:
+    image: redis:7-alpine
+    container_name: welfare-redis
+    restart: unless-stopped
+    # We do not expose 6379 to host
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.9.0
+    container_name: welfare-meilisearch
+    environment:
+      - MEILI_MASTER_KEY=${MEILISEARCH_API_KEY:-meilisearch_master_key}
+      - MEILI_ENV=production
+    volumes:
+      - welfare-meili-data:/meili_data
+    restart: unless-stopped
+    # We do not expose 7700 to host unless you want to access Meilisearch dashboard externally
+
+  medusa-api:
+    build: 
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: welfare-api
+    depends_on:
+      - postgres
+      - redis
+      - meilisearch
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-welfare_db}
+      - REDIS_URL=redis://redis:6379
+      - MEILISEARCH_HOST=http://meilisearch:7700
+      - MEILISEARCH_API_KEY=${MEILISEARCH_API_KEY:-meilisearch_master_key}
+      - STORE_CORS=${STORE_URL}
+      - ADMIN_CORS=${ADMIN_URL}
+      - AUTH_CORS=${STORE_URL},${ADMIN_URL}
+      - JWT_SECRET=${JWT_SECRET:-super_secret}
+      - COOKIE_SECRET=${COOKIE_SECRET:-super_secret}
+    ports:
+      - "9005:9000" # Exposes 9005 to host for Nginx to route to
+    restart: unless-stopped
+
+  storefront:
+    build:
+      context: .
+      dockerfile: apps/storefront/Dockerfile
+    container_name: welfare-storefront
+    depends_on:
+      - medusa-api
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_MEDUSA_BACKEND_URL=${MEDUSA_BACKEND_URL}
+      - NEXT_PUBLIC_BASE_URL=${STORE_URL}
+    ports:
+      - "3005:3000" # Exposes 3005 to host for Nginx to route to
+    restart: unless-stopped
+
+volumes:
+  welfare-pgdata:
+  welfare-meili-data:
