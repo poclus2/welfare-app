@@ -119,6 +119,9 @@ importers:
       '@medusajs/admin-sdk':
         specifier: ^2.18.0
         version: 2.18.0
+      '@medusajs/cli':
+        specifier: ^2.18.0
+        version: 2.18.0(@types/node@22.15.3)
       '@medusajs/core-flows':
         specifier: ^2.18.0
         version: 2.18.0(@medusajs/framework@2.18.0(@medusajs/cli@2.18.0(@types/node@22.15.3))(@types/node@22.15.3)(ioredis@5.11.1)(vite@5.4.21(@types/node@22.15.3)(lightningcss@1.32.0))(zod@4.2.0))
@@ -162,9 +165,6 @@ importers:
         specifier: ^19.2.7
         version: 19.2.7(react@19.2.7)
     devDependencies:
-      '@medusajs/cli':
-        specifier: ^2.18.0
-        version: 2.18.0(@types/node@22.15.3)
       '@repo/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
