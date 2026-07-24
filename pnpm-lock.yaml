@@ -119,6 +119,9 @@ importers:
       '@medusajs/admin-sdk':
         specifier: ^2.18.0
         version: 2.18.0
+      '@medusajs/admin-shared':
+        specifier: ^2.18.0
+        version: 2.18.0
       '@medusajs/cli':
         specifier: ^2.18.0
         version: 2.18.0(@types/node@22.15.3)
