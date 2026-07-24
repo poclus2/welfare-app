@@ -753,6 +753,7 @@ export type LineItem = {
   created_at: Scalars['DateTime']['output'];
   updated_at: Scalars['DateTime']['output'];
   deleted_at: Maybe<Scalars['DateTime']['output']>;
+  product: Maybe<Product>;
   variant: Maybe<ProductVariant>;
 };
 
@@ -783,6 +784,7 @@ export type LineItemTaxLine = {
   rate: Scalars['Float']['output'];
   provider_id: Maybe<Scalars['String']['output']>;
   metadata: Maybe<Scalars['JSON']['output']>;
+  data: Maybe<Scalars['JSON']['output']>;
   tax_rate_id: Maybe<Scalars['String']['output']>;
   item_id: Scalars['String']['output'];
   item: LineItem;
@@ -845,11 +847,35 @@ export type ShippingMethodTaxLine = {
   provider_id: Maybe<Scalars['String']['output']>;
   tax_rate_id: Maybe<Scalars['String']['output']>;
   metadata: Maybe<Scalars['JSON']['output']>;
+  data: Maybe<Scalars['JSON']['output']>;
   shipping_method_id: Scalars['String']['output'];
   shipping_method: ShippingMethod;
   created_at: Scalars['DateTime']['output'];
   updated_at: Scalars['DateTime']['output'];
   deleted_at: Maybe<Scalars['DateTime']['output']>;
+};
+
+export type ApiKeyTypeEnum =
+  | 'publishable'
+  | 'secret';
+
+export type ApiKey = {
+  __typename?: 'ApiKey';
+  id: Scalars['ID']['output'];
+  token: Scalars['String']['output'];
+  salt: Scalars['String']['output'];
+  redacted: Scalars['String']['output'];
+  title: Scalars['String']['output'];
+  type: ApiKeyTypeEnum;
+  last_used_at: Maybe<Scalars['DateTime']['output']>;
+  created_by: Scalars['String']['output'];
+  revoked_by: Maybe<Scalars['String']['output']>;
+  revoked_at: Maybe<Scalars['DateTime']['output']>;
+  created_at: Scalars['DateTime']['output'];
+  updated_at: Scalars['DateTime']['output'];
+  deleted_at: Maybe<Scalars['DateTime']['output']>;
+  sales_channels_link: Maybe<Array<Maybe<LinkPublishableApiKeySalesChannel>>>;
+  sales_channels: Maybe<Array<Maybe<SalesChannel>>>;
 };
 
 export type Region = {
@@ -882,29 +908,6 @@ export type Country = {
   created_at: Scalars['DateTime']['output'];
   updated_at: Scalars['DateTime']['output'];
   deleted_at: Maybe<Scalars['DateTime']['output']>;
-};
-
-export type ApiKeyTypeEnum =
-  | 'publishable'
-  | 'secret';
-
-export type ApiKey = {
-  __typename?: 'ApiKey';
-  id: Scalars['ID']['output'];
-  token: Scalars['String']['output'];
-  salt: Scalars['String']['output'];
-  redacted: Scalars['String']['output'];
-  title: Scalars['String']['output'];
-  type: ApiKeyTypeEnum;
-  last_used_at: Maybe<Scalars['DateTime']['output']>;
-  created_by: Scalars['String']['output'];
-  revoked_by: Maybe<Scalars['String']['output']>;
-  revoked_at: Maybe<Scalars['DateTime']['output']>;
-  created_at: Scalars['DateTime']['output'];
-  updated_at: Scalars['DateTime']['output'];
-  deleted_at: Maybe<Scalars['DateTime']['output']>;
-  sales_channels_link: Maybe<Array<Maybe<LinkPublishableApiKeySalesChannel>>>;
-  sales_channels: Maybe<Array<Maybe<SalesChannel>>>;
 };
 
 export type Store = {
@@ -2551,12 +2554,12 @@ declare module '@medusajs/framework/types' {
     shipping_method_adjustments: ShippingMethodAdjustment
     shipping_method_tax_line: ShippingMethodTaxLine
     shipping_method_tax_lines: ShippingMethodTaxLine
+    api_key: ApiKey
+    api_keys: ApiKey
     region: Region
     regions: Region
     country: Country
     countries: Country
-    api_key: ApiKey
-    api_keys: ApiKey
     store: Store
     stores: Store
     store_currency: StoreCurrency
