@@ -7,10 +7,12 @@ import { ShoppingBag, Search, Menu, User, X, Sparkles, ChevronDown } from "lucid
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "@/store/auth";
 import { SearchModal } from "@/components/ui/search-modal";
+import { useCart } from "@/lib/cart-context";
 
 export function Navbar() {
   const router = useRouter();
   const role = useAuthStore((state) => state.role);
+  const { totalItems, openCart } = useCart();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isShopHovered, setIsShopHovered] = useState(false);
   const [isMobileShopOpen, setIsMobileShopOpen] = useState(false);
@@ -82,11 +84,13 @@ export function Navbar() {
           <button onClick={handleAccountClick} className="p-2 text-[#2A2424] hover:bg-white/30 rounded-full transition-colors">
             <User className="w-5 h-5" />
           </button>
-          <button className="relative p-2 text-[#2A2424] hover:bg-white/30 rounded-full transition-colors">
+          <button onClick={openCart} className="relative p-2 text-[#2A2424] hover:bg-white/30 rounded-full transition-colors">
             <ShoppingBag className="w-5 h-5" />
-            <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-[#2A2424] text-[9px] font-bold text-white shadow-sm">
-              0
-            </span>
+            {totalItems > 0 && (
+              <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-[#2A2424] text-[9px] font-bold text-white shadow-sm">
+                {totalItems > 9 ? "9+" : totalItems}
+              </span>
+            )}
           </button>
         </div>
       </motion.nav>
@@ -111,11 +115,13 @@ export function Navbar() {
             <Search className="w-5 h-5" />
           </button>
           
-          <button className="relative p-2 text-[#2A2424] hover:bg-[#F1EFEA] rounded-full transition-colors">
+          <button onClick={openCart} className="relative p-2 text-[#2A2424] hover:bg-[#F1EFEA] rounded-full transition-colors">
             <ShoppingBag className="w-5 h-5" />
-            <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-[#E5B6B9] text-[9px] font-bold text-white">
-              0
-            </span>
+            {totalItems > 0 && (
+              <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-[#E5B6B9] text-[9px] font-bold text-white">
+                {totalItems > 9 ? "9+" : totalItems}
+              </span>
+            )}
           </button>
           
           <button 

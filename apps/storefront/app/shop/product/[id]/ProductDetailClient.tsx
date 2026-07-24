@@ -10,6 +10,7 @@ import {
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { Footer } from "@/components/home/footer";
+import { useCart } from "@/lib/cart-context";
 
 /* ─── MOCK DATA ───────────────────────────────────────────────── */
 const mockProduct = {
@@ -326,6 +327,7 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
   const [isStickyVisible, setIsStickyVisible] = useState(false);
   const ctaRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
+  const { addItem } = useCart();
 
   // Sticky CTA logic
   useEffect(() => {
@@ -342,6 +344,23 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
   }, []);
 
   const handleAddToCart = () => {
+    // Get the first variant id from the real product
+    const variantId = _product?.variants?.[0]?.id || "variant_mock";
+    const productId = _product?.id || "product_mock";
+    const rawPrice = _product?.variants?.[0]?.calculated_price?.calculated_amount
+      || _product?.variants?.[0]?.prices?.[0]?.amount
+      || 0;
+
+    addItem({
+      variantId,
+      productId,
+      title: data.title,
+      thumbnail: data.images[0] || "",
+      price: rawPrice,
+      quantity: qty,
+      variantTitle: _product?.variants?.[0]?.title || undefined,
+    });
+
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   };
