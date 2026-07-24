@@ -24,7 +24,7 @@ export default async function BentoPage() {
 
     const { products: fetchedProducts } = await sdk.store.product.list(
       queryParams,
-      { next: { revalidate: 60 } }
+      { next: { revalidate: 60 } } as any
     );
     
     products = fetchedProducts.map((p: any) => {

@@ -3,7 +3,7 @@ import ShopClient from "./ShopClient";
 
 // Server Component for fetching real data from Medusa
 export default async function ShopPage() {
-  let products = [];
+  let products: any[] = [];
   try {
     const { regions } = await sdk.store.region.list().catch(() => ({ regions: [] }));
     const regionId = regions?.[0]?.id;
