@@ -26,7 +26,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       limit: 4,
       fields: queryParams.fields,
       region_id: regionId
-    }, { next: { revalidate: 60 } }).catch(() => ({ products: [] }));
+    }, { next: { revalidate: 60 } } as any).catch(() => ({ products: [] }));
     
     // Filtrer le produit actuel
     recommendedProducts = (recommendedRes.products || []).filter((p: any) => p.id !== id).slice(0, 4);
