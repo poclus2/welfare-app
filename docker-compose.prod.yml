@@ -27,8 +27,9 @@ services:
       - MEILI_ENV=production
     volumes:
       - welfare-meili-data:/meili_data
+    ports:
+      - "7700:7700" # Exposes 7700 to host for Nginx to route to
     restart: unless-stopped
-    # We do not expose 7700 to host unless you want to access Meilisearch dashboard externally
 
   medusa-api:
     build: 
