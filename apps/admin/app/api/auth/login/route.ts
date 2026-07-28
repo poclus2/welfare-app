@@ -1,10 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { loginAdmin } from "@/lib/medusa-admin";
+
+const MEDUSA_URL = process.env.MEDUSA_BACKEND_URL || "https://api.thewelfare.store";
 
 export async function POST(req: NextRequest) {
   try {
     const { email, password } = await req.json();
-    const token = await loginAdmin(email, password);
+
+    // Call Medusa auth directly (no import from "use server" file)
+    const medusaRes = await fetch(`${MEDUSA_URL}/auth/user/emailpass`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+      cache: "no-store",
+    });
+
+    if (!medusaRes.ok) {
+      return NextResponse.json(
+        { error: "Email ou mot de passe incorrect" },
+        { status: 401 }
+      );
+    }
+
+    const data = await medusaRes.json();
+    const token: string = data.token;
 
     const res = NextResponse.json({ success: true });
     res.cookies.set("admin_token", token, {
@@ -16,6 +34,10 @@ export async function POST(req: NextRequest) {
     });
     return res;
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Erreur de connexion" }, { status: 401 });
+    console.error("[Login] Error:", err);
+    return NextResponse.json(
+      { error: "Erreur serveur, veuillez réessayer" },
+      { status: 500 }
+    );
   }
 }
