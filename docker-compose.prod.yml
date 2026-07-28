@@ -78,6 +78,21 @@ services:
       - "3005:3000" # Exposes 3005 to host for Nginx to route to
     restart: unless-stopped
 
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+    container_name: welfare-admin
+    depends_on:
+      - medusa-api
+    environment:
+      - NODE_ENV=production
+      - MEDUSA_BACKEND_URL=https://api.thewelfare.store
+    ports:
+      - "3006:3000" # Exposes 3006 to host for Nginx to route to (admin.thewelfare.store)
+    restart: unless-stopped
+
+
 volumes:
   welfare-pgdata:
   welfare-meili-data:
