@@ -23,6 +23,18 @@ module.exports = defineConfig({
       resolve: "./src/modules/welfare-catalog",
     },
     {
+      resolve: "@medusajs/payment",
+      options: {
+        providers: [
+          {
+            resolve: "./src/modules/pawapay",
+            id: "pawapay",
+            options: {},
+          },
+        ],
+      },
+    },
+    {
       resolve: "@rokmohar/medusa-plugin-meilisearch",
       options: {
         config: {

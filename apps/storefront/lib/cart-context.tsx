@@ -1,14 +1,15 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from "react";
+import { sdk } from "./medusa";
 
 export interface CartLineItem {
-  id: string;              // line item ID from Medusa
+  id: string;              
   variantId: string;
   productId: string;
   title: string;
   thumbnail: string;
-  price: number;           // in smallest currency unit (e.g. FCFA)
+  price: number;           
   quantity: number;
   variantTitle?: string;
 }
@@ -17,14 +18,15 @@ interface CartState {
   isOpen: boolean;
   items: CartLineItem[];
   cartId: string | null;
+  isLoading: boolean;
 }
 
 interface CartContextValue extends CartState {
   openCart: () => void;
   closeCart: () => void;
-  addItem: (item: Omit<CartLineItem, "id">) => void;
-  removeItem: (id: string) => void;
-  updateQuantity: (id: string, qty: number) => void;
+  addItem: (variantId: string, quantity: number, thumbnail?: string, title?: string, price?: number) => Promise<void>;
+  removeItem: (lineId: string) => Promise<void>;
+  updateQuantity: (lineId: string, qty: number) => Promise<void>;
   clearCart: () => void;
   totalItems: number;
   totalAmount: number;
@@ -37,7 +39,41 @@ export function CartProvider({ children }: { children: ReactNode }) {
     isOpen: false,
     items: [],
     cartId: null,
+    isLoading: false,
   });
+
+  // Load cart from localStorage on mount
+  useEffect(() => {
+    const savedCartId = localStorage.getItem("welfare_cart_id");
+    if (savedCartId) {
+      refreshCart(savedCartId);
+    }
+  }, []);
+
+  const refreshCart = async (id: string) => {
+    try {
+      setState(s => ({ ...s, isLoading: true }));
+      const { cart } = await sdk.store.cart.retrieve(id, { fields: "*items,*items.variant,*items.variant.product" });
+      
+      const parsedItems = cart.items?.map((item: any) => ({
+        id: item.id,
+        variantId: item.variant_id,
+        productId: item.variant?.product?.id || "",
+        title: item.title,
+        thumbnail: item.thumbnail || item.variant?.product?.thumbnail || "",
+        price: item.unit_price,
+        quantity: item.quantity,
+        variantTitle: item.variant_title,
+      })) || [];
+
+      setState(s => ({ ...s, cartId: cart.id, items: parsedItems, isLoading: false }));
+      localStorage.setItem("welfare_cart_id", cart.id);
+    } catch (err) {
+      console.error("Failed to fetch cart:", err);
+      setState(s => ({ ...s, cartId: null, items: [], isLoading: false }));
+      localStorage.removeItem("welfare_cart_id");
+    }
+  };
 
   const openCart = useCallback(() => {
     setState((s) => ({ ...s, isOpen: true }));
@@ -47,45 +83,67 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, isOpen: false }));
   }, []);
 
-  const addItem = useCallback((newItem: Omit<CartLineItem, "id">) => {
-    setState((s) => {
-      // Check if item already in cart (by variantId)
-      const existing = s.items.find((i) => i.variantId === newItem.variantId);
-      let items: CartLineItem[];
-      if (existing) {
-        items = s.items.map((i) =>
-          i.variantId === newItem.variantId
-            ? { ...i, quantity: i.quantity + newItem.quantity }
-            : i
-        );
-      } else {
-        const id = `line_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-        items = [...s.items, { ...newItem, id }];
+  const addItem = useCallback(async (variantId: string, quantity: number, thumbnail?: string, title?: string, price?: number) => {
+    try {
+      setState(s => ({ ...s, isLoading: true }));
+      
+      let currentCartId = state.cartId;
+      if (!currentCartId) {
+        // Fetch regions first
+        const { regions } = await sdk.store.region.list();
+        const regionId = regions[0]?.id;
+
+        const { cart } = await sdk.store.cart.create(regionId ? { region_id: regionId } : {});
+        currentCartId = cart.id;
+        localStorage.setItem("welfare_cart_id", currentCartId);
       }
-      return { ...s, items, isOpen: true };
-    });
-  }, []);
 
-  const removeItem = useCallback((id: string) => {
-    setState((s) => ({
-      ...s,
-      items: s.items.filter((i) => i.id !== id),
-    }));
-  }, []);
+      // Add line item
+      await sdk.store.cart.createLineItem(currentCartId, {
+        variant_id: variantId,
+        quantity: quantity,
+      });
 
-  const updateQuantity = useCallback((id: string, qty: number) => {
-    if (qty <= 0) {
-      setState((s) => ({ ...s, items: s.items.filter((i) => i.id !== id) }));
-    } else {
-      setState((s) => ({
-        ...s,
-        items: s.items.map((i) => (i.id === id ? { ...i, quantity: qty } : i)),
-      }));
+      await refreshCart(currentCartId);
+      openCart();
+    } catch (err) {
+      console.error("Failed to add item:", err);
+      setState(s => ({ ...s, isLoading: false }));
+      alert("Erreur lors de l'ajout au panier");
     }
-  }, []);
+  }, [state.cartId, openCart]);
+
+  const removeItem = useCallback(async (lineId: string) => {
+    if (!state.cartId) return;
+    try {
+      setState(s => ({ ...s, isLoading: true }));
+      await sdk.store.cart.deleteLineItem(state.cartId, lineId);
+      await refreshCart(state.cartId);
+    } catch (err) {
+      console.error("Failed to remove item:", err);
+      setState(s => ({ ...s, isLoading: false }));
+    }
+  }, [state.cartId]);
+
+  const updateQuantity = useCallback(async (lineId: string, qty: number) => {
+    if (!state.cartId) return;
+    try {
+      if (qty <= 0) {
+        await removeItem(lineId);
+        return;
+      }
+      setState(s => ({ ...s, isLoading: true }));
+      await sdk.store.cart.updateLineItem(state.cartId, lineId, { quantity: qty });
+      await refreshCart(state.cartId);
+    } catch (err) {
+      console.error("Failed to update quantity:", err);
+      setState(s => ({ ...s, isLoading: false }));
+    }
+  }, [state.cartId, removeItem]);
 
   const clearCart = useCallback(() => {
-    setState((s) => ({ ...s, items: [], cartId: null }));
+    localStorage.removeItem("welfare_cart_id");
+    setState(s => ({ ...s, items: [], cartId: null }));
   }, []);
 
   const totalItems = state.items.reduce((sum, i) => sum + i.quantity, 0);

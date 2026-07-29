@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useCart } from "@/lib/cart-context";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { sdk } from "@/lib/medusa";
 import Link from "next/link";
 import {
   ArrowLeft, ShieldCheck, Truck, Package,
@@ -97,9 +98,10 @@ function StepIndicator({ step }: { step: 1 | 2 }) {
 // ─── Main component ────────────────────────────────────────────────────────────
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, totalAmount, clearCart } = useCart();
+  const { items, totalAmount, clearCart, cartId } = useCart();
   const [step, setStep] = useState<1 | 2>(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [mobileNetwork, setMobileNetwork] = useState("SEN-WAVE");
 
   const [identity, setIdentity] = useState<IdentityForm>({
     firstName: "", lastName: "", email: "", phone: "",
@@ -142,17 +144,73 @@ export default function CheckoutPage() {
   };
 
   // ── Handlers ────────────────────────────────────────────────────────────────
-  const handleStep1Next = () => {
-    if (validateIdentity()) setStep(2);
+  const handleStep1Next = async () => {
+    if (!validateIdentity()) return;
+    if (!cartId) {
+      alert("Panier non initialisé");
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      await sdk.store.cart.update(cartId, {
+        email: identity.email,
+        shipping_address: {
+          first_name: identity.firstName,
+          last_name: identity.lastName,
+          phone: identity.phone,
+        }
+      });
+      setStep(2);
+    } catch (err) {
+      console.error(err);
+      alert("Erreur de connexion au serveur");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = async () => {
     if (!validateDelivery()) return;
+    if (!cartId) return;
     setIsLoading(true);
     try {
-      const orderRef = `WLF-${Date.now().toString(36).toUpperCase()}`;
+      // 1. Update Cart Address & Metadata for Delivery
+      await sdk.store.cart.update(cartId, {
+        shipping_address: {
+          first_name: identity.firstName,
+          last_name: identity.lastName,
+          phone: identity.phone,
+          address_1: delivery.mode === "domicile" ? delivery.address : "Retrait en magasin : " + delivery.store,
+          city: delivery.mode === "domicile" ? delivery.city : "Dakar",
+          country_code: "sn",
+        },
+        metadata: {
+          delivery_mode: delivery.mode,
+          delivery_notes: delivery.notes,
+          mobile_network: mobileNetwork
+        }
+      });
+
+      // 2. Initiate Payment Session with PawaPay
+      const { cart } = await sdk.store.cart.retrieve(cartId);
+      await sdk.store.payment.initiatePaymentSession(cart as any, {
+        provider_id: "pawapay"
+      });
+
+      // 3. Complete Checkout
+      const response = await sdk.store.cart.complete(cartId);
+      
+      let ref = "WLF-PENDING";
+      if (response.type === "order") {
+        ref = response.order.id;
+      } else if (response.type === "cart") {
+        ref = response.cart.id;
+      }
+      
+      // Store in session storage for the confirmation page UI only
       const order = {
-        ref: orderRef,
+        ref,
         items,
         identity,
         delivery,
@@ -161,10 +219,12 @@ export default function CheckoutPage() {
         createdAt: new Date().toISOString(),
       };
       sessionStorage.setItem("welfare_last_order", JSON.stringify(order));
+      
       clearCart();
-      router.push(`/checkout/confirmation?ref=${orderRef}`);
-    } catch (err) {
+      router.push(`/checkout/confirmation?ref=${ref}`);
+    } catch (err: any) {
       console.error(err);
+      alert("Erreur lors de la validation: " + err.message);
       setIsLoading(false);
     }
   };
@@ -483,14 +543,23 @@ export default function CheckoutPage() {
                   <p className="text-xs font-bold uppercase tracking-widest text-[#C08A8E] mb-2">💳 Mode de paiement</p>
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-[#1DAFEC]/10 flex items-center justify-center text-lg">📱</div>
-                    <div>
+                    <div className="flex-1">
                       <p className="text-sm font-semibold text-[#2A2424]">Mobile Money</p>
-                      <p className="text-xs text-[#2A2424]/50">Wave · Orange Money · Free Money</p>
+                      <select 
+                        value={mobileNetwork}
+                        onChange={(e) => setMobileNetwork(e.target.value)}
+                        className="mt-1 w-full text-xs px-2 py-1.5 rounded-lg border border-[#EDE0E0] bg-white outline-none focus:border-[#C08A8E]"
+                      >
+                        <option value="SEN-WAVE">Wave Sénégal</option>
+                        <option value="SEN-ORANGE_MONEY">Orange Money Sénégal</option>
+                        <option value="SEN-FREE_MONEY">Free Money Sénégal</option>
+                        <option value="CIV-WAVE">Wave Côte d'Ivoire</option>
+                        <option value="CIV-ORANGE_MONEY">Orange Money Côte d'Ivoire</option>
+                      </select>
                     </div>
-                    <span className="ml-auto text-[10px] font-bold bg-emerald-100 text-emerald-600 px-2 py-1 rounded-full">✓ Disponible</span>
                   </div>
                   <p className="text-[11px] text-[#2A2424]/50 mt-3 leading-relaxed">
-                    Vous recevrez les instructions de paiement par WhatsApp après confirmation.
+                    Vous recevrez les instructions de paiement par notification (Push USSD) sur votre téléphone après confirmation.
                   </p>
                 </div>
 

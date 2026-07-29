@@ -54,10 +54,9 @@ export function ProductForm({ initialData, collections, categories = [] }: { ini
         collection_id: collectionId || null,
         categories: subCategoryId ? [{ id: subCategoryId }] : (mainCategoryId ? [{ id: mainCategoryId }] : []),
         status,
-        is_giftcard: false,
         discountable: true,
         thumbnail,
-        images: images.map(img => img.url),
+        images: images.map(img => ({ url: img.url })),
       };
 
       // Update price on first variant if changed

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   TrendingUp, TrendingDown, ShoppingBag, Users,
   Package, Store, ArrowRight, Clock, AlertTriangle,
@@ -122,6 +122,13 @@ function CustomTooltip({ active, payload, label }: any) {
 /* ─── Main Component ────────────────────────────────────────────── */
 export default function DashboardPage() {
   const [period, setPeriod] = useState<"weekly" | "monthly" | "quarterly">("monthly");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
 
   return (
     <div className="p-5 lg:p-8 space-y-6">

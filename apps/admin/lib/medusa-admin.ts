@@ -35,7 +35,12 @@ export async function fetchAdmin<T>(
   });
 
   if (!res.ok) {
-    throw new Error(`Admin API error: ${res.status} ${path}`);
+    let errorMsg = `Admin API error: ${res.status} ${path}`;
+    try {
+      const err = await res.json();
+      errorMsg = err.message || JSON.stringify(err);
+    } catch (e) {}
+    throw new Error(errorMsg);
   }
 
   return res.json() as Promise<T>;

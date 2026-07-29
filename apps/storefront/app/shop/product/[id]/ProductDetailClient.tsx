@@ -351,15 +351,13 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
       || _product?.variants?.[0]?.prices?.[0]?.amount
       || 0;
 
-    addItem({
+    addItem(
       variantId,
-      productId,
-      title: data.title,
-      thumbnail: data.images[0] || "",
-      price: rawPrice,
-      quantity: qty,
-      variantTitle: _product?.variants?.[0]?.title || undefined,
-    });
+      qty,
+      data.images[0] || "",
+      data.title,
+      rawPrice
+    );
 
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
