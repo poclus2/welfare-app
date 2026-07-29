@@ -128,6 +128,7 @@ export default async function ProductsPage({
           {data.products.map((product) => {
             const lowestPrice = product.variants?.reduce((min: number, v: any) => {
               const p = v.prices?.find((px: any) => px.currency_code === "xof" || px.currency_code === "eur");
+              // XOF prices are stored as full integers (e.g. 15000), not in cents
               const amt = p ? p.amount : 0;
               return amt > 0 && (amt < min || min === 0) ? amt : min;
             }, 0);
@@ -192,7 +193,7 @@ export default async function ProductsPage({
                       <p className="text-[9px] text-[#2A2424]/40 uppercase tracking-wide font-semibold">Prix</p>
                       <p className="text-[11px] font-bold text-[#2A2424]">
                         {lowestPrice > 0
-                          ? new Intl.NumberFormat("fr-FR").format(lowestPrice / 100)
+                          ? new Intl.NumberFormat("fr-FR").format(lowestPrice) + " F"
                           : "—"}
                       </p>
                     </div>
