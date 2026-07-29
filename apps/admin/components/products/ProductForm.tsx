@@ -15,7 +15,15 @@ export function ProductForm({ initialData, collections, categories = [] }: { ini
   const [description, setDescription] = useState(initialData?.description || "");
   const [handle, setHandle] = useState(initialData?.handle || "");
   const [collectionId, setCollectionId] = useState(initialData?.collection_id || "");
-  const [categoryId, setCategoryId] = useState(initialData?.categories?.[0]?.id || "");
+  
+  const initialCatId = initialData?.categories?.[0]?.id;
+  const initialCat = categories.find(c => c.id === initialCatId);
+  const [mainCategoryId, setMainCategoryId] = useState(initialCat?.parent_category_id || (initialCat ? initialCat.id : ""));
+  const [subCategoryId, setSubCategoryId] = useState(initialCat?.parent_category_id ? initialCat.id : "");
+  
+  const mainCategories = categories.filter(c => !c.parent_category_id);
+  const availableSubCategories = categories.filter(c => c.parent_category_id === mainCategoryId);
+
   const [thumbnail, setThumbnail] = useState(initialData?.thumbnail || "");
   const [status, setStatus] = useState(initialData?.status || "draft");
 
@@ -33,7 +41,7 @@ export function ProductForm({ initialData, collections, categories = [] }: { ini
         description,
         handle,
         collection_id: collectionId || null,
-        categories: categoryId ? [{ id: categoryId }] : [],
+        categories: subCategoryId ? [{ id: subCategoryId }] : (mainCategoryId ? [{ id: mainCategoryId }] : []),
         status,
         is_giftcard: false,
         discountable: true,
@@ -218,18 +226,37 @@ export function ProductForm({ initialData, collections, categories = [] }: { ini
                 </select>
               </div>
               <div>
-                <label className="block text-[11px] font-bold text-[#2A2424]/60 mb-1.5 uppercase tracking-widest">Catégorie</label>
+                <label className="block text-[11px] font-bold text-[#2A2424]/60 mb-1.5 uppercase tracking-widest">Catégorie Principale</label>
                 <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
+                  value={mainCategoryId}
+                  onChange={(e) => {
+                    setMainCategoryId(e.target.value);
+                    setSubCategoryId("");
+                  }}
                   className="w-full px-4 py-2.5 rounded-xl border border-[#EDE0E0] text-sm text-[#2A2424] bg-[#FDFBF7] outline-none focus:border-[#C08A8E] focus:ring-2 focus:ring-[#F4EAEB]"
                 >
                   <option value="">Aucune catégorie</option>
-                  {categories.map(c => (
+                  {mainCategories.map(c => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
                 </select>
               </div>
+              
+              {availableSubCategories.length > 0 && (
+                <div>
+                  <label className="block text-[11px] font-bold text-[#2A2424]/60 mb-1.5 uppercase tracking-widest">Sous-catégorie</label>
+                  <select
+                    value={subCategoryId}
+                    onChange={(e) => setSubCategoryId(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#EDE0E0] text-sm text-[#2A2424] bg-[#FDFBF7] outline-none focus:border-[#C08A8E] focus:ring-2 focus:ring-[#F4EAEB]"
+                  >
+                    <option value="">Aucune sous-catégorie</option>
+                    {availableSubCategories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           </div>
         </div>
