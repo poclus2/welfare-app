@@ -38,11 +38,17 @@ export default async function ProductsPage({
   const activeProductsData = await fetchAdmin<{ count: number }>(`/products?status=published&limit=1`, token).catch(() => ({ count: 0 }));
   const draftProductsData = await fetchAdmin<{ count: number }>(`/products?status=draft&limit=1`, token).catch(() => ({ count: 0 }));
 
+  // Compute low stock from fetched products (inventory < 10 but > 0)
+  const lowStockCount = data.products.filter(p => {
+    const inv = p.variants?.reduce((acc: number, v: any) => acc + (v.inventory_quantity || 0), 0) || 0;
+    return inv > 0 && inv < 10;
+  }).length;
+
   const kpis = {
     total: allProductsData.count,
     active: activeProductsData.count,
     draft: draftProductsData.count,
-    withImage: data.products.filter(p => p.thumbnail).length,
+    lowStock: lowStockCount,
   };
 
   const totalPages = Math.ceil(data.count / limit);
@@ -69,7 +75,7 @@ export default async function ProductsPage({
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard
           label="Total Produits"
           value={kpis.total}
@@ -93,6 +99,14 @@ export default async function ProductsPage({
           note="À publier"
           bars={[5, 3, 6, 4, 5, 3, 4]}
           barColor="#f59e0b"
+        />
+        <KpiCard
+          label="Stock Faible"
+          value={kpis.lowStock}
+          badge={{ text: "< 10 unités", color: "bg-red-100 text-red-600" }}
+          note="Sur cette page"
+          bars={[3, 5, 4, 6, 3, 5, 4]}
+          barColor="#ef4444"
         />
       </div>
 
