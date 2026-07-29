@@ -1,8 +1,9 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import Image from "next/image";
-import { Package, CheckCircle2, AlertTriangle, AlertOctagon, Plus, Search, ChevronRight, ChevronLeft } from "lucide-react";
+import { Package, CheckCircle2, AlertTriangle, AlertOctagon, Plus, ChevronRight, ChevronLeft } from "lucide-react";
 import { fetchAdmin } from "@/lib/medusa-admin";
+import { ProductSearch } from "@/components/products/ProductSearch";
 
 export const dynamic = "force-dynamic";
 
@@ -83,24 +84,7 @@ export default async function ProductsPage({
 
       {/* Toolbar */}
       <div className="bg-white rounded-2xl border border-[#EDE0E0] p-4 flex flex-col sm:flex-row gap-3 shadow-sm">
-        {/* Search Form - Submits to the URL to update searchParams */}
-        <form className="flex-1" method="GET" action="/dashboard/products">
-          <div className="flex items-center gap-2 bg-[#F5F0EB] border border-[#EDE0E0] rounded-xl px-3 py-2.5">
-            <Search className="w-4 h-4 text-[#2A2424]/30 shrink-0" />
-            <input
-              type="text"
-              name="q"
-              defaultValue={q}
-              placeholder="Rechercher par nom, marque..."
-              className="flex-1 text-sm text-[#2A2424] bg-transparent outline-none placeholder:text-[#2A2424]/30"
-            />
-            {q && (
-              <Link href="/dashboard/products" className="text-[#2A2424]/30 hover:text-[#2A2424]">
-                &times;
-              </Link>
-            )}
-          </div>
-        </form>
+        <ProductSearch initialQuery={q} />
       </div>
 
       {/* Table */}
