@@ -9,16 +9,20 @@ export default async function NewProductPage() {
   const token = cookieStore.get("admin_token")?.value;
   
   let collections = [];
+  let categories = [];
   
   if (token) {
-    const data = await fetchAdmin<{ collections: any[] }>("/collections?limit=100", token)
-      .catch(() => ({ collections: [] }));
-    collections = data.collections;
+    const [collRes, catRes] = await Promise.all([
+      fetchAdmin<{ collections: any[] }>("/collections?limit=100", token).catch(() => ({ collections: [] })),
+      fetchAdmin<{ product_categories: any[] }>("/product-categories?limit=100", token).catch(() => ({ product_categories: [] }))
+    ]);
+    collections = collRes.collections;
+    categories = catRes.product_categories;
   }
 
   return (
     <div className="p-5 lg:p-8">
-      <ProductForm collections={collections} />
+      <ProductForm collections={collections} categories={categories} />
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Loader2, UploadCloud, X, Plus, Save } from "lucide-react";
 
-export function ProductForm({ initialData, collections }: { initialData?: any, collections: any[] }) {
+export function ProductForm({ initialData, collections, categories = [] }: { initialData?: any, collections: any[], categories?: any[] }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -15,6 +15,7 @@ export function ProductForm({ initialData, collections }: { initialData?: any, c
   const [description, setDescription] = useState(initialData?.description || "");
   const [handle, setHandle] = useState(initialData?.handle || "");
   const [collectionId, setCollectionId] = useState(initialData?.collection_id || "");
+  const [categoryId, setCategoryId] = useState(initialData?.categories?.[0]?.id || "");
   const [thumbnail, setThumbnail] = useState(initialData?.thumbnail || "");
   const [status, setStatus] = useState(initialData?.status || "draft");
 
@@ -32,6 +33,7 @@ export function ProductForm({ initialData, collections }: { initialData?: any, c
         description,
         handle,
         collection_id: collectionId || null,
+        categories: categoryId ? [{ id: categoryId }] : [],
         status,
         is_giftcard: false,
         discountable: true,
@@ -201,18 +203,33 @@ export function ProductForm({ initialData, collections }: { initialData?: any, c
 
           <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm">
             <h2 className="text-sm font-bold text-[#2A2424] mb-4">Organisation</h2>
-            <div>
-              <label className="block text-[11px] font-bold text-[#2A2424]/60 mb-1.5 uppercase tracking-widest">Collection</label>
-              <select
-                value={collectionId}
-                onChange={(e) => setCollectionId(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-[#EDE0E0] text-sm text-[#2A2424] bg-[#FDFBF7] outline-none focus:border-[#C08A8E] focus:ring-2 focus:ring-[#F4EAEB]"
-              >
-                <option value="">Aucune collection</option>
-                {collections.map(c => (
-                  <option key={c.id} value={c.id}>{c.title}</option>
-                ))}
-              </select>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-[#2A2424]/60 mb-1.5 uppercase tracking-widest">Collection</label>
+                <select
+                  value={collectionId}
+                  onChange={(e) => setCollectionId(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#EDE0E0] text-sm text-[#2A2424] bg-[#FDFBF7] outline-none focus:border-[#C08A8E] focus:ring-2 focus:ring-[#F4EAEB]"
+                >
+                  <option value="">Aucune collection</option>
+                  {collections.map(c => (
+                    <option key={c.id} value={c.id}>{c.title}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-[#2A2424]/60 mb-1.5 uppercase tracking-widest">Catégorie</label>
+                <select
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#EDE0E0] text-sm text-[#2A2424] bg-[#FDFBF7] outline-none focus:border-[#C08A8E] focus:ring-2 focus:ring-[#F4EAEB]"
+                >
+                  <option value="">Aucune catégorie</option>
+                  {categories.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         </div>

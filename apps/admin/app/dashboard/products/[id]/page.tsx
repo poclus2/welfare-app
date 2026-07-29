@@ -14,21 +14,24 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
 
   let product = null;
   let collections = [];
+  let categories = [];
 
   try {
-    const [productRes, collectionsRes] = await Promise.all([
+    const [productRes, collectionsRes, categoriesRes] = await Promise.all([
       fetchAdmin<{ product: any }>(`/products/${id}`, token),
-      fetchAdmin<{ collections: any[] }>("/collections?limit=100", token)
+      fetchAdmin<{ collections: any[] }>("/collections?limit=100", token),
+      fetchAdmin<{ product_categories: any[] }>("/product-categories?limit=100", token)
     ]);
     product = productRes.product;
     collections = collectionsRes.collections;
+    categories = categoriesRes.product_categories;
   } catch (err) {
     notFound();
   }
 
   return (
     <div className="p-5 lg:p-8">
-      <ProductForm initialData={product} collections={collections} />
+      <ProductForm initialData={product} collections={collections} categories={categories} />
     </div>
   );
 }
