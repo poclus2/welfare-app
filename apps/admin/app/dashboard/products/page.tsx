@@ -1,15 +1,11 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import Image from "next/image";
-import { Package, CheckCircle2, AlertTriangle, AlertOctagon, Plus, ChevronRight, ChevronLeft } from "lucide-react";
+import { Package, Plus, ChevronRight, ChevronLeft, Pencil } from "lucide-react";
 import { fetchAdmin } from "@/lib/medusa-admin";
 import { ProductSearch } from "@/components/products/ProductSearch";
 
 export const dynamic = "force-dynamic";
-
-function formatPrice(amount: number) {
-  return new Intl.NumberFormat("fr-FR").format(amount);
-}
 
 export default async function ProductsPage({
   searchParams,
@@ -20,13 +16,12 @@ export default async function ProductsPage({
   const cookieStore = await cookies();
   const token = cookieStore.get("admin_token")?.value;
 
-  if (!token) return null; // Middleware should catch this anyway
+  if (!token) return null;
 
   const q = typeof resolvedParams.q === "string" ? resolvedParams.q : "";
   const offset = typeof resolvedParams.offset === "string" ? parseInt(resolvedParams.offset, 10) : 0;
-  const limit = 20;
+  const limit = 24;
 
-  // Build query string
   const query = new URLSearchParams({
     offset: offset.toString(),
     limit: limit.toString(),
@@ -34,28 +29,27 @@ export default async function ProductsPage({
   });
   if (q) query.set("q", q);
 
-  // Fetch products
   const data = await fetchAdmin<{ products: any[]; count: number; offset: number; limit: number }>(
     `/products?${query.toString()}`,
     token
-  ).catch(() => ({ products: [], count: 0, offset: 0, limit: 20 }));
+  ).catch(() => ({ products: [], count: 0, offset: 0, limit: 24 }));
 
-  // For KPIs, we ideally need aggregate data, but for now we'll do a basic estimate or fetch all counts if needed.
-  // Medusa doesn't have a single /products/metrics endpoint, so we can do some lightweight counts.
   const allProductsData = await fetchAdmin<{ count: number }>(`/products?limit=1`, token).catch(() => ({ count: 0 }));
   const activeProductsData = await fetchAdmin<{ count: number }>(`/products?status=published&limit=1`, token).catch(() => ({ count: 0 }));
-  
-  // We don't have a direct query for "out of stock" at the product level easily in Medusa API without fetching all variants.
-  // We'll use mock values or compute based on the current page for now.
+  const draftProductsData = await fetchAdmin<{ count: number }>(`/products?status=draft&limit=1`, token).catch(() => ({ count: 0 }));
+
   const kpis = {
     total: allProductsData.count,
     active: activeProductsData.count,
-    outOfStock: 12, // Placeholder
-    lowStock: 24, // Placeholder
+    draft: draftProductsData.count,
+    withImage: data.products.filter(p => p.thumbnail).length,
   };
 
   const totalPages = Math.ceil(data.count / limit);
   const currentPage = Math.floor(offset / limit) + 1;
+
+  // Mini bar chart data (simulated trend from count)
+  const bars = [3, 5, 4, 6, 5, 7, 6];
 
   return (
     <div className="p-5 lg:p-8 space-y-6">
@@ -75,138 +69,233 @@ export default async function ProductsPage({
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <KpiCard label="Total Produits" value={kpis.total.toString()} icon={Package} color="text-blue-500" bg="bg-blue-50" />
-        <KpiCard label="Actifs (Publiés)" value={kpis.active.toString()} icon={CheckCircle2} color="text-emerald-500" bg="bg-emerald-50" />
-        <KpiCard label="Rupture de stock" value={kpis.outOfStock.toString()} icon={AlertOctagon} color="text-red-500" bg="bg-red-50" />
-        <KpiCard label="Stock faible" value={kpis.lowStock.toString()} icon={AlertTriangle} color="text-amber-500" bg="bg-amber-50" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <KpiCard
+          label="Total Produits"
+          value={kpis.total}
+          badge={{ text: `+${kpis.active} publiés`, color: "bg-emerald-100 text-emerald-700" }}
+          note="Dans votre catalogue"
+          bars={[4, 6, 5, 7, 6, 8, 7]}
+          barColor="#C08A8E"
+        />
+        <KpiCard
+          label="Produits Publiés"
+          value={kpis.active}
+          badge={{ text: `${Math.round((kpis.active / Math.max(kpis.total, 1)) * 100)}%`, color: "bg-blue-100 text-blue-700" }}
+          note="Visibles sur la boutique"
+          bars={[2, 4, 3, 5, 4, 6, 5]}
+          barColor="#3b82f6"
+        />
+        <KpiCard
+          label="Brouillons"
+          value={kpis.draft}
+          badge={{ text: "En attente", color: "bg-amber-100 text-amber-700" }}
+          note="À publier"
+          bars={[5, 3, 6, 4, 5, 3, 4]}
+          barColor="#f59e0b"
+        />
       </div>
 
       {/* Toolbar */}
-      <div className="bg-white rounded-2xl border border-[#EDE0E0] p-4 flex flex-col sm:flex-row gap-3 shadow-sm">
+      <div className="bg-white rounded-2xl border border-[#EDE0E0] p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
         <ProductSearch initialQuery={q} />
+        <p className="text-xs text-[#2A2424]/40 whitespace-nowrap">
+          {data.count} produit{data.count > 1 ? "s" : ""}
+        </p>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-[#EDE0E0] shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-[#F5F0EB] border-b border-[#EDE0E0]">
-                {["Produit", "Collection", "Statut", "Inventaire", "Actions"].map((h) => (
-                  <th key={h} className="text-left px-4 py-3 text-[10px] font-bold text-[#2A2424]/40 uppercase tracking-widest whitespace-nowrap">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.products.map((product) => {
-                // Calculate total inventory across all variants
-                const totalInventory = product.variants?.reduce((acc: number, v: any) => acc + (v.inventory_quantity || 0), 0) || 0;
-                // Get lowest price across variants
-                const lowestPrice = product.variants?.reduce((min: number, v: any) => {
-                  const frPrice = v.prices?.find((p: any) => p.currency_code === "xof" || p.currency_code === "eur"); // Adjust currency as needed
-                  const price = frPrice ? frPrice.amount : 0;
-                  return price > 0 && (price < min || min === 0) ? price : min;
-                }, 0);
-
-                return (
-                  <tr key={product.id} className="border-b border-[#EDE0E0] hover:bg-[#F5F0EB]/40 transition-colors">
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-3">
-                        {product.thumbnail ? (
-                          <div className="w-10 h-10 rounded-lg overflow-hidden border border-[#EDE0E0] shrink-0 bg-[#F5F0EB] relative">
-                            <Image src={product.thumbnail} alt={product.title} fill className="object-cover" />
-                          </div>
-                        ) : (
-                          <div className="w-10 h-10 rounded-lg border border-[#EDE0E0] bg-[#F5F0EB] flex items-center justify-center shrink-0">
-                            <Package className="w-4 h-4 text-[#2A2424]/20" />
-                          </div>
-                        )}
-                        <div className="min-w-0 max-w-[250px]">
-                          <p className="text-sm font-bold text-[#2A2424] truncate">{product.title}</p>
-                          <p className="text-[10px] text-[#2A2424]/50 truncate">{product.subtitle || product.handle}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span className="text-xs font-medium text-[#2A2424]/80">
-                        {product.collection?.title || "—"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${
-                        product.status === "published" 
-                          ? "bg-emerald-50 text-emerald-600 border border-emerald-200" 
-                          : "bg-gray-100 text-gray-500 border border-gray-200"
-                      }`}>
-                        {product.status === "published" ? "Publié" : "Brouillon"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <p className={`text-xs font-bold ${
-                        totalInventory === 0 ? "text-red-500" : totalInventory < 10 ? "text-amber-500" : "text-[#2A2424]"
-                      }`}>
-                        {totalInventory} en stock
-                      </p>
-                      <p className="text-[10px] text-[#2A2424]/40">{product.variants?.length || 0} variante(s)</p>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <Link
-                        href={`/dashboard/products/${product.id}`}
-                        className="text-[11px] font-semibold text-[#C08A8E] hover:text-[#2A2424] transition-colors"
-                      >
-                        Éditer
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {data.products.length === 0 && (
-            <div className="text-center py-12 text-sm text-[#2A2424]/30">Aucun produit trouvé</div>
-          )}
+      {/* Product Cards Grid */}
+      {data.products.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-[#EDE0E0] py-16 text-center text-sm text-[#2A2424]/30 shadow-sm">
+          Aucun produit trouvé
         </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+          {data.products.map((product) => {
+            const lowestPrice = product.variants?.reduce((min: number, v: any) => {
+              const p = v.prices?.find((px: any) => px.currency_code === "xof" || px.currency_code === "eur");
+              const amt = p ? p.amount : 0;
+              return amt > 0 && (amt < min || min === 0) ? amt : min;
+            }, 0);
+            const totalInventory = product.variants?.reduce((acc: number, v: any) => acc + (v.inventory_quantity || 0), 0) || 0;
+            const isPublished = product.status === "published";
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-[#EDE0E0]">
-            <p className="text-xs text-[#2A2424]/50">
-              Affichage {offset + 1} - {Math.min(offset + limit, data.count)} sur {data.count}
-            </p>
-            <div className="flex items-center gap-2">
-              <Link
-                href={`/dashboard/products?offset=${Math.max(0, offset - limit)}${q ? `&q=${q}` : ''}`}
-                className={`p-1.5 rounded-lg border border-[#EDE0E0] ${currentPage === 1 ? "opacity-50 pointer-events-none" : "hover:bg-[#F5F0EB]"}`}
+            return (
+              <div
+                key={product.id}
+                className="bg-white rounded-2xl border border-[#EDE0E0] overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col group"
               >
-                <ChevronLeft className="w-4 h-4 text-[#2A2424]" />
-              </Link>
-              <span className="text-xs font-medium text-[#2A2424] px-2">{currentPage} / {totalPages}</span>
-              <Link
-                href={`/dashboard/products?offset=${offset + limit}${q ? `&q=${q}` : ''}`}
-                className={`p-1.5 rounded-lg border border-[#EDE0E0] ${currentPage >= totalPages ? "opacity-50 pointer-events-none" : "hover:bg-[#F5F0EB]"}`}
-              >
-                <ChevronRight className="w-4 h-4 text-[#2A2424]" />
-              </Link>
-            </div>
+                {/* Image area */}
+                <div className="relative aspect-[3/4] bg-gradient-to-br from-[#F5F0EB] to-[#EDE0E0] overflow-hidden">
+                  {product.thumbnail ? (
+                    <Image
+                      src={product.thumbnail}
+                      alt={product.title}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                      <Package className="w-8 h-8 text-[#2A2424]/15" />
+                      <span className="text-[10px] text-[#2A2424]/20 font-medium">Pas d'image</span>
+                    </div>
+                  )}
+
+                  {/* Edit button on hover */}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <Link
+                      href={`/dashboard/products/${product.id}`}
+                      className="flex items-center gap-1.5 bg-white text-[#2A2424] text-xs font-bold px-3 py-1.5 rounded-full shadow-lg hover:bg-[#2A2424] hover:text-white transition-colors"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      Éditer
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-3 flex flex-col gap-2 flex-1">
+                  {/* Status badge */}
+                  <div className="flex items-center gap-1.5">
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      isPublished
+                        ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                        : "bg-amber-50 text-amber-600 border border-amber-200"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${isPublished ? "bg-emerald-500" : "bg-amber-400"}`} />
+                      {isPublished ? "Publié" : "Brouillon"}
+                    </span>
+                  </div>
+
+                  {/* Title */}
+                  <p className="text-xs font-bold text-[#2A2424] leading-tight line-clamp-2 flex-1">
+                    {product.title}
+                  </p>
+
+                  {/* Stats row */}
+                  <div className="grid grid-cols-3 gap-1 pt-1 border-t border-[#EDE0E0]">
+                    <div>
+                      <p className="text-[9px] text-[#2A2424]/40 uppercase tracking-wide font-semibold">Prix</p>
+                      <p className="text-[11px] font-bold text-[#2A2424]">
+                        {lowestPrice > 0
+                          ? new Intl.NumberFormat("fr-FR").format(lowestPrice / 100)
+                          : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-[#2A2424]/40 uppercase tracking-wide font-semibold">Stock</p>
+                      <p className={`text-[11px] font-bold ${totalInventory === 0 ? "text-red-500" : totalInventory < 10 ? "text-amber-500" : "text-[#2A2424]"}`}>
+                        {totalInventory}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-[#2A2424]/40 uppercase tracking-wide font-semibold">Var.</p>
+                      <p className="text-[11px] font-bold text-[#2A2424]">{product.variants?.length || 0}</p>
+                    </div>
+                  </div>
+
+                  {/* Edit button below */}
+                  <Link
+                    href={`/dashboard/products/${product.id}`}
+                    className="mt-1 w-full text-center text-[11px] font-bold py-1.5 rounded-lg border border-[#EDE0E0] text-[#2A2424]/60 hover:bg-[#2A2424] hover:text-white hover:border-[#2A2424] transition-all duration-150"
+                  >
+                    Éditer
+                  </Link>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="bg-white rounded-2xl border border-[#EDE0E0] flex items-center justify-between px-6 py-4 shadow-sm">
+          <p className="text-xs text-[#2A2424]/50">
+            {offset + 1}–{Math.min(offset + limit, data.count)} sur {data.count} produits
+          </p>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/dashboard/products?offset=${Math.max(0, offset - limit)}${q ? `&q=${q}` : ''}`}
+              className={`p-1.5 rounded-lg border border-[#EDE0E0] transition-colors ${currentPage === 1 ? "opacity-40 pointer-events-none" : "hover:bg-[#F5F0EB]"}`}
+            >
+              <ChevronLeft className="w-4 h-4 text-[#2A2424]" />
+            </Link>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              const page = currentPage <= 3 ? i + 1 : currentPage - 2 + i;
+              if (page > totalPages) return null;
+              return (
+                <Link
+                  key={page}
+                  href={`/dashboard/products?offset=${(page - 1) * limit}${q ? `&q=${q}` : ''}`}
+                  className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-colors ${
+                    page === currentPage
+                      ? "bg-[#2A2424] text-white"
+                      : "border border-[#EDE0E0] text-[#2A2424]/60 hover:bg-[#F5F0EB]"
+                  }`}
+                >
+                  {page}
+                </Link>
+              );
+            })}
+            <Link
+              href={`/dashboard/products?offset=${offset + limit}${q ? `&q=${q}` : ''}`}
+              className={`p-1.5 rounded-lg border border-[#EDE0E0] transition-colors ${currentPage >= totalPages ? "opacity-40 pointer-events-none" : "hover:bg-[#F5F0EB]"}`}
+            >
+              <ChevronRight className="w-4 h-4 text-[#2A2424]" />
+            </Link>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function KpiCard({ label, value, icon: Icon, color, bg }: { label: string, value: string, icon: any, color: string, bg: string }) {
+function KpiCard({
+  label, value, badge, note, bars, barColor
+}: {
+  label: string;
+  value: number;
+  badge: { text: string; color: string };
+  note: string;
+  bars: number[];
+  barColor: string;
+}) {
+  const max = Math.max(...bars);
   return (
-    <div className="bg-white rounded-2xl p-5 border border-[#EDE0E0] shadow-sm flex items-center gap-4">
-      <div className={`w-12 h-12 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
-        <Icon className={`w-6 h-6 ${color}`} />
+    <div className="bg-white rounded-2xl border border-[#EDE0E0] p-5 shadow-sm">
+      <div className="flex items-start justify-between mb-3">
+        <p className="text-sm font-semibold text-[#2A2424]">{label}</p>
+        <button className="text-[#2A2424]/20 hover:text-[#2A2424]/50 transition-colors">
+          <span className="text-lg leading-none">···</span>
+        </button>
       </div>
-      <div>
-        <p className="text-2xl font-bold text-[#2A2424] mb-0.5">{value}</p>
-        <p className="text-xs text-[#2A2424]/50">{label}</p>
+      <div className="flex items-end justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <p className="text-3xl font-extrabold text-[#2A2424]" style={{ letterSpacing: "-0.04em" }}>
+              {value.toLocaleString("fr-FR")}
+            </p>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.color}`}>
+              {badge.text}
+            </span>
+          </div>
+          <p className="text-xs text-[#2A2424]/40 mt-1">{note}</p>
+        </div>
+        {/* Mini bar chart */}
+        <div className="flex items-end gap-[3px] h-10 shrink-0">
+          {bars.map((h, i) => (
+            <div
+              key={i}
+              className="w-2 rounded-sm opacity-80"
+              style={{
+                height: `${(h / max) * 100}%`,
+                backgroundColor: i === bars.length - 1 ? barColor : "#2A2424",
+                opacity: i === bars.length - 1 ? 1 : 0.15 + (i / bars.length) * 0.5,
+              }}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
