@@ -37,7 +37,8 @@ export function ProductForm({ initialData, collections, categories = [] }: { ini
   const [currency] = useState(firstPrice?.currency_code || "xof");
 
   // Images: thumbnail + secondary images
-  const [images] = useState<{ url: string }[]>(initialData?.images || []);
+  const [images, setImages] = useState<{ url: string }[]>(initialData?.images || []);
+  const [newImageUrl, setNewImageUrl] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +57,7 @@ export function ProductForm({ initialData, collections, categories = [] }: { ini
         is_giftcard: false,
         discountable: true,
         thumbnail,
+        images: images.map(img => img.url),
       };
 
       // Update price on first variant if changed
@@ -235,22 +237,57 @@ export function ProductForm({ initialData, collections, categories = [] }: { ini
             </div>
 
             {/* Secondary images thumbnails */}
-            {images.length > 0 && (
-              <div>
-                <label className={labelClass}>Images secondaires ({images.length})</label>
+            <div className="mb-4">
+              <label className={labelClass}>Images secondaires ({images.length})</label>
+              
+              {/* Input to add a new image */}
+              <div className="flex items-center gap-2 mb-3 mt-1">
+                <input
+                  type="text"
+                  value={newImageUrl}
+                  onChange={e => setNewImageUrl(e.target.value)}
+                  placeholder="URL d'une nouvelle image..."
+                  className={inputClass}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (newImageUrl.trim()) {
+                      setImages([...images, { url: newImageUrl.trim() }]);
+                      setNewImageUrl("");
+                    }
+                  }}
+                  className="px-4 py-2.5 bg-[#F5F0EB] hover:bg-[#EDE0E0] border border-[#EDE0E0] rounded-xl text-sm font-bold text-[#2A2424] transition-colors"
+                >
+                  Ajouter
+                </button>
+              </div>
+
+              {images.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-1">
                   {images.map((img, i) => (
                     <div
                       key={i}
-                      className="relative w-16 h-16 rounded-lg overflow-hidden border border-[#EDE0E0] bg-[#F5F0EB] flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                      className="relative w-16 h-16 rounded-lg overflow-hidden border border-[#EDE0E0] bg-[#F5F0EB] flex-shrink-0 group"
                       title={img.url}
                     >
                       <Image src={img.url} alt={`Image ${i + 1}`} fill className="object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newImgs = [...images];
+                          newImgs.splice(i, 1);
+                          setImages(newImgs);
+                        }}
+                        className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
         </div>
