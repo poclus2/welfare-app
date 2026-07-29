@@ -18,7 +18,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
 
   try {
     const [productRes, collectionsRes, categoriesRes] = await Promise.all([
-      fetchAdmin<{ product: any }>(`/products/${id}`, token),
+      fetchAdmin<{ product: any }>(`/products/${id}?fields=*categories`, token),
       fetchAdmin<{ collections: any[] }>("/collections?limit=100", token),
       fetchAdmin<{ product_categories: any[] }>("/product-categories?limit=100", token)
     ]);
