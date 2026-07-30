@@ -145,7 +145,10 @@ export default function CheckoutPage() {
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleStep1Next = async () => {
-    if (!validateIdentity()) return;
+    if (!validateIdentity()) {
+      alert("Veuillez remplir correctement tous les champs d'identité.");
+      return;
+    }
     if (!cartId) {
       alert("Panier non initialisé");
       return;
@@ -171,8 +174,14 @@ export default function CheckoutPage() {
   };
 
   const handleSubmit = async () => {
-    if (!validateDelivery()) return;
-    if (!cartId) return;
+    if (!validateDelivery()) {
+      alert("Veuillez remplir tous les champs de livraison (voir les bordures rouges).");
+      return;
+    }
+    if (!cartId) {
+      alert("Le panier n'est pas initialisé correctement.");
+      return;
+    }
     setIsLoading(true);
     try {
       // 1. Update Cart Address & Metadata for Delivery
@@ -223,8 +232,9 @@ export default function CheckoutPage() {
       clearCart();
       router.push(`/checkout/confirmation?ref=${ref}`);
     } catch (err: any) {
-      console.error(err);
-      alert("Erreur lors de la validation: " + err.message);
+      console.error("Payment Error:", err);
+      const msg = err?.message || err?.toString() || "Erreur inconnue";
+      alert("Erreur lors de la validation: " + msg);
       setIsLoading(false);
     }
   };
@@ -553,6 +563,8 @@ export default function CheckoutPage() {
                         <option value="SEN-WAVE">Wave Sénégal</option>
                         <option value="SEN-ORANGE_MONEY">Orange Money Sénégal</option>
                         <option value="SEN-FREE_MONEY">Free Money Sénégal</option>
+                        <option value="CMR-MTN_MOMO">MTN MoMo Cameroun</option>
+                        <option value="CMR-ORANGE_MONEY">Orange Money Cameroun</option>
                         <option value="CIV-WAVE">Wave Côte d'Ivoire</option>
                         <option value="CIV-ORANGE_MONEY">Orange Money Côte d'Ivoire</option>
                       </select>
