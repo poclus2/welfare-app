@@ -30,8 +30,8 @@ interface IdentityForm {
 interface DeliveryForm {
   mode: DeliveryMode;
   store: StoreLocation;      // used only for retrait
-  address: string;           // used only for domicile
-  city: string;              // used only for domicile
+  address: string;
+  city: string;
   country: string;
   notes: string;
 }
@@ -43,17 +43,23 @@ const STORES = [
   {
     id: "hippodrome" as StoreLocation,
     name: "The Welfare Hippodrome",
-    address: "Route de l'Hippodrome, Dakar",
+    address: "Route de l'Hippodrome, Douala",
     emoji: "🏇",
     hours: "Lun–Sam, 9h–20h",
   },
   {
     id: "playce" as StoreLocation,
     name: "The Welfare Playce",
-    address: "Playce Dakar, Almadies",
+    address: "Playce, Yaoundé",
     emoji: "🛍️",
     hours: "Lun–Dim, 10h–21h",
   },
+];
+
+const CAMEROON_CITIES = [
+  "Yaoundé", "Douala", "Bafoussam", "Bamenda", "Garoua", 
+  "Maroua", "Ngaoundéré", "Bertoua", "Ebolowa", "Kribi", 
+  "Limbe", "Buea", "Kumba", "Nkongsamba", "Edéa"
 ];
 
 // ─── Step indicator ────────────────────────────────────────────────────────────
@@ -111,7 +117,7 @@ export default function CheckoutPage() {
     firstName: "", lastName: "", email: "", phone: "",
   });
   const [delivery, setDelivery] = useState<DeliveryForm>({
-    mode: "domicile", store: null, address: "", city: "", country: "Sénégal", notes: "",
+    mode: "domicile", store: null, address: "", city: "Douala", country: "Cameroun", notes: "",
   });
 
   const [identityErrors, setIdentityErrors] = useState<Partial<IdentityForm>>({});
@@ -123,12 +129,19 @@ export default function CheckoutPage() {
   const total = totalAmount + livraisonFee;
 
   // Fetch shipping options for the cart
-  useEffect(() => {
+  const fetchOptions = async () => {
     if (cartId) {
-      sdk.store.fulfillment.listCartOptions({ cart_id: cartId })
-        .then(({ shipping_options }) => setShippingOptions(shipping_options))
-        .catch(console.error);
+      try {
+        const { shipping_options } = await sdk.store.fulfillment.listCartOptions({ cart_id: cartId });
+        setShippingOptions(shipping_options);
+      } catch (e) {
+        console.error(e);
+      }
     }
+  };
+
+  useEffect(() => {
+    fetchOptions();
   }, [cartId]);
 
   // Redirect if cart empty
@@ -180,8 +193,10 @@ export default function CheckoutPage() {
           first_name: identity.firstName,
           last_name: identity.lastName,
           phone: identity.phone,
+          country_code: "cm",
         }
       });
+      await fetchOptions(); // Refetch options after setting country to CM
       setStep(2);
     } catch (err) {
       console.error(err);
@@ -209,8 +224,8 @@ export default function CheckoutPage() {
           last_name: identity.lastName,
           phone: identity.phone,
           address_1: delivery.mode === "domicile" ? delivery.address : "Retrait en magasin : " + delivery.store,
-          city: delivery.mode === "domicile" ? delivery.city : "Dakar",
-          country_code: "sn",
+          city: delivery.mode === "domicile" ? delivery.city : "Douala",
+          country_code: "cm",
         },
         metadata: {
           delivery_mode: delivery.mode,
@@ -228,9 +243,16 @@ export default function CheckoutPage() {
       } else if (shippingOptions.length > 0) {
         // Auto-select first matching option if user didn't select but options exist
         const defaultOpt = shippingOptions.find(o => 
-          delivery.mode === "domicile" ? o.name.toLowerCase().includes("domicile") : o.name.toLowerCase().includes("retrait")
+          delivery.mode === "domicile" 
+            ? o.name.toLowerCase().includes("domicile") || o.name.toLowerCase().includes(delivery.city.toLowerCase())
+            : o.name.toLowerCase().includes("retrait")
         ) || shippingOptions[0];
-        await sdk.store.cart.addShippingMethod(cartId, { option_id: defaultOpt.id });
+        
+        if (defaultOpt) {
+          await sdk.store.cart.addShippingMethod(cartId, { option_id: defaultOpt.id });
+        }
+      } else {
+        throw new Error("Aucun mode de livraison n'est disponible pour cette adresse.");
       }
 
       // 3. Initiate Payment Session
@@ -491,13 +513,15 @@ export default function CheckoutPage() {
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">Ville</label>
-                            <input
-                              type="text"
-                              placeholder="Dakar"
+                            <select
                               value={delivery.city}
                               onChange={(e) => setDelivery({ ...delivery, city: e.target.value })}
-                              className={dClass("city")}
-                            />
+                              className="w-full px-4 py-3 rounded-xl border border-[#EDE0E0] focus:border-[#C08A8E] focus:ring-2 focus:ring-[#F4EAEB] text-sm text-[#2A2424] bg-white outline-none transition-all"
+                            >
+                              {CAMEROON_CITIES.map(c => (
+                                <option key={c} value={c}>{c}</option>
+                              ))}
+                            </select>
                             {deliveryErrors.city && <p className="text-[10px] text-red-500 mt-1">{deliveryErrors.city}</p>}
                           </div>
                           <div>
@@ -507,13 +531,7 @@ export default function CheckoutPage() {
                               onChange={(e) => setDelivery({ ...delivery, country: e.target.value })}
                               className="w-full px-4 py-3 rounded-xl border border-[#EDE0E0] focus:border-[#C08A8E] focus:ring-2 focus:ring-[#F4EAEB] text-sm text-[#2A2424] bg-white outline-none transition-all"
                             >
-                              <option>Sénégal</option>
-                              <option>Côte d&apos;Ivoire</option>
-                              <option>Mali</option>
-                              <option>Burkina Faso</option>
-                              <option>Guinée</option>
                               <option>Cameroun</option>
-                              <option>France</option>
                             </select>
                           </div>
                         </div>
