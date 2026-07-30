@@ -47,7 +47,7 @@ export const POST = async (
 
   const providerId = "manual_manual"
 
-  const optionInput = {
+  const optionInput: any = {
     name,
     price_type: "flat",
     provider_id: providerId,

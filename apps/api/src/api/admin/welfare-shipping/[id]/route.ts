@@ -12,6 +12,7 @@ export const POST = async (
     const updatePayload: any = { id }
     if (name) updatePayload.name = name
     if (price !== undefined) {
+      updatePayload.price_type = "flat"
       updatePayload.prices = [{ currency_code: "xof", amount: price }]
     }
 
