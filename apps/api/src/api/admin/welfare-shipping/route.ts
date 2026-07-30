@@ -86,10 +86,12 @@ export const GET = async (
   res: MedusaResponse
 ) => {
   try {
-    const fulfillmentModule = req.scope.resolve(Modules.FULFILLMENT) as any
-    const options = await fulfillmentModule.listShippingOptions({}, {
-      relations: ["prices", "type"]
-    })
+    const remoteQuery = req.scope.resolve("remoteQuery")
+    const query = {
+      entryPoint: "shipping_option",
+      fields: ["id", "name", "price_type", "type.*", "prices.*"],
+    }
+    const options = await remoteQuery(query)
     res.status(200).json({ shipping_options: options })
   } catch (error: any) {
     console.error("Error fetching shipping options:", error)
