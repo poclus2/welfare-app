@@ -1,5 +1,6 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules } from "@medusajs/framework/utils"
+import { createShippingOptionsWorkflow } from "@medusajs/medusa/core-flows"
 
 export const POST = async (
   req: MedusaRequest,
@@ -9,7 +10,6 @@ export const POST = async (
 
   try {
     const fulfillmentModule = req.scope.resolve(Modules.FULFILLMENT) as any
-    const pricingModule = req.scope.resolve(Modules.PRICING) as any
 
     // 1. Get or Create Fulfillment Set
     let fSets = await fulfillmentModule.listFulfillmentSets({ name: "Default Delivery" })
@@ -21,7 +21,7 @@ export const POST = async (
       })
     }
 
-    // Link Fulfillment Set to Stock Location so that shipping options are available at checkout
+    // 2. Link Fulfillment Set to Stock Location
     const stockLocationModule = req.scope.resolve(Modules.STOCK_LOCATION) as any
     const remoteLink = req.scope.resolve("remoteLink")
     const stockLocations = await stockLocationModule.listStockLocations()
@@ -36,7 +36,7 @@ export const POST = async (
       }
     }
 
-    // 2. Get or Create Service Zone - Cameroun
+    // 3. Get or Create Service Zone - Cameroun
     let serviceZones = await fulfillmentModule.listServiceZones({ name: "Cameroun" })
     let serviceZone = serviceZones[0]
     if (!serviceZone) {
@@ -49,40 +49,32 @@ export const POST = async (
       })
     }
 
-    // 3. Get or Create Shipping Profile
+    // 4. Get or Create Shipping Profile
     let profiles = await fulfillmentModule.listShippingProfiles({ type: "default" })
     let profile = profiles[0]
     if (!profile) {
       profile = await fulfillmentModule.createShippingProfiles({ name: "Default", type: "default" })
     }
 
-    // 4. Create shipping option directly
-    const shippingOption = await fulfillmentModule.createShippingOptions({
-      name,
-      price_type: "flat",
-      provider_id: "manual_manual",
-      service_zone_id: serviceZone.id,
-      shipping_profile_id: profile.id,
-      type: {
-        label: isPickup ? "Pickup" : "Delivery",
-        description: isPickup ? "Retrait sur place" : "Livraison standard",
-        code: isPickup ? "pickup" : "delivery"
-      },
-      rules: []
+    // 5. Use the official Medusa workflow to create the shipping option with proper pricing
+    const { result } = await createShippingOptionsWorkflow(req.scope).run({
+      input: [{
+        name,
+        price_type: "flat",
+        provider_id: "manual_manual",
+        service_zone_id: serviceZone.id,
+        shipping_profile_id: profile.id,
+        type: {
+          label: isPickup ? "Pickup" : "Delivery",
+          description: isPickup ? "Retrait sur place" : "Livraison standard",
+          code: isPickup ? "pickup" : "delivery"
+        },
+        rules: [],
+        prices: [{ currency_code: "xaf", amount: price }]
+      }]
     })
 
-    // 5. Create PriceSet and Link it
-    const priceSet = await pricingModule.createPriceSets({
-      rules: [],
-      prices: [{ currency_code: "xaf", amount: price }]
-    })
-
-    await remoteLink.create({
-      [Modules.FULFILLMENT]: { shipping_option_id: shippingOption.id },
-      [Modules.PRICING]: { price_set_id: priceSet.id }
-    })
-
-    res.status(200).json({ shipping_option: shippingOption })
+    res.status(200).json({ shipping_option: result[0] })
   } catch (error: any) {
     console.error("Error creating shipping option:", error)
     res.status(500).json({ message: error.message })
