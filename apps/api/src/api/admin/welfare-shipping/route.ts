@@ -8,7 +8,7 @@ export const POST = async (
 ) => {
   const { name, price, isPickup } = req.body as { name: string; price: number; isPickup: boolean }
 
-  const fulfillmentModule = req.scope.resolve("fulfillment") as any
+  const fulfillmentModule = req.scope.resolve(Modules.FULFILLMENT) as any
   
   // 1. Get Default Service Zone
   let fSets = await fulfillmentModule.listFulfillmentSets({ name: "Default Delivery" })
@@ -50,7 +50,7 @@ export const POST = async (
 
   // Link provider to stock location if not already linked
   const remoteLink = req.scope.resolve("remoteLink")
-  const stockLocationModule = req.scope.resolve("stockLocation") as any
+  const stockLocationModule = req.scope.resolve(Modules.STOCK_LOCATION) as any
   const locations = await stockLocationModule.listStockLocations()
   if (locations.length > 0) {
     try {
