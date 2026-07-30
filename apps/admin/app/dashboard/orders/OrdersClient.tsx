@@ -47,6 +47,7 @@ const STATUS_VALUES: Record<string, string> = {
   "Livré": "delivered", "Annulé": "cancelled",
 };
 
+export default function OrdersClient({ initialOrders, totalCount }: { initialOrders: Order[]; totalCount: number }) {
   const [search, setSearch] = useState("");
   const [deliveryFilter, setDeliveryFilter] = useState("Tous");
   const [statusFilter, setStatusFilter] = useState("Tous");
