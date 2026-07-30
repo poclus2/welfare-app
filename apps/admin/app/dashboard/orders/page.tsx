@@ -11,7 +11,7 @@ export default async function OrdersPage() {
   if (!token) return null;
 
   const data = await fetchAdmin<{ orders: any[]; count: number }>(
-    `/orders?expand=customer,shipping_address,payment_collections,items,shipping_methods&limit=50`,
+    `/orders?fields=*customer,*shipping_address,*payment_collections,*items,*shipping_methods&limit=50`,
     token
   ).catch((e) => {
     console.error("Failed to fetch orders", e);

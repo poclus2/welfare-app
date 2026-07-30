@@ -11,7 +11,7 @@ export default async function CustomersPage() {
   if (!token) return null;
 
   const data = await fetchAdmin<{ customers: any[]; count: number }>(
-    `/customers?expand=orders&limit=50`,
+    `/customers?fields=*orders&limit=50`,
     token
   ).catch((e) => {
     console.error("Failed to fetch customers", e);
