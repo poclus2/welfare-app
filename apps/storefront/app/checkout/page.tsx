@@ -146,8 +146,10 @@ export default function CheckoutPage() {
 
   // Redirect if cart empty
   useEffect(() => {
-    if (items.length === 0) router.push("/shop");
-  }, [items, router]);
+    if (items.length === 0 && !isLoading) {
+      router.push("/shop");
+    }
+  }, [items, router, isLoading]);
 
   // ── Validation ──────────────────────────────────────────────────────────────
   const validateIdentity = () => {
@@ -285,7 +287,7 @@ export default function CheckoutPage() {
       sessionStorage.setItem("welfare_last_order", JSON.stringify(order));
       
       clearCart();
-      router.push(`/checkout/confirmation?ref=${ref}`);
+      window.location.href = `/checkout/confirmation?ref=${ref}`;
     } catch (err: any) {
       console.error("Payment Error:", err);
       const msg = err?.message || err?.toString() || "Erreur inconnue";
