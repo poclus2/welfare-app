@@ -69,7 +69,7 @@ export const POST = async (
         code: isPickup ? "pickup" : "delivery"
       },
       rules: [],
-      prices: [{ currency_code: "xof", amount: price }]
+      prices: [{ currency_code: "xaf", amount: price }]
     })
 
     res.status(200).json({ shipping_option: shippingOption })

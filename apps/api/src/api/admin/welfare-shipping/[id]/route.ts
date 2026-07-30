@@ -14,7 +14,7 @@ export const POST = async (
     const updatePayload: any = {}
     if (name) updatePayload.name = name
     if (price !== undefined) {
-      updatePayload.prices = [{ currency_code: "xof", amount: price }]
+      updatePayload.prices = [{ currency_code: "xaf", amount: price }]
     }
 
     const updated = await fulfillmentModule.updateShippingOptions(id, updatePayload)
