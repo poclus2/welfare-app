@@ -24,6 +24,7 @@ type Order = {
   customer: string;
   phone: string;
   items: number;
+  itemsList: any[];
   amount: number;
   payment: string;
   delivery: string;
@@ -248,10 +249,44 @@ export default function OrdersClient({ initialOrders, totalCount }: { initialOrd
                         {selectedOrder.store === "hippodrome" ? "🏇 The Welfare Hippodrome" : selectedOrder.store === "playce" ? "🛍️ The Welfare Playce" : "🏪 Retrait"}
                       </p>
                       <p className="text-xs text-[#2A2424]/50 mt-1">
-                        {selectedOrder.store === "hippodrome" ? "Route de l'Hippodrome, Dakar" : selectedOrder.store === "playce" ? "Playce Dakar, Almadies" : selectedOrder.address}
+                        Le client passera récupérer sa commande.
                       </p>
                     </>
                   )}
+                </div>
+
+                {/* Items */}
+                <div className="bg-[#F5F0EB] rounded-xl p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#2A2424]/40 mb-3">Articles ({selectedOrder.items})</p>
+                  <div className="space-y-3">
+                    {selectedOrder.itemsList && selectedOrder.itemsList.length > 0 ? (
+                      selectedOrder.itemsList.map((item: any, i: number) => (
+                        <div key={i} className="flex justify-between items-start border-b border-[#EDE0E0] last:border-0 pb-3 last:pb-0">
+                          <div className="flex gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-white border border-[#EDE0E0] overflow-hidden shrink-0 flex items-center justify-center relative">
+                              {item.thumbnail ? (
+                                <img src={item.thumbnail} alt={item.product_title} className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-[#2A2424]/20 text-xs">Img</span>
+                              )}
+                              <span className="absolute -top-1 -right-1 bg-[#2A2424] text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                                {item.quantity}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-[#2A2424] line-clamp-1">{item.product_title || item.title}</p>
+                              {item.variant_title && item.variant_title !== "Default Variant" && (
+                                <p className="text-[10px] text-[#2A2424]/40">{item.variant_title}</p>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-xs font-bold text-[#2A2424] shrink-0">{formatPrice(item.unit_price || 0)} FCFA</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-[#2A2424]/40">Aucun article trouvé</p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Payment */}

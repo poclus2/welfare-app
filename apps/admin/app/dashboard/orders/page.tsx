@@ -62,12 +62,21 @@ export default async function OrdersPage() {
       day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
     });
 
+    // Customer Name
+    let customerName = "Client Inconnu";
+    if (o.shipping_address?.first_name || o.shipping_address?.last_name) {
+      customerName = `${o.shipping_address.first_name || ""} ${o.shipping_address.last_name || ""}`.trim();
+    } else if (o.customer?.first_name || o.customer?.last_name) {
+      customerName = `${o.customer.first_name || ""} ${o.customer.last_name || ""}`.trim();
+    }
+
     return {
       id: `WLF-${o.display_id || o.id.split('_')[1].substring(0, 5).toUpperCase()}`,
       rawId: o.id,
-      customer: o.customer ? `${o.customer.first_name || ""} ${o.customer.last_name || ""}`.trim() : "Client Inconnu",
+      customer: customerName,
       phone,
       items: itemsCount,
+      itemsList: o.items || [],
       amount: o.total || 0,
       payment,
       delivery,

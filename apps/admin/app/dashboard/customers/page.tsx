@@ -52,9 +52,17 @@ export default async function CustomersPage() {
         };
       });
 
+    let customerName = "Client Inconnu";
+    if (c.first_name || c.last_name) {
+      customerName = `${c.first_name || ""} ${c.last_name || ""}`.trim();
+    } else if (c.orders?.[0]?.shipping_address?.first_name || c.orders?.[0]?.shipping_address?.last_name) {
+      const sa = c.orders[0].shipping_address;
+      customerName = `${sa.first_name || ""} ${sa.last_name || ""}`.trim();
+    }
+
     return {
       id: c.id,
-      name: `${c.first_name || ""} ${c.last_name || ""}`.trim() || "Client Inconnu",
+      name: customerName || "Client Inconnu",
       email: c.email || "—",
       phone: c.phone || "—",
       ordersCount,
