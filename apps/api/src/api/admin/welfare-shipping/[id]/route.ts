@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import { updateShippingOptionsWorkflow, deleteShippingOptionsWorkflow } from "@medusajs/medusa/core-flows"
+import { Modules } from "@medusajs/framework/utils"
 
 export const POST = async (
   req: MedusaRequest,
@@ -9,21 +9,20 @@ export const POST = async (
   const { name, price } = req.body as { name?: string; price?: number }
 
   try {
+    const fulfillmentModule = req.scope.resolve(Modules.FULFILLMENT) as any
+
     const updatePayload: any = { id }
     if (name) updatePayload.name = name
     if (price !== undefined) {
-      updatePayload.price_type = "flat"
       updatePayload.prices = [{ currency_code: "xof", amount: price }]
     }
 
-    const { result } = await updateShippingOptionsWorkflow(req.scope).run({
-      input: [updatePayload]
-    })
+    const updated = await fulfillmentModule.updateShippingOptions([updatePayload])
 
-    res.status(200).json({ shipping_option: result[0] })
+    res.status(200).json({ shipping_option: Array.isArray(updated) ? updated[0] : updated })
   } catch (error: any) {
     console.error("Error updating shipping option:", error)
-    res.status(400).json({ message: error.message })
+    res.status(500).json({ message: error.message })
   }
 }
 
@@ -34,13 +33,11 @@ export const DELETE = async (
   const { id } = req.params
 
   try {
-    await deleteShippingOptionsWorkflow(req.scope).run({
-      input: { ids: [id] }
-    })
-
+    const fulfillmentModule = req.scope.resolve(Modules.FULFILLMENT) as any
+    await fulfillmentModule.deleteShippingOptions([id])
     res.status(200).json({ success: true })
   } catch (error: any) {
     console.error("Error deleting shipping option:", error)
-    res.status(400).json({ message: error.message })
+    res.status(500).json({ message: error.message })
   }
 }
