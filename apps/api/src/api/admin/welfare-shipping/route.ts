@@ -1,4 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { Modules } from "@medusajs/framework/utils"
 import { createShippingOptionsWorkflow } from "@medusajs/medusa/core-flows"
 
 export const POST = async (
@@ -46,6 +47,25 @@ export const POST = async (
   }
 
   const providerId = "manual_manual"
+
+  // Link provider to stock location if not already linked
+  const remoteLink = req.scope.resolve("remoteLink")
+  const stockLocationModule = req.scope.resolve("stockLocation")
+  const locations = await stockLocationModule.listStockLocations()
+  if (locations.length > 0) {
+    try {
+      await remoteLink.create({
+        [Modules.STOCK_LOCATION]: {
+          stock_location_id: locations[0].id,
+        },
+        [Modules.FULFILLMENT]: {
+          fulfillment_provider_id: providerId,
+        },
+      })
+    } catch (e) {
+      // Ignore if already linked
+    }
+  }
 
   const optionInput: any = {
     name,
