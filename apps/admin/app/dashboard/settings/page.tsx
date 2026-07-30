@@ -48,7 +48,11 @@ export default async function SettingsPage() {
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-white/40">Pays de livraison</span>
-                <span className="font-bold">Sénégal</span>
+                <span className="font-bold">Cameroun 🇨🇲</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-white/40">Villes couvertes</span>
+                <span className="font-bold">Yaoundé, Douala</span>
               </div>
             </div>
           </div>

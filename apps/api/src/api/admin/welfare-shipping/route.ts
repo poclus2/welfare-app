@@ -21,13 +21,13 @@ export const POST = async (
       })
     }
 
-    // 2. Get or Create Service Zone
-    let serviceZones = await fulfillmentModule.listServiceZones({ name: "Cameroon" })
+    // 2. Get or Create Service Zone - Cameroun
+    let serviceZones = await fulfillmentModule.listServiceZones({ name: "Cameroun" })
     let serviceZone = serviceZones[0]
     if (!serviceZone) {
       serviceZone = await fulfillmentModule.createServiceZones({
         fulfillment_set_id: fSet.id,
-        name: "Cameroon",
+        name: "Cameroun",
         geo_zones: [
           { type: "country", country_code: "cm" }
         ]
