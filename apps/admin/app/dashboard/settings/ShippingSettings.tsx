@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { Plus, Trash, Pencil, Check, X, Loader2, Package } from "lucide-react";
+import { createShippingOptionAction, deleteShippingOptionAction, updateShippingOptionAction } from "./actions";
 
 export function ShippingSettings({
   initialOptions,
-  token
 }: {
   initialOptions: any[];
-  token: string;
+  token?: string; // no longer strictly needed in client
 }) {
   const [options, setOptions] = useState(initialOptions);
   const [isAdding, setIsAdding] = useState(false);
@@ -23,36 +23,11 @@ export function ShippingSettings({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState("");
 
-  const refreshOptions = async () => {
-    try {
-      const res = await fetch("/api/admin/shipping-options", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      // Actually, standard admin API is on backend URL. We need to fetch from MEDUSA_BACKEND_URL
-      // The prop initialOptions is passed from server. To refresh, we can just trigger a router.refresh() 
-      // or we just update the local state which is faster.
-    } catch (err) {}
-  };
-
   const handleCreate = async () => {
     if (!name.trim() || price === "") return;
     setIsLoading(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "https://api.thewelfare.store"}/admin/welfare-shipping`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name,
-          price: parseInt(price, 10),
-          isPickup
-        })
-      });
-
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+      const data: any = await createShippingOptionAction(name, parseInt(price, 10), isPickup);
       
       setOptions([...options, data.shipping_option]);
       setIsAdding(false);
@@ -69,11 +44,7 @@ export function ShippingSettings({
   const handleDelete = async (id: string) => {
     if (!confirm("Voulez-vous vraiment supprimer ce mode de livraison ?")) return;
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "https://api.thewelfare.store"}/admin/welfare-shipping/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error(await res.text());
+      await deleteShippingOptionAction(id);
       setOptions(options.filter(o => o.id !== id));
     } catch (err: any) {
       alert("Erreur: " + err.message);
@@ -83,16 +54,7 @@ export function ShippingSettings({
   const handleUpdate = async (id: string) => {
     if (editPrice === "") return;
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "https://api.thewelfare.store"}/admin/welfare-shipping/${id}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ price: parseInt(editPrice, 10) })
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+      const data: any = await updateShippingOptionAction(id, parseInt(editPrice, 10));
       setOptions(options.map(o => o.id === id ? data.shipping_option : o));
       setEditingId(null);
     } catch (err: any) {
