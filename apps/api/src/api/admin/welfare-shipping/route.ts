@@ -21,6 +21,21 @@ export const POST = async (
       })
     }
 
+    // Link Fulfillment Set to Stock Location so that shipping options are available at checkout
+    const stockLocationModule = req.scope.resolve(Modules.STOCK_LOCATION) as any
+    const remoteLink = req.scope.resolve("remoteLink")
+    const stockLocations = await stockLocationModule.listStockLocations()
+    if (stockLocations.length > 0) {
+      try {
+        await remoteLink.create({
+          [Modules.STOCK_LOCATION]: { stock_location_id: stockLocations[0].id },
+          [Modules.FULFILLMENT]: { fulfillment_set_id: fSet.id }
+        })
+      } catch (e) {
+        // Ignore if already linked
+      }
+    }
+
     // 2. Get or Create Service Zone - Cameroun
     let serviceZones = await fulfillmentModule.listServiceZones({ name: "Cameroun" })
     let serviceZone = serviceZones[0]
