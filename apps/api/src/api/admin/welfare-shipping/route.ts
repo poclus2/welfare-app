@@ -1,6 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules } from "@medusajs/framework/utils"
-import { createShippingOptionsWorkflow } from "@medusajs/medusa/core-flows"
 
 export const POST = async (
   req: MedusaRequest,
@@ -8,87 +7,75 @@ export const POST = async (
 ) => {
   const { name, price, isPickup } = req.body as { name: string; price: number; isPickup: boolean }
 
-  const fulfillmentModule = req.scope.resolve(Modules.FULFILLMENT) as any
-  
-  // 1. Get Default Service Zone
-  let fSets = await fulfillmentModule.listFulfillmentSets({ name: "Default Delivery" })
-  let fSet = fSets[0];
-  if (!fSet) {
-    fSet = await fulfillmentModule.createFulfillmentSets({
-      name: "Default Delivery",
-      type: "delivery"
-    })
-  }
-
-  let serviceZones = await fulfillmentModule.listServiceZones({ name: "West Africa" })
-  let serviceZone = serviceZones[0];
-  if (!serviceZone) {
-    serviceZone = await fulfillmentModule.createServiceZones({
-      fulfillment_set_id: fSet.id,
-      name: "West Africa",
-      geo_zones: [
-        { type: "country", country_code: "sn" },
-        { type: "country", country_code: "cm" },
-        { type: "country", country_code: "ci" }
-      ]
-    })
-  }
-
-  // 2. Fetch shipping profile
-  const query = req.scope.resolve("query") as any
-  const { data: profiles } = await query.graph({
-    entity: "shipping_profile",
-    fields: ["id"],
-  })
-  
-  const shippingProfileId = profiles[0]?.id
-  if (!shippingProfileId) {
-    return res.status(400).json({ message: "No shipping profile found. Please seed the database." })
-  }
-
-  const providerId = "manual_manual"
-
-  // Link provider to stock location if not already linked
-  const remoteLink = req.scope.resolve("remoteLink")
-  const stockLocationModule = req.scope.resolve(Modules.STOCK_LOCATION) as any
-  const locations = await stockLocationModule.listStockLocations()
-  if (locations.length > 0) {
-    try {
-      await remoteLink.create({
-        [Modules.STOCK_LOCATION]: {
-          stock_location_id: locations[0].id,
-        },
-        [Modules.FULFILLMENT]: {
-          fulfillment_provider_id: providerId,
-        },
-      })
-    } catch (e) {
-      // Ignore if already linked
-    }
-  }
-
-  const optionInput: any = {
-    name,
-    price_type: "flat",
-    provider_id: providerId,
-    service_zone_id: serviceZone.id,
-    shipping_profile_id: shippingProfileId,
-    type: { 
-      label: isPickup ? "Pickup" : "Delivery", 
-      description: isPickup ? "Retrait sur place" : "Livraison standard", 
-      code: isPickup ? "pickup" : "delivery" 
-    },
-    prices: [{ currency_code: "xof", amount: price }]
-  }
-
   try {
-    const { result } = await createShippingOptionsWorkflow(req.scope).run({
-      input: [optionInput]
+    const fulfillmentModule = req.scope.resolve(Modules.FULFILLMENT) as any
+    const pricingModule = req.scope.resolve(Modules.PRICING) as any
+
+    // 1. Get or Create Fulfillment Set
+    let fSets = await fulfillmentModule.listFulfillmentSets({ name: "Default Delivery" })
+    let fSet = fSets[0]
+    if (!fSet) {
+      fSet = await fulfillmentModule.createFulfillmentSets({
+        name: "Default Delivery",
+        type: "delivery"
+      })
+    }
+
+    // 2. Get or Create Service Zone
+    let serviceZones = await fulfillmentModule.listServiceZones({ name: "Cameroon" })
+    let serviceZone = serviceZones[0]
+    if (!serviceZone) {
+      serviceZone = await fulfillmentModule.createServiceZones({
+        fulfillment_set_id: fSet.id,
+        name: "Cameroon",
+        geo_zones: [
+          { type: "country", country_code: "cm" }
+        ]
+      })
+    }
+
+    // 3. Get or Create Shipping Profile
+    let profiles = await fulfillmentModule.listShippingProfiles({ type: "default" })
+    let profile = profiles[0]
+    if (!profile) {
+      profile = await fulfillmentModule.createShippingProfiles({ name: "Default", type: "default" })
+    }
+
+    // 4. Create shipping option directly (no workflow, no provider validation)
+    const shippingOption = await fulfillmentModule.createShippingOptions({
+      name,
+      price_type: "flat",
+      provider_id: "manual_manual",
+      service_zone_id: serviceZone.id,
+      shipping_profile_id: profile.id,
+      type: {
+        label: isPickup ? "Pickup" : "Delivery",
+        description: isPickup ? "Retrait sur place" : "Livraison standard",
+        code: isPickup ? "pickup" : "delivery"
+      },
+      rules: [],
+      prices: [{ currency_code: "xof", amount: price }]
     })
 
-    res.status(200).json({ shipping_option: result[0] })
+    res.status(200).json({ shipping_option: shippingOption })
   } catch (error: any) {
     console.error("Error creating shipping option:", error)
-    res.status(400).json({ message: error.message })
+    res.status(500).json({ message: error.message })
+  }
+}
+
+export const GET = async (
+  req: MedusaRequest,
+  res: MedusaResponse
+) => {
+  try {
+    const fulfillmentModule = req.scope.resolve(Modules.FULFILLMENT) as any
+    const options = await fulfillmentModule.listShippingOptions({}, {
+      relations: ["prices", "type"]
+    })
+    res.status(200).json({ shipping_options: options })
+  } catch (error: any) {
+    console.error("Error fetching shipping options:", error)
+    res.status(500).json({ message: error.message })
   }
 }

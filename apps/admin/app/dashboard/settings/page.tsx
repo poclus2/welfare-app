@@ -12,7 +12,7 @@ export default async function SettingsPage() {
 
   let shippingOptions = [];
   try {
-    const data = await fetchAdmin<{ shipping_options: any[] }>("/shipping-options?expand=prices,type", token);
+    const data = await fetchAdmin<{ shipping_options: any[] }>("/welfare-shipping", token);
     shippingOptions = data.shipping_options || [];
   } catch (err) {
     console.error("Error fetching shipping options:", err);
