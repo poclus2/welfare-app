@@ -204,7 +204,7 @@ export default function CheckoutPage() {
       // 2. Initiate Payment Session with PawaPay
       const { cart } = await sdk.store.cart.retrieve(cartId);
       await sdk.store.payment.initiatePaymentSession(cart as any, {
-        provider_id: "pawapay"
+        provider_id: "pp_pawapay_pawapay"
       });
 
       // 3. Complete Checkout
