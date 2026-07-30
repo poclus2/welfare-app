@@ -11,13 +11,13 @@ export const POST = async (
   try {
     const fulfillmentModule = req.scope.resolve(Modules.FULFILLMENT) as any
 
-    const updatePayload: any = { id }
+    const updatePayload: any = {}
     if (name) updatePayload.name = name
     if (price !== undefined) {
       updatePayload.prices = [{ currency_code: "xof", amount: price }]
     }
 
-    const updated = await fulfillmentModule.updateShippingOptions([updatePayload])
+    const updated = await fulfillmentModule.updateShippingOptions(id, updatePayload)
 
     res.status(200).json({ shipping_option: Array.isArray(updated) ? updated[0] : updated })
   } catch (error: any) {
