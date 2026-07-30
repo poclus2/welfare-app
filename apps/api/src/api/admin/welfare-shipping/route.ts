@@ -8,7 +8,7 @@ export const POST = async (
 ) => {
   const { name, price, isPickup } = req.body as { name: string; price: number; isPickup: boolean }
 
-  const fulfillmentModule = req.scope.resolve("fulfillment")
+  const fulfillmentModule = req.scope.resolve("fulfillment") as any
   
   // 1. Get Default Service Zone
   let fSets = await fulfillmentModule.listFulfillmentSets({ name: "Default Delivery" })
@@ -35,7 +35,7 @@ export const POST = async (
   }
 
   // 2. Fetch shipping profile
-  const query = req.scope.resolve("query")
+  const query = req.scope.resolve("query") as any
   const { data: profiles } = await query.graph({
     entity: "shipping_profile",
     fields: ["id"],
@@ -50,7 +50,7 @@ export const POST = async (
 
   // Link provider to stock location if not already linked
   const remoteLink = req.scope.resolve("remoteLink")
-  const stockLocationModule = req.scope.resolve("stockLocation")
+  const stockLocationModule = req.scope.resolve("stockLocation") as any
   const locations = await stockLocationModule.listStockLocations()
   if (locations.length > 0) {
     try {
