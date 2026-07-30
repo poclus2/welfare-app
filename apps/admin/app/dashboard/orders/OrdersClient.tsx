@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Search, Filter, ChevronDown, Eye, CheckCircle2, Phone, X, Loader2 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
 function formatPrice(n: number) {
   return new Intl.NumberFormat("fr-FR").format(n);
@@ -47,12 +47,9 @@ const STATUS_VALUES: Record<string, string> = {
   "Livré": "delivered", "Annulé": "cancelled",
 };
 
-export default function OrdersClient({ initialOrders, totalCount }: { initialOrders: Order[]; totalCount: number }) {
   const [search, setSearch] = useState("");
   const [deliveryFilter, setDeliveryFilter] = useState("Tous");
   const [statusFilter, setStatusFilter] = useState("Tous");
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [isConfirming, setIsConfirming] = useState(false);
 
   const filtered = initialOrders.filter((o) => {
     const matchSearch = o.id.toLowerCase().includes(search.toLowerCase()) ||
@@ -64,16 +61,6 @@ export default function OrdersClient({ initialOrders, totalCount }: { initialOrd
     const matchStatus = statusFilter === "Tous" || o.status === STATUS_VALUES[statusFilter];
     return matchSearch && matchDelivery && matchStatus;
   });
-
-  const handleConfirmPayment = async (order: Order) => {
-    setIsConfirming(true);
-    // In a real scenario, this would call the API to capture the payment
-    // For now we simulate it
-    await new Promise((r) => setTimeout(r, 1500)); 
-    setIsConfirming(false);
-    setSelectedOrder(null);
-    alert(`✅ Paiement de ${order.id} confirmé !`);
-  };
 
   return (
     <div className="p-5 lg:p-8">
@@ -175,12 +162,12 @@ export default function OrdersClient({ initialOrders, totalCount }: { initialOrd
                     <p className="text-[10px] text-[#2A2424]/40 whitespace-nowrap">{order.date}</p>
                   </td>
                   <td className="px-4 py-3.5">
-                    <button
-                      onClick={() => setSelectedOrder(order)}
+                    <Link
+                      href={`/dashboard/orders/${order.rawId}`}
                       className="flex items-center gap-1 text-[11px] font-semibold text-[#C08A8E] hover:text-[#2A2424] transition-colors"
                     >
                       <Eye className="w-3.5 h-3.5" /> Détail
-                    </button>
+                    </Link>
                   </td>
                 </tr>
               ))}
@@ -191,150 +178,6 @@ export default function OrdersClient({ initialOrders, totalCount }: { initialOrd
           )}
         </div>
       </div>
-
-      {/* Order Detail Drawer */}
-      <AnimatePresence>
-        {selectedOrder && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedOrder(null)}
-              className="fixed inset-0 z-40 bg-black/40"
-            />
-            <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-[420px] bg-white shadow-2xl overflow-y-auto"
-            >
-              {/* Drawer header */}
-              <div className="flex items-center justify-between px-6 py-5 border-b border-[#EDE0E0] sticky top-0 bg-white z-10">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#2A2424]/40">Commande</p>
-                  <p className="text-lg font-bold text-[#2A2424] font-mono">{selectedOrder.id}</p>
-                </div>
-                <button onClick={() => setSelectedOrder(null)} className="p-2 text-[#2A2424]/30 hover:text-[#2A2424] hover:bg-[#F5F0EB] rounded-xl transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="p-6 space-y-5">
-                {/* Status */}
-                <div className="flex items-center justify-between">
-                  <StatusBadge status={selectedOrder.status} />
-                  <p className="text-[10px] text-[#2A2424]/40">{selectedOrder.date}</p>
-                </div>
-
-                {/* Customer */}
-                <div className="bg-[#F5F0EB] rounded-xl p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#2A2424]/40 mb-2">Client</p>
-                  <p className="text-sm font-bold text-[#2A2424]">{selectedOrder.customer}</p>
-                  <p className="text-xs text-[#2A2424]/50 mt-1">{selectedOrder.phone}</p>
-                </div>
-
-                {/* Delivery */}
-                <div className="bg-[#F5F0EB] rounded-xl p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#2A2424]/40 mb-2">Livraison</p>
-                  {selectedOrder.delivery === "domicile" ? (
-                    <>
-                      <p className="text-sm font-bold text-[#2A2424]">🏠 À domicile</p>
-                      <p className="text-xs text-[#2A2424]/50 mt-1">{selectedOrder.address}</p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-sm font-bold text-[#2A2424]">
-                        {selectedOrder.store === "hippodrome" ? "🏇 The Welfare Hippodrome" : selectedOrder.store === "playce" ? "🛍️ The Welfare Playce" : "🏪 Retrait"}
-                      </p>
-                      <p className="text-xs text-[#2A2424]/50 mt-1">
-                        Le client passera récupérer sa commande.
-                      </p>
-                    </>
-                  )}
-                </div>
-
-                {/* Items */}
-                <div className="bg-[#F5F0EB] rounded-xl p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#2A2424]/40 mb-3">Articles ({selectedOrder.items})</p>
-                  <div className="space-y-3">
-                    {selectedOrder.itemsList && selectedOrder.itemsList.length > 0 ? (
-                      selectedOrder.itemsList.map((item: any, i: number) => (
-                        <div key={i} className="flex justify-between items-start border-b border-[#EDE0E0] last:border-0 pb-3 last:pb-0">
-                          <div className="flex gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-white border border-[#EDE0E0] overflow-hidden shrink-0 flex items-center justify-center relative">
-                              {item.thumbnail ? (
-                                <img src={item.thumbnail} alt={item.product_title} className="w-full h-full object-cover" />
-                              ) : (
-                                <span className="text-[#2A2424]/20 text-xs">Img</span>
-                              )}
-                              <span className="absolute -top-1 -right-1 bg-[#2A2424] text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
-                                {item.quantity}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="text-xs font-bold text-[#2A2424] line-clamp-1">{item.product_title || item.title}</p>
-                              {item.variant_title && item.variant_title !== "Default Variant" && (
-                                <p className="text-[10px] text-[#2A2424]/40">{item.variant_title}</p>
-                              )}
-                            </div>
-                          </div>
-                          <p className="text-xs font-bold text-[#2A2424] shrink-0">{formatPrice(item.unit_price || 0)} FCFA</p>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-xs text-[#2A2424]/40">Aucun article trouvé</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Payment */}
-                <div className="bg-[#F5F0EB] rounded-xl p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#2A2424]/40 mb-2">Paiement</p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">📱</span>
-                      <p className="text-sm font-bold text-[#2A2424]">{selectedOrder.payment}</p>
-                    </div>
-                    <p className="text-sm font-bold text-[#2A2424]">{formatPrice(selectedOrder.amount)} FCFA</p>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="space-y-2 pt-2">
-                  {selectedOrder.status === "pending_payment" && (
-                    <button
-                      onClick={() => handleConfirmPayment(selectedOrder)}
-                      disabled={isConfirming}
-                      className="w-full flex items-center justify-center gap-2 py-3.5 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 transition-colors disabled:opacity-60"
-                    >
-                      {isConfirming ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                      Confirmer le paiement
-                    </button>
-                  )}
-                  {selectedOrder.phone && (
-                    <a
-                      href={`https://wa.me/${selectedOrder.phone.replace(/\s+/g, "").replace("+", "")}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#25D366] text-white rounded-xl text-sm font-bold hover:bg-[#1DA851] transition-colors"
-                    >
-                      <Phone className="w-4 h-4" />
-                      Contacter sur WhatsApp
-                    </a>
-                  )}
-                  {["paid", "preparing"].includes(selectedOrder.status) && (
-                    <button className="w-full flex items-center justify-center gap-2 py-3.5 bg-[#2A2424] text-white rounded-xl text-sm font-bold hover:bg-black transition-colors">
-                      Marquer comme prêt
-                    </button>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
