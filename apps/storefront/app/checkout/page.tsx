@@ -103,6 +103,10 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [mobileNetwork, setMobileNetwork] = useState("SEN-WAVE");
 
+  const [paymentMode, setPaymentMode] = useState<"pawapay" | "cash">("pawapay");
+  const [shippingOptions, setShippingOptions] = useState<any[]>([]);
+  const [selectedShippingOptionId, setSelectedShippingOptionId] = useState<string | null>(null);
+
   const [identity, setIdentity] = useState<IdentityForm>({
     firstName: "", lastName: "", email: "", phone: "",
   });
@@ -113,8 +117,19 @@ export default function CheckoutPage() {
   const [identityErrors, setIdentityErrors] = useState<Partial<IdentityForm>>({});
   const [deliveryErrors, setDeliveryErrors] = useState<Partial<Record<keyof DeliveryForm, string>>>({});
 
-  const livraisonFee = delivery.mode === "retrait" ? 0 : LIVRAISON_FEE;
+  // Get current shipping option price
+  const currentShippingOption = shippingOptions.find(o => o.id === selectedShippingOptionId);
+  const livraisonFee = currentShippingOption ? currentShippingOption.amount : (delivery.mode === "retrait" ? 0 : LIVRAISON_FEE);
   const total = totalAmount + livraisonFee;
+
+  // Fetch shipping options for the cart
+  useEffect(() => {
+    if (cartId) {
+      sdk.store.fulfillment.listCartOptions({ cart_id: cartId })
+        .then(({ shipping_options }) => setShippingOptions(shipping_options))
+        .catch(console.error);
+    }
+  }, [cartId]);
 
   // Redirect if cart empty
   useEffect(() => {
@@ -133,13 +148,16 @@ export default function CheckoutPage() {
   };
 
   const validateDelivery = () => {
-    const e: Partial<Record<keyof DeliveryForm, string>> = {};
+    const e: Partial<Record<keyof DeliveryForm, string> & { shipping: string }> = {};
     if (delivery.mode === "retrait" && !delivery.store) e.store = "Choisissez un magasin";
     if (delivery.mode === "domicile") {
       if (!delivery.address.trim()) e.address = "Requis";
       if (!delivery.city.trim()) e.city = "Requis";
     }
-    setDeliveryErrors(e);
+    // Comment out strict shipping option validation so users can still test if options aren't seeded yet
+    // if (!selectedShippingOptionId) e.shipping = "Veuillez sélectionner une méthode de livraison";
+    
+    setDeliveryErrors(e as any);
     return Object.keys(e).length === 0;
   };
 
@@ -197,17 +215,31 @@ export default function CheckoutPage() {
         metadata: {
           delivery_mode: delivery.mode,
           delivery_notes: delivery.notes,
-          mobile_network: mobileNetwork
+          mobile_network: paymentMode === "pawapay" ? mobileNetwork : null,
+          payment_mode: paymentMode
         }
       });
 
-      // 2. Initiate Payment Session with PawaPay
+      // 2. Add Shipping Method if selected
+      if (selectedShippingOptionId) {
+        await sdk.store.cart.addShippingMethod(cartId, {
+          option_id: selectedShippingOptionId
+        });
+      } else if (shippingOptions.length > 0) {
+        // Auto-select first matching option if user didn't select but options exist
+        const defaultOpt = shippingOptions.find(o => 
+          delivery.mode === "domicile" ? o.name.toLowerCase().includes("domicile") : o.name.toLowerCase().includes("retrait")
+        ) || shippingOptions[0];
+        await sdk.store.cart.addShippingMethod(cartId, { option_id: defaultOpt.id });
+      }
+
+      // 3. Initiate Payment Session
       const { cart } = await sdk.store.cart.retrieve(cartId);
       await sdk.store.payment.initiatePaymentSession(cart as any, {
-        provider_id: "pp_pawapay_pawapay"
+        provider_id: paymentMode === "pawapay" ? "pp_pawapay_pawapay" : "pp_system_default"
       });
 
-      // 3. Complete Checkout
+      // 4. Complete Checkout
       const response = await sdk.store.cart.complete(cartId);
       
       let ref = "WLF-PENDING";
@@ -225,6 +257,7 @@ export default function CheckoutPage() {
         delivery,
         total,
         livraisonFee,
+        paymentMode,
         createdAt: new Date().toISOString(),
       };
       sessionStorage.setItem("welfare_last_order", JSON.stringify(order));
@@ -550,29 +583,73 @@ export default function CheckoutPage() {
 
                 {/* Payment info */}
                 <div className="bg-[#F4EAEB]/40 border border-[#EDE0E0] rounded-2xl p-5">
-                  <p className="text-xs font-bold uppercase tracking-widest text-[#C08A8E] mb-2">💳 Mode de paiement</p>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#1DAFEC]/10 flex items-center justify-center text-lg">📱</div>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-[#2A2424]">Mobile Money</p>
-                      <select 
-                        value={mobileNetwork}
-                        onChange={(e) => setMobileNetwork(e.target.value)}
-                        className="mt-1 w-full text-xs px-2 py-1.5 rounded-lg border border-[#EDE0E0] bg-white outline-none focus:border-[#C08A8E]"
-                      >
-                        <option value="SEN-WAVE">Wave Sénégal</option>
-                        <option value="SEN-ORANGE_MONEY">Orange Money Sénégal</option>
-                        <option value="SEN-FREE_MONEY">Free Money Sénégal</option>
-                        <option value="CMR-MTN_MOMO">MTN MoMo Cameroun</option>
-                        <option value="CMR-ORANGE_MONEY">Orange Money Cameroun</option>
-                        <option value="CIV-WAVE">Wave Côte d'Ivoire</option>
-                        <option value="CIV-ORANGE_MONEY">Orange Money Côte d'Ivoire</option>
-                      </select>
-                    </div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-[#C08A8E] mb-3">💳 Mode de paiement</p>
+                  
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => setPaymentMode("pawapay")}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
+                        paymentMode === "pawapay" ? "border-[#2A2424] bg-white" : "border-transparent hover:border-[#EDE0E0] bg-white/60"
+                      }`}
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-[#1DAFEC]/10 flex items-center justify-center text-lg shrink-0">📱</div>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-[#2A2424]">Paiement en ligne</p>
+                        <p className="text-xs text-[#2A2424]/50">Mobile Money (Wave, Orange, MTN...)</p>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${paymentMode === "pawapay" ? "border-[#2A2424] bg-[#2A2424]" : "border-[#EDE0E0]"}`}>
+                        {paymentMode === "pawapay" && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                    </button>
+
+                    <AnimatePresence>
+                      {paymentMode === "pawapay" && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="overflow-hidden px-1"
+                        >
+                          <div className="pt-1 pb-3">
+                            <select 
+                              value={mobileNetwork}
+                              onChange={(e) => setMobileNetwork(e.target.value)}
+                              className="w-full text-xs px-3 py-2.5 rounded-xl border border-[#EDE0E0] bg-white outline-none focus:border-[#C08A8E]"
+                            >
+                              <option value="SEN-WAVE">Wave Sénégal</option>
+                              <option value="SEN-ORANGE_MONEY">Orange Money Sénégal</option>
+                              <option value="SEN-FREE_MONEY">Free Money Sénégal</option>
+                              <option value="CMR-MTN_MOMO">MTN MoMo Cameroun</option>
+                              <option value="CMR-ORANGE_MONEY">Orange Money Cameroun</option>
+                              <option value="CIV-WAVE">Wave Côte d'Ivoire</option>
+                              <option value="CIV-ORANGE_MONEY">Orange Money Côte d'Ivoire</option>
+                            </select>
+                            <p className="text-[11px] text-[#2A2424]/50 mt-2 leading-relaxed">
+                              Vous recevrez une notification (Push USSD) sur votre téléphone après confirmation pour valider le paiement.
+                            </p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    <button
+                      onClick={() => setPaymentMode("cash")}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
+                        paymentMode === "cash" ? "border-[#2A2424] bg-white" : "border-transparent hover:border-[#EDE0E0] bg-white/60"
+                      }`}
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-lg shrink-0">💵</div>
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-[#2A2424]">Paiement Cash</p>
+                        <p className="text-xs text-[#2A2424]/50">
+                          {delivery.mode === "retrait" ? "Au retrait en magasin" : "À la livraison"}
+                        </p>
+                      </div>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${paymentMode === "cash" ? "border-[#2A2424] bg-[#2A2424]" : "border-[#EDE0E0]"}`}>
+                        {paymentMode === "cash" && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                    </button>
                   </div>
-                  <p className="text-[11px] text-[#2A2424]/50 mt-3 leading-relaxed">
-                    Vous recevrez les instructions de paiement par notification (Push USSD) sur votre téléphone après confirmation.
-                  </p>
                 </div>
 
                 {/* Submit */}
