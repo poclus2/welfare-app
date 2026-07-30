@@ -56,7 +56,7 @@ export const POST = async (
       profile = await fulfillmentModule.createShippingProfiles({ name: "Default", type: "default" })
     }
 
-    // 4. Create shipping option directly (no workflow, no provider validation)
+    // 4. Create shipping option directly
     const shippingOption = await fulfillmentModule.createShippingOptions({
       name,
       price_type: "flat",
@@ -68,8 +68,19 @@ export const POST = async (
         description: isPickup ? "Retrait sur place" : "Livraison standard",
         code: isPickup ? "pickup" : "delivery"
       },
+      rules: []
+    })
+
+    // 5. Create PriceSet and Link it
+    const pricingModule = req.scope.resolve(Modules.PRICING) as any
+    const priceSet = await pricingModule.createPriceSets({
       rules: [],
       prices: [{ currency_code: "xaf", amount: price }]
+    })
+
+    await remoteLink.create({
+      [Modules.FULFILLMENT]: { shipping_option_id: shippingOption.id },
+      [Modules.PRICING]: { price_set_id: priceSet.id }
     })
 
     res.status(200).json({ shipping_option: shippingOption })
