@@ -20,23 +20,34 @@ export const POST = async (
     if (price !== undefined) {
       const remoteQuery = req.scope.resolve("remoteQuery")
       const query = {
-        shipping_option: {
-          __args: { id: [id] },
-          price_set: { id: true, prices: { id: true } }
-        }
+        entryPoint: "shipping_option",
+        variables: { id: [id] },
+        fields: ["id", "price_set.id", "price_set.prices.id"]
       }
-      const { data } = await remoteQuery(query)
-      if (data && data[0] && data[0].price_set) {
+      const data = await remoteQuery(query)
+      if (data && data[0]) {
         const pricingModule = req.scope.resolve(Modules.PRICING) as any
         const priceSet = data[0].price_set
-        if (priceSet.prices && priceSet.prices.length > 0) {
-          await pricingModule.updatePrices([
-            { id: priceSet.prices[0].id, amount: price }
-          ])
+        if (priceSet) {
+          if (priceSet.prices && priceSet.prices.length > 0) {
+            await pricingModule.updatePrices([
+              { id: priceSet.prices[0].id, amount: price }
+            ])
+          } else {
+            await pricingModule.createPrices([
+              { price_set_id: priceSet.id, currency_code: "xaf", amount: price }
+            ])
+          }
         } else {
-          await pricingModule.createPrices([
-            { price_set_id: priceSet.id, currency_code: "xaf", amount: price }
-          ])
+          const newPriceSet = await pricingModule.createPriceSets({
+            rules: [],
+            prices: [{ currency_code: "xaf", amount: price }]
+          })
+          const remoteLink = req.scope.resolve("remoteLink")
+          await remoteLink.create({
+            [Modules.FULFILLMENT]: { shipping_option_id: id },
+            [Modules.PRICING]: { price_set_id: newPriceSet.id }
+          })
         }
       }
     }

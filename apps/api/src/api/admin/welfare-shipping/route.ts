@@ -72,7 +72,6 @@ export const POST = async (
     })
 
     // 5. Create PriceSet and Link it
-    const pricingModule = req.scope.resolve(Modules.PRICING) as any
     const priceSet = await pricingModule.createPriceSets({
       rules: [],
       prices: [{ currency_code: "xaf", amount: price }]
