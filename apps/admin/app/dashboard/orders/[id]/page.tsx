@@ -96,6 +96,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     status,
     date,
     address,
+    // Raw fields for advanced control center
+    fulfillments: o.fulfillments || [],
+    payment_collections: o.payment_collections || [],
+    payment_status: o.payment_status || "pending",
+    fulfillment_status: o.fulfillment_status || "not_fulfilled",
+    metadata: o.metadata || {},
   };
 
   return <OrderDetailClient order={mappedOrder} />;
