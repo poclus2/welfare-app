@@ -139,7 +139,7 @@ export default function OrderDetailClient({ order }: { order: Order }) {
   const fulStatusInfo = FULFILLMENT_STATUS_MAP[order.fulfillment_status] || FULFILLMENT_STATUS_MAP.not_fulfilled;
 
   // Build timeline
-  const timeline = [
+  const timeline: { type: string; title: string; date: string; icon: React.ReactNode; bg: string; desc?: string }[] = [
     { type: "order", title: "Commande passée", date: order.date, icon: <Package className="w-4 h-4 text-white" />, bg: "bg-blue-500" }
   ];
   if (order.payment_status === "captured" || order.payment_status === "paid") {
