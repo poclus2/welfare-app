@@ -9,7 +9,7 @@ import Link from "next/link";
 import {
   ArrowLeft, ShieldCheck, Truck, Package,
   ChevronRight, ChevronLeft, User, Phone, MapPin, Mail, Loader2,
-  Store, Home, Check,
+  Store, Home, Check, Clock, CreditCard, Smartphone, Banknote, Map, ShoppingBag,
 } from "lucide-react";
 
 function formatPrice(amount: number) {
@@ -44,14 +44,14 @@ const STORES = [
     id: "hippodrome" as StoreLocation,
     name: "The Welfare Hippodrome",
     address: "Route de l'Hippodrome, Douala",
-    emoji: "🏇",
+    icon: <Map className="w-6 h-6 text-[#8B5A2B]" />,
     hours: "Lun–Sam, 9h–20h",
   },
   {
     id: "playce" as StoreLocation,
     name: "The Welfare Playce",
     address: "Playce, Yaoundé",
-    emoji: "🛍️",
+    icon: <ShoppingBag className="w-6 h-6 text-[#1DAFEC]" />,
     hours: "Lun–Dim, 10h–21h",
   },
 ];
@@ -583,13 +583,15 @@ export default function CheckoutPage() {
                                 : "border-[#EDE0E0] hover:border-[#C08A8E]/50"
                             }`}
                           >
-                            <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 ${delivery.store === store.id ? "bg-[#2A2424]" : "bg-[#F4EAEB]"}`}>
-                              {store.emoji}
+                            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${delivery.store === store.id ? "bg-[#2A2424]" : "bg-[#F4EAEB]"}`}>
+                              {store.icon}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-bold text-[#2A2424]">{store.name}</p>
                               <p className="text-xs text-[#2A2424]/50 mt-0.5">{store.address}</p>
-                              <p className="text-[10px] text-[#C08A8E] font-semibold mt-1">🕐 {store.hours}</p>
+                              <p className="text-[10px] text-[#C08A8E] font-semibold mt-1 flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> {store.hours}
+                              </p>
                             </div>
                             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${delivery.store === store.id ? "border-[#2A2424] bg-[#2A2424]" : "border-[#EDE0E0]"}`}>
                               {delivery.store === store.id && <Check className="w-3 h-3 text-white" />}
@@ -603,7 +605,9 @@ export default function CheckoutPage() {
 
                 {/* Payment info */}
                 <div className="bg-[#F4EAEB]/40 border border-[#EDE0E0] rounded-2xl p-5">
-                  <p className="text-xs font-bold uppercase tracking-widest text-[#C08A8E] mb-3">💳 Mode de paiement</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-[#C08A8E] mb-3 flex items-center gap-1.5">
+                    <CreditCard className="w-4 h-4 text-[#1DAFEC]" /> Mode de paiement
+                  </p>
                   
                   <div className="space-y-3">
                     <button
@@ -612,7 +616,9 @@ export default function CheckoutPage() {
                         paymentMode === "pawapay" ? "border-[#2A2424] bg-white" : "border-transparent hover:border-[#EDE0E0] bg-white/60"
                       }`}
                     >
-                      <div className="w-10 h-10 rounded-xl bg-[#1DAFEC]/10 flex items-center justify-center text-lg shrink-0">📱</div>
+                      <div className="w-10 h-10 rounded-xl bg-[#1DAFEC]/10 flex items-center justify-center shrink-0">
+                        <Smartphone className="w-5 h-5 text-[#1DAFEC]" />
+                      </div>
                       <div className="flex-1">
                         <p className="text-sm font-bold text-[#2A2424]">Paiement en ligne</p>
                         <p className="text-xs text-[#2A2424]/50">Mobile Money (Wave, Orange, MTN...)</p>
@@ -658,7 +664,9 @@ export default function CheckoutPage() {
                         paymentMode === "cash" ? "border-[#2A2424] bg-white" : "border-transparent hover:border-[#EDE0E0] bg-white/60"
                       }`}
                     >
-                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-lg shrink-0">💵</div>
+                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+                        <Banknote className="w-5 h-5 text-emerald-500" />
+                      </div>
                       <div className="flex-1">
                         <p className="text-sm font-bold text-[#2A2424]">Paiement Cash</p>
                         <p className="text-xs text-[#2A2424]/50">
