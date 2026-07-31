@@ -71,7 +71,11 @@ export async function createShipmentAction(orderId: string, fulfillmentId: strin
       method: "POST", 
       body: JSON.stringify({
         items: [], // usually all items in fulfillment
-        labels: trackingNumber ? [{ tracking_number: trackingNumber, label_url: carrier }] : []
+        labels: trackingNumber ? [{ 
+          tracking_number: trackingNumber, 
+          tracking_url: `https://thewelfare.store/track/${trackingNumber}`,
+          label_url: `https://thewelfare.store`
+        }] : []
       }) 
     });
     revalidatePath(`/dashboard/orders/${orderId}`);
