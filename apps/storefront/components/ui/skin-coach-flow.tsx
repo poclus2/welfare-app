@@ -13,56 +13,128 @@ type Message = {
 };
 
 type Option = {
-  id: string;
   label: string;
-  nextStep?: number;
+  nextQuestionId: string;
 };
 
-type StepInfo = {
-  id: number;
-  question: string;
+type QuestionNode = {
+  id: string;
+  text: string;
   options: Option[];
 };
 
-// ─── Mock Flow ──────────────────────────────────────────────────────────────
+type UserResponse = {
+  questionId: string;
+  answer: string;
+};
 
-const FLOW_STEPS: StepInfo[] = [
+// ─── Flow Data ──────────────────────────────────────────────────────────────
+
+const DECISION_TREE: QuestionNode[] = [
   {
-    id: 1,
-    question: "👋 Bonjour ! Je suis My Skin Coach. En moins de 3 minutes, je vais analyser votre peau. Connaissez-vous votre type de peau ?",
-    options: [
-      { id: "yes", label: "Oui", nextStep: 2 },
-      { id: "no", label: "Non, aidez-moi", nextStep: 3 },
-    ],
+    "id": "q_knows_skin_type",
+    "text": "👋 Bonjour ! Je suis My Skin Coach. En moins de 3 minutes, je vais analyser votre peau et vous proposer une routine personnalisée. Commençons : Connaissez-vous votre type de peau ?",
+    "options": [
+      { "label": "Oui", "nextQuestionId": "q_skin_type_direct" },
+      { "label": "Non", "nextQuestionId": "q_morning_skin" }
+    ]
   },
   {
-    id: 2,
-    question: "Super ! Quel est votre type de peau ?",
-    options: [
-      { id: "mixte", label: "Mixte", nextStep: 3 },
-      { id: "grasse", label: "Grasse", nextStep: 3 },
-      { id: "seche", label: "Sèche", nextStep: 3 },
-      { id: "normale", label: "Normale", nextStep: 3 },
-    ],
+    "id": "q_skin_type_direct",
+    "text": "Super ! Quel est votre type de peau ?",
+    "options": [
+      { "label": "Grasse", "nextQuestionId": "q_main_goal" },
+      { "label": "Mixte", "nextQuestionId": "q_main_goal" },
+      { "label": "Sèche", "nextQuestionId": "q_main_goal" },
+      { "label": "Normale", "nextQuestionId": "q_main_goal" }
+    ]
   },
   {
-    id: 3,
-    question: "Quels sont vos objectifs principaux aujourd'hui ?",
-    options: [
-      { id: "acne", label: "Anti-Acné", nextStep: 4 },
-      { id: "glow", label: "Éclat & Glow", nextStep: 4 },
-      { id: "anti-age", label: "Anti-âge", nextStep: 4 },
-    ],
+    "id": "q_morning_skin",
+    "text": "Pas de soucis, on va le découvrir ensemble ! Au réveil, avant de laver votre visage, comment est votre peau ?",
+    "options": [
+      { "label": "✨ Elle brille sur tout le visage", "nextQuestionId": "q_day_shine" },
+      { "label": "✨ Elle brille uniquement sur la zone T", "nextQuestionId": "q_day_shine" },
+      { "label": "✨ Elle ne brille presque pas et je me sens confortable", "nextQuestionId": "q_day_shine" }
+    ]
   },
+  {
+    "id": "q_day_shine",
+    "text": "Au cours de la journée, votre peau devient-elle brillante ?",
+    "options": [
+      { "label": "Oui, très rapidement", "nextQuestionId": "q_tightness" },
+      { "label": "Oui, seulement sur la zone T", "nextQuestionId": "q_tightness" },
+      { "label": "Très peu", "nextQuestionId": "q_tightness" },
+      { "label": "Presque jamais", "nextQuestionId": "q_tightness" }
+    ]
+  },
+  {
+    "id": "q_tightness",
+    "text": "Avez-vous souvent des sensations de tiraillement ou de sécheresse ?",
+    "options": [
+      { "label": "Jamais", "nextQuestionId": "q_moisturizer_freq" },
+      { "label": "Parfois", "nextQuestionId": "q_moisturizer_freq" },
+      { "label": "Souvent", "nextQuestionId": "q_moisturizer_freq" },
+      { "label": "Presque tout le temps", "nextQuestionId": "q_moisturizer_freq" }
+    ]
+  },
+  {
+    "id": "q_moisturizer_freq",
+    "text": "À quelle fréquence appliquez-vous une crème hydratante parce que votre peau en ressent le besoin ?",
+    "options": [
+      { "label": "Tous les jours", "nextQuestionId": "q_main_goal" },
+      { "label": "Quelques fois par semaine", "nextQuestionId": "q_main_goal" },
+      { "label": "Rarement", "nextQuestionId": "q_main_goal" },
+      { "label": "Jamais", "nextQuestionId": "q_main_goal" }
+    ]
+  },
+  {
+    "id": "q_main_goal",
+    "text": "C'est noté ! Quels sont vos objectifs principaux pour votre peau aujourd'hui ?",
+    "options": [
+      { "label": "Traiter l'Acné & Imperfections", "nextQuestionId": "q_dermatologist" },
+      { "label": "Cibler l'Hyperpigmentation & Taches", "nextQuestionId": "q_dermatologist" },
+      { "label": "Anti-âge & Fermeté", "nextQuestionId": "q_dermatologist" },
+      { "label": "Hydratation & Effet Glow", "nextQuestionId": "q_dermatologist" },
+      { "label": "Apaiser les rougeurs & Sensibilité", "nextQuestionId": "q_dermatologist" }
+    ]
+  },
+  {
+    "id": "q_dermatologist",
+    "text": "Une question importante : avez-vous déjà consulté un dermatologue pour ces préoccupations ?",
+    "options": [
+      { "label": "Oui", "nextQuestionId": "q_current_routine" },
+      { "label": "Non", "nextQuestionId": "q_reaction_history" }
+    ]
+  },
+  {
+    "id": "q_reaction_history",
+    "text": "Avez-vous déjà eu une réaction allergique ou une forte sensibilité à un produit cosmétique ?",
+    "options": [
+      { "label": "Oui", "nextQuestionId": "q_current_routine" },
+      { "label": "Non", "nextQuestionId": "q_current_routine" }
+    ]
+  },
+  {
+    "id": "q_current_routine",
+    "text": "Utilisez-vous une routine de soins actuellement ?",
+    "options": [
+      { "label": "Oui", "nextQuestionId": "q_finish" },
+      { "label": "Non", "nextQuestionId": "q_finish" }
+    ]
+  }
 ];
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export default function SkinCoachFlow() {
-  const [currentStep, setCurrentStep] = useState<number>(1);
+  const [currentQuestionId, setCurrentQuestionId] = useState<string>("q_knows_skin_type");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [userResponses, setUserResponses] = useState<UserResponse[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [progressPercent, setProgressPercent] = useState<number>(5);
+  
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom of chat
@@ -76,68 +148,79 @@ export default function SkinCoachFlow() {
   useEffect(() => {
     setIsTyping(true);
     const timer = setTimeout(() => {
-      setMessages([{ id: "msg-1", sender: "ai", text: FLOW_STEPS[0]?.question || "" }]);
+      const firstNode = DECISION_TREE.find(n => n.id === "q_knows_skin_type");
+      setMessages([{ id: "msg-1", sender: "ai", text: firstNode?.text || "" }]);
       setIsTyping(false);
     }, 1200);
     return () => clearTimeout(timer);
   }, []);
 
   const handleOptionSelect = (option: Option) => {
-    // 1. Add user response bubble
+    // 1. Enregistrer la réponse
+    const newResponses = [...userResponses, { questionId: currentQuestionId, answer: option.label }];
+    setUserResponses(newResponses);
+
+    // 2. Add user response bubble
     const userMsg: Message = { id: `msg-user-${Date.now()}`, sender: "user", text: option.label };
     setMessages((prev) => [...prev, userMsg]);
     
-    // 2. Hide options and show AI typing indicator
+    // 3. Hide options and show AI typing indicator
     setIsTyping(true);
 
-    // 3. Process next step after a realistic delay
+    // 4. Progress bar increment (random between 10 and 20)
+    setProgressPercent((prev) => {
+      const increment = Math.floor(Math.random() * 11) + 10; // 10 to 20
+      const newProgress = prev + increment;
+      return newProgress > 95 ? 95 : newProgress;
+    });
+
+    // 5. Process next step after a realistic delay
     setTimeout(() => {
-      if (option.nextStep && option.nextStep <= FLOW_STEPS.length) {
-        const nextStepInfo = FLOW_STEPS.find((s) => s.id === option.nextStep);
-        if (nextStepInfo) {
-          setMessages((prev) => [...prev, { id: `msg-ai-${Date.now()}`, sender: "ai", text: nextStepInfo.question }]);
-          setCurrentStep(option.nextStep);
-          setIsTyping(false);
-        }
-      } else {
-        // End of the mocked flow
+      if (option.nextQuestionId === "q_finish") {
+        // End of the flow
+        setProgressPercent(100);
         setIsGenerating(true);
         setIsTyping(false);
         setMessages((prev) => [
           ...prev, 
           { id: `msg-ai-${Date.now()}`, sender: "ai", text: "Parfait ! Laissez-moi analyser tout ça... Génération de votre routine personnalisée en cours ✨" }
         ]);
+        
+        // Log payload for future API call
+        console.log("Diagnostic terminé ! Payload pour l'API :", newResponses);
+      } else {
+        // Next question
+        const nextNode = DECISION_TREE.find((n) => n.id === option.nextQuestionId);
+        if (nextNode) {
+          setMessages((prev) => [...prev, { id: `msg-ai-${Date.now()}`, sender: "ai", text: nextNode.text }]);
+          setCurrentQuestionId(option.nextQuestionId);
+          setIsTyping(false);
+        }
       }
     }, 1200); // 1.2s typing delay
   };
 
-  const currentStepInfo = FLOW_STEPS.find((s) => s.id === currentStep);
-  const progressPercent = Math.round((currentStep / FLOW_STEPS.length) * 100);
+  const currentNode = DECISION_TREE.find((n) => n.id === currentQuestionId);
 
   return (
     <div className="relative w-full h-[100dvh] bg-[#F4EAEB] overflow-hidden flex flex-col font-sans">
       
       {/* ─── 1. BACKGROUND (Scanner Visuel) ─── */}
       <div className="absolute inset-0 z-0 h-[65vh] w-full bg-slate-200">
-        {/* Placeholder image : Femme peau lumineuse */}
         <img 
           src="https://images.unsplash.com/photo-1515377905703-c4788e51af15?q=80&w=1470&auto=format&fit=crop" 
           alt="Analyse de peau" 
           className="w-full h-full object-cover object-top opacity-90"
         />
-        {/* Gradient pour fondre l'image dans l'UI du bas */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-[#F4EAEB] pointer-events-none" />
         
-        {/* Cadre de Scan Animé */}
         <div className="absolute inset-0 flex items-start justify-center pt-[15vh]">
           <div className="relative w-[75%] max-w-sm aspect-[3/4] border-2 border-white/30 rounded-[2.5rem] overflow-hidden">
-            {/* Repères coins (Corner highlights) */}
             <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-white rounded-tl-[2.5rem]" />
             <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-white rounded-tr-[2.5rem]" />
             <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-white rounded-bl-[2.5rem]" />
             <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-white rounded-br-[2.5rem]" />
             
-            {/* Ligne de balayage lumineuse */}
             <motion.div
               animate={{ y: ["0%", "400%", "0%"] }}
               transition={{ repeat: Infinity, duration: 4.5, ease: "linear" }}
@@ -241,7 +324,7 @@ export default function SkinCoachFlow() {
         </div>
 
         {/* ─── 3. Quick Replies (Boutons Chips) ─── */}
-        {!isTyping && !isGenerating && currentStepInfo && (
+        {!isTyping && !isGenerating && currentNode && (
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -249,9 +332,9 @@ export default function SkinCoachFlow() {
             className="p-6 pt-2 bg-white/40 shrink-0"
           >
             <div className="flex flex-col gap-2.5">
-              {currentStepInfo.options.map((option) => (
+              {currentNode.options.map((option, index) => (
                 <button
-                  key={option.id}
+                  key={`${option.label}-${index}`}
                   onClick={() => handleOptionSelect(option)}
                   className="w-full bg-slate-800 text-white hover:bg-slate-900 active:scale-[0.98] transition-all py-4 px-6 rounded-2xl text-[15px] font-semibold flex items-center justify-between group shadow-sm"
                 >
