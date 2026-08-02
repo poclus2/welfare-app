@@ -58,7 +58,7 @@ FORMAT DE SORTIE : Tu DOIS répondre UNIQUEMENT avec un objet JSON valide struct
         "X-Title": "The Welfare Skin Coach"
       },
       body: JSON.stringify({
-        model: "openai/gpt-4o-mini", // VLM Model
+        model: "qwen/qwen3-vl-32b-instruct", // Modèle VL spécifié par l'utilisateur
         response_format: { type: "json_object" },
         messages: [
           {
