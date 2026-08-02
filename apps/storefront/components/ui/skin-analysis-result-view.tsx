@@ -61,11 +61,11 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: "100%" }}
+      initial={{ opacity: 0, y: "10%" }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: "100%" }}
+      exit={{ opacity: 0, y: "10%" }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className="absolute inset-0 z-50 bg-[#F9F6F0] overflow-y-auto overflow-x-hidden font-sans flex flex-col"
+      className="min-h-[100dvh] relative w-full bg-[#F9F6F0] font-sans flex flex-col"
     >
       <div className="flex-1 pb-32">
         {/* Header Section */}

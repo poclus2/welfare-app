@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, ScanFace, ChevronRight, Camera, UploadCloud, RefreshCw } from "lucide-react";
 import Webcam from "react-webcam";
 import { analyzeSkin, SkinAnalysisResult } from "@/app/actions/analyze-skin";
-import SkinAnalysisResultView from "./skin-analysis-result-view";
+import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
+import { useRouter } from "next/navigation";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -146,7 +147,7 @@ export default function SkinCoachFlow() {
   const [progressPercent, setProgressPercent] = useState<number>(5);
   
   // Analysis states
-  const [analysisResult, setAnalysisResult] = useState<SkinAnalysisResult | null>(null);
+  const setResult = useSkinCoachStore((state) => state.setResult);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -155,7 +156,7 @@ export default function SkinCoachFlow() {
     if (chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, isTyping, isGenerating, analysisResult]);
+  }, [messages, isTyping, isGenerating]);
 
   // Starts the chat once capture is done
   useEffect(() => {
@@ -199,7 +200,6 @@ export default function SkinCoachFlow() {
     setUserResponses([]);
     setCurrentQuestionId("q_knows_skin_type");
     setProgressPercent(5);
-    setAnalysisResult(null);
     setIsGenerating(false);
   };
 
@@ -209,9 +209,11 @@ export default function SkinCoachFlow() {
     try {
       const result = await analyzeSkin(imageBase64, finalResponses);
       if (result.success && result.data) {
-        setAnalysisResult(result.data);
+        setResult(result.data);
+        router.push("/skin-coach/result");
       } else {
         setMessages(prev => [...prev, { id: `msg-ai-err-${Date.now()}`, sender: "ai", text: "Oups, une erreur est survenue lors de l'analyse : " + result.error }]);
+        setIsGenerating(false);
       }
     } catch (error) {
       console.error(error);
@@ -339,7 +341,6 @@ export default function SkinCoachFlow() {
             <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-[#F4EAEB] pointer-events-none" />
             
             {/* Cadre de Scan Animé sur la photo gélée */}
-            {!analysisResult && (
               <div className="absolute inset-0 flex items-start justify-center pt-[15vh]">
                 <div className="relative w-[75%] max-w-sm aspect-[3/4] border-2 border-white/30 rounded-[2.5rem] overflow-hidden">
                   <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-white rounded-tl-[2.5rem]" />
@@ -354,17 +355,14 @@ export default function SkinCoachFlow() {
                   />
                 </div>
               </div>
-            )}
             
             {/* Bouton pour recommencer */}
-            {!analysisResult && (
               <button 
                 onClick={handleRetake}
                 className="absolute top-6 right-6 bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/20 text-white p-3 rounded-full transition-colors z-50 shadow-md"
               >
                 <RefreshCw className="w-5 h-5" />
               </button>
-            )}
           </div>
         )}
       </div>
@@ -374,7 +372,6 @@ export default function SkinCoachFlow() {
         <div className="relative z-10 flex-1 flex flex-col mt-[45vh] bg-white/70 backdrop-blur-2xl border-t border-white/50 rounded-t-[2.5rem] shadow-[0_-15px_40px_rgba(0,0,0,0.06)] animate-in slide-in-from-bottom duration-700 ease-out">
           
           {/* Barre de progression & Poignée (Drag Handle) */}
-          {!analysisResult && (
             <div className="flex flex-col items-center pt-4 pb-3 px-6 shrink-0">
               <div className="w-12 h-1.5 bg-slate-300/40 rounded-full mb-5" />
               <div className="w-full flex items-center gap-4">
@@ -391,7 +388,6 @@ export default function SkinCoachFlow() {
                 </span>
               </div>
             </div>
-          )}
 
           {/* Zone de Messages (Scrollable) */}
           <div className="flex-1 overflow-y-auto px-6 pb-6 pt-2 space-y-5 scroll-smooth">
@@ -466,7 +462,7 @@ export default function SkinCoachFlow() {
           </div>
 
           {/* ─── 3. Quick Replies (Boutons Chips) ─── */}
-          {!isTyping && !isGenerating && !analysisResult && currentNode && (
+          {!isTyping && !isGenerating && currentNode && (
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
@@ -492,12 +488,6 @@ export default function SkinCoachFlow() {
         </div>
       )}
 
-      {/* ─── 4. RÉSULTAT VIP EN OVERLAY ─── */}
-      <AnimatePresence>
-        {analysisResult && (
-          <SkinAnalysisResultView result={analysisResult} onRetake={handleRetake} />
-        )}
-      </AnimatePresence>
     </div>
   );
 }
