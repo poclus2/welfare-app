@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, ScanFace, ChevronRight, Camera, UploadCloud, RefreshCw } from "lucide-react";
 import Webcam from "react-webcam";
 import { analyzeSkin, SkinAnalysisResult } from "@/app/actions/analyze-skin";
+import SkinAnalysisResultView from "./skin-analysis-result-view";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -459,24 +460,6 @@ export default function SkinCoachFlow() {
                 </motion.div>
               )}
               
-              {/* Résultat JSON brut pour démonstration */}
-              {analysisResult && (
-                <motion.div
-                  key="analysis-result"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="w-full bg-white rounded-3xl p-6 shadow-md border border-emerald-100 mt-4"
-                >
-                  <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                    <Sparkles className="w-5 h-5 text-emerald-600" />
-                    Diagnostic Complet
-                  </h3>
-                  <div className="bg-slate-900 text-emerald-400 p-4 rounded-xl text-[10px] sm:text-xs overflow-x-auto max-w-full font-mono shadow-inner">
-                    <pre className="whitespace-pre-wrap break-words">{JSON.stringify(analysisResult, null, 2)}</pre>
-                  </div>
-                </motion.div>
-              )}
-              
               {/* Point d'ancrage pour l'auto-scroll */}
               <div ref={chatEndRef} className="h-1" />
             </AnimatePresence>
@@ -508,6 +491,13 @@ export default function SkinCoachFlow() {
           )}
         </div>
       )}
+
+      {/* ─── 4. RÉSULTAT VIP EN OVERLAY ─── */}
+      <AnimatePresence>
+        {analysisResult && (
+          <SkinAnalysisResultView result={analysisResult} onRetake={handleRetake} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
