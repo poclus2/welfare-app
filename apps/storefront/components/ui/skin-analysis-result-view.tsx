@@ -4,6 +4,8 @@ import { motion, Variants } from "framer-motion";
 import { SkinAnalysisResult } from "@/app/actions/analyze-skin";
 import { Sparkles, Activity, Quote, ChevronRight, ShoppingBag, RotateCcw } from "lucide-react";
 
+import { useRouter } from "next/navigation";
+
 interface Props {
   result: SkinAnalysisResult;
   onRetake: () => void;
@@ -43,6 +45,7 @@ const ProgressBar = ({ label, value, type }: { label: string, value: number, typ
 };
 
 export default function SkinAnalysisResultView({ result, onRetake }: Props) {
+  const router = useRouter();
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
     show: {
@@ -162,7 +165,10 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
         transition={{ delay: 0.8, type: "spring", bounce: 0.2 }}
         className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-white via-white/95 to-transparent backdrop-blur-sm z-50 flex flex-col items-center gap-4"
       >
-        <button className="w-full bg-slate-900 hover:bg-slate-800 active:scale-95 transition-all text-white py-4 px-6 rounded-2xl font-bold text-[16px] shadow-xl shadow-slate-900/20 flex justify-center items-center gap-2">
+        <button 
+          onClick={() => router.push('/shop')}
+          className="w-full bg-slate-900 hover:bg-slate-800 active:scale-95 transition-all text-white py-4 px-6 rounded-2xl font-bold text-[16px] shadow-xl shadow-slate-900/20 flex justify-center items-center gap-2"
+        >
           <ShoppingBag className="w-5 h-5" />
           Découvrir ma sélection de soins
         </button>
