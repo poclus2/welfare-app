@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import { SkinAnalysisResult } from "@/app/actions/analyze-skin";
 import { Sparkles, Activity, Quote, ChevronRight, ShoppingBag, RotateCcw } from "lucide-react";
 
@@ -43,7 +43,7 @@ const ProgressBar = ({ label, value, type }: { label: string, value: number, typ
 };
 
 export default function SkinAnalysisResultView({ result, onRetake }: Props) {
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
@@ -51,7 +51,7 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
     }
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
     show: { opacity: 1, y: 0, transition: { type: "spring", bounce: 0.3 } }
   };
