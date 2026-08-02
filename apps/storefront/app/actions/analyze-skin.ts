@@ -6,7 +6,14 @@ export type UserResponse = {
 };
 
 export type SkinAnalysisResult = {
-  primary_skin_type: string;
+  estimated_skin_age: number;
+  melanin_skin_type: string;
+  metrics: {
+    acne_percentage: number;
+    dryness_percentage: number;
+    hydration_percentage: number;
+    texture_quality_percentage: number;
+  };
   detected_concerns: string[];
   empathetic_message: string;
   recommended_routine_steps: string[];
@@ -32,23 +39,34 @@ export async function analyzeSkin(
       .map((r, index) => `- Q${index + 1} (${r.questionId}) : ${r.answer}`)
       .join("\n");
 
-    // 3. Construction dynamique du Prompt Système
-    const systemPrompt = `Tu es l'Expert Skin Coach de la marque K-Beauty 'The Welfare'. Ton rôle est de fournir un diagnostic cosmétique (et non médical) précis.
+    // 3. Construction dynamique du Prompt Système avec les nouvelles métriques
+    const systemPrompt = `Tu es un dermatologue virtuel expert en cosmétologie K-Beauty pour la marque 'The Welfare', spécialisé dans l'analyse des peaux mélanisées et caucasiennes. 
+Tu dois analyser l'image du visage fournie ET les réponses de l'utilisateur. CECI N'EST PAS UN DIAGNOSTIC MÉDICAL.
+
 CONTEXTE UTILISATEUR : Voici ce que le client a déclaré :
 ${contextText}
 
-RÈGLE ABSOLUE : Ne contredis jamais le ressenti physique du client.
-CHAÎNE DE PENSÉE : Observe la Zone T (pores/sébum), puis les joues (hyperpigmentation/rougeurs), puis le grain de peau global. Croise tes observations avec le contexte utilisateur.
-FORMAT DE SORTIE : Tu DOIS répondre UNIQUEMENT avec un objet JSON valide structuré exactement comme ceci :
-{ 
-  "primary_skin_type": "string", 
-  "detected_concerns": ["string"], 
-  "empathetic_message": "string", 
-  "recommended_routine_steps": ["string"] 
+Instructions d'analyse visuelle :
+1. Estime l'âge cutané (visuel) de la personne.
+2. Évalue 4 métriques sur 100 (0 = très faible, 100 = très fort/optimal) : Acné/Imperfections, Sécheresse, Niveau d'Hydratation, Qualité de la Texture.
+3. Détermine le type de peau en incluant explicitement le niveau de mélanine ou le phototype (ex: 'Grasse - Peau fortement mélanisée (Phototype V)').
+
+Renvoie UNIQUEMENT un objet JSON valide avec cette structure stricte :
+{
+  "estimated_skin_age": entier,
+  "melanin_skin_type": "string",
+  "metrics": {
+    "acne_percentage": entier,
+    "dryness_percentage": entier,
+    "hydration_percentage": entier,
+    "texture_quality_percentage": entier
+  },
+  "detected_concerns": ["string", "string"],
+  "empathetic_message": "string",
+  "recommended_routine_steps": ["string", "string"]
 }`;
 
     // 4. Appel de l'API OpenRouter
-    // Note: Utilisation d'un modèle de vision performant par défaut (ex: openai/gpt-4o-mini ou gpt-4o)
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -58,7 +76,7 @@ FORMAT DE SORTIE : Tu DOIS répondre UNIQUEMENT avec un objet JSON valide struct
         "X-Title": "The Welfare Skin Coach"
       },
       body: JSON.stringify({
-        model: "qwen/qwen3-vl-32b-instruct", // Modèle VL spécifié par l'utilisateur
+        model: "qwen/qwen3-vl-32b-instruct",
         response_format: { type: "json_object" },
         messages: [
           {
@@ -106,8 +124,8 @@ FORMAT DE SORTIE : Tu DOIS répondre UNIQUEMENT avec un objet JSON valide struct
       parsedJson = JSON.parse(cleanedContent);
       
       // Validation basique de structure (optionnel mais recommandé)
-      if (!parsedJson.primary_skin_type || !Array.isArray(parsedJson.recommended_routine_steps)) {
-        throw new Error("Structure JSON invalide");
+      if (typeof parsedJson.estimated_skin_age !== "number" || !parsedJson.melanin_skin_type) {
+        throw new Error("Structure JSON invalide : champs manquants");
       }
       
     } catch (parseError) {
