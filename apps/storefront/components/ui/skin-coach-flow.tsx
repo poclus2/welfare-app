@@ -76,7 +76,7 @@ export default function SkinCoachFlow() {
   useEffect(() => {
     setIsTyping(true);
     const timer = setTimeout(() => {
-      setMessages([{ id: "msg-1", sender: "ai", text: FLOW_STEPS[0].question }]);
+      setMessages([{ id: "msg-1", sender: "ai", text: FLOW_STEPS[0]?.question || "" }]);
       setIsTyping(false);
     }, 1200);
     return () => clearTimeout(timer);
