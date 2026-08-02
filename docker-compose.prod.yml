@@ -74,6 +74,7 @@ services:
       - NEXT_PUBLIC_MEDUSA_BACKEND_URL=${MEDUSA_BACKEND_URL}
       - NEXT_PUBLIC_BASE_URL=${STORE_URL}
       - NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=${MEDUSA_PUBLISHABLE_KEY:-pk_a444d1be79f71d0d6530d64a99c9639cf892b40452874ecefa30ff900404e489}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
     ports:
       - "3005:3000" # Exposes 3005 to host for Nginx to route to
     restart: unless-stopped
