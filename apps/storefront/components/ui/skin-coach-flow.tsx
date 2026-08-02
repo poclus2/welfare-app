@@ -132,6 +132,7 @@ const DECISION_TREE: QuestionNode[] = [
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export default function SkinCoachFlow() {
+  const router = useRouter();
   // Capture states
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [hasCaptured, setHasCaptured] = useState(false);
