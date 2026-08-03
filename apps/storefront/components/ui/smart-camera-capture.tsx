@@ -19,7 +19,7 @@ interface Props {
 
 export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
   const webcamRef = useRef<Webcam>(null);
-  const requestRef = useRef<number>();
+  const requestRef = useRef<number | undefined>(undefined);
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
 
   // States
