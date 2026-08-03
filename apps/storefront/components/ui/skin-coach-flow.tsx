@@ -285,6 +285,7 @@ export default function SkinCoachFlow() {
               ref={webcamRef}
               screenshotFormat="image/jpeg"
               videoConstraints={{ facingMode: "user" }}
+              mirrored={true}
               className="absolute inset-0 w-full h-full object-cover object-center"
             />
             
