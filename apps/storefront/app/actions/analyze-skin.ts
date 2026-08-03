@@ -1,73 +1,66 @@
 "use server";
 
+export const maxDuration = 120; // Vercel timeout 120 seconds
+
 export type UserResponse = {
   questionId: string;
   answer: string;
 };
 
+export type RoutineStep = {
+  step_number: number;
+  category: string;
+  target_concern: string;
+  explanation: string;
+};
+
 export type SkinAnalysisResult = {
-  estimated_skin_age: number;
-  melanin_skin_type: string;
-  metrics: {
-    acne_percentage: number;
-    dryness_percentage: number;
-    hydration_percentage: number;
-    texture_quality_percentage: number;
-  };
-  detected_concerns: string[];
+  final_skin_type: string;
   empathetic_message: string;
-  recommended_routine_steps: string[];
+  kbeauty_routine: RoutineStep[];
+  // Include raw metrics from Qwen for UI display if needed
+  metrics?: {
+    sebum_level_percentage: number;
+    acne_severity_percentage: number;
+    hydration_barrier_percentage: number;
+    pore_visibility_percentage: number;
+  };
 };
 
 export async function analyzeSkin(
-  imageBase64: string,
+  images: { front: string; left: string; right: string },
   userResponses: UserResponse[]
 ): Promise<{ success: boolean; data?: SkinAnalysisResult; error?: string }> {
   try {
-    // 1. Vérification de la configuration
     if (!process.env.OPENROUTER_API_KEY) {
       console.error("Clé API OpenRouter manquante.");
       return { success: false, error: "Configuration serveur incomplète (Clé API manquante)." };
     }
 
-    if (!imageBase64) {
-      return { success: false, error: "Aucune image n'a été fournie pour l'analyse." };
+    if (!images.front || !images.left || !images.right) {
+      return { success: false, error: "Les 3 angles d'images (Face, Gauche, Droite) sont requis." };
     }
 
-    // 2. Formatage du contexte utilisateur
-    const contextText = userResponses
-      .map((r, index) => `- Q${index + 1} (${r.questionId}) : ${r.answer}`)
-      .join("\n");
-
-    // 3. Construction dynamique du Prompt Système avec les nouvelles métriques
-    const systemPrompt = `Tu es un dermatologue virtuel expert en cosmétologie K-Beauty pour la marque 'The Welfare', spécialisé dans l'analyse des peaux mélanisées et caucasiennes. 
-Tu dois analyser l'image du visage fournie ET les réponses de l'utilisateur. CECI N'EST PAS UN DIAGNOSTIC MÉDICAL.
-
-CONTEXTE UTILISATEUR : Voici ce que le client a déclaré :
-${contextText}
-
-Instructions d'analyse visuelle :
-1. Estime l'âge cutané (visuel) de la personne.
-2. Évalue 4 métriques sur 100 (0 = très faible, 100 = très fort/optimal) : Acné/Imperfections, Sécheresse, Niveau d'Hydratation, Qualité de la Texture.
-3. Détermine le type de peau en incluant explicitement le niveau de mélanine ou le phototype (ex: 'Grasse - Peau fortement mélanisée (Phototype V)').
-
-Renvoie UNIQUEMENT un objet JSON valide avec cette structure stricte :
+    // =========================================================================
+    // APPEL 1 : Le Diagnostic Visuel Brut (QWEN VL)
+    // =========================================================================
+    const qwenSystemPrompt = `Tu es un algorithme dermatologique clinique de haute précision. Analyse ces 3 vues (face, profil gauche, profil droit) du visage.
+MISSION : Traque en profondeur les micro-détails cutanés. Cherche les micro-comédons, l'acné kystique, l'hyperpigmentation post-inflammatoire (PIH), le niveau de sébum (réflectance), la desquamation, et la dilatation des pores.
+OBLIGATION : Tu dois générer un champ 'visual_reasoning' où tu décris cliniquement ce que tu vois sur chaque zone (Front, Joues, Menton) avant de donner tes notes.
+FORMAT JSON ATTENDU :
 {
-  "estimated_skin_age": entier,
-  "melanin_skin_type": "string",
+  "visual_reasoning": "...",
+  "clinical_observations": ["...", "..."],
+  "melanin_phototype": "...",
   "metrics": {
-    "acne_percentage": entier,
-    "dryness_percentage": entier,
-    "hydration_percentage": entier,
-    "texture_quality_percentage": entier
-  },
-  "detected_concerns": ["string", "string"],
-  "empathetic_message": "string",
-  "recommended_routine_steps": ["string", "string"]
+    "sebum_level_percentage": 0-100,
+    "acne_severity_percentage": 0-100,
+    "hydration_barrier_percentage": 0-100,
+    "pore_visibility_percentage": 0-100
+  }
 }`;
 
-    // 4. Appel de l'API OpenRouter
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const qwenResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -76,72 +69,114 @@ Renvoie UNIQUEMENT un objet JSON valide avec cette structure stricte :
         "X-Title": "The Welfare Skin Coach"
       },
       body: JSON.stringify({
-        model: "qwen/qwen3-vl-32b-instruct",
+        model: "qwen/qwen-2.5-vl-72b-instruct",
         response_format: { type: "json_object" },
         messages: [
           {
             role: "system",
-            content: systemPrompt
+            content: qwenSystemPrompt
           },
           {
             role: "user",
             content: [
-              {
-                type: "text",
-                text: "Analyse ce visage."
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: imageBase64 // L'image doit inclure le préfixe data:image/jpeg;base64,...
-                }
-              }
+              { type: "text", text: "Vue de face :" },
+              { type: "image_url", image_url: { url: images.front } },
+              { type: "text", text: "Vue profil gauche :" },
+              { type: "image_url", image_url: { url: images.left } },
+              { type: "text", text: "Vue profil droit :" },
+              { type: "image_url", image_url: { url: images.right } }
             ]
           }
         ]
       })
     });
 
-    // 5. Gestion des erreurs HTTP de l'API
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[SkinCoach] Erreur API OpenRouter (${response.status}):`, errorText);
-      return { success: false, error: `Erreur lors de l'appel à l'API IA (${response.status}).` };
+    if (!qwenResponse.ok) {
+      console.error(`[Appel 1 Qwen] Erreur:`, await qwenResponse.text());
+      return { success: false, error: "Échec de l'analyse visuelle par l'IA." };
     }
 
-    const data = await response.json();
-    const rawContent = data.choices?.[0]?.message?.content;
+    const qwenData = await qwenResponse.json();
+    const qwenRawContent = qwenData.choices?.[0]?.message?.content;
+    const cleanedQwenContent = qwenRawContent?.replace(/```json/gi, "")?.replace(/```/g, "")?.trim() || "{}";
+    const qwenResult = JSON.parse(cleanedQwenContent);
+
+    // =========================================================================
+    // APPEL 2 : Le Skin Coach Prescripteur (CLAUDE 3.5 SONNET)
+    // =========================================================================
+    const userChatJson = JSON.stringify(userResponses);
+    const qwenResultJson = JSON.stringify(qwenResult);
+
+    const claudeSystemPrompt = `Tu es le 'Skin Coach VIP' de la marque K-Beauty 'The Welfare'. Ton rôle est de concevoir la routine finale.
+Voici les mesures cliniques extraites des photos du client par notre scanner : 
+${qwenResultJson}
+
+Voici les sensations physiques et besoins déclarés par le client via notre questionnaire : 
+${userChatJson}
+
+MISSION :
+1. Rédige un message empathique ('empathetic_message') extrêmement humain et bienveillant, justifiant les observations visuelles avec le ressenti du client.
+2. Déduis le 'final_skin_type' (ex: Mixte à tendance déshydratée).
+3. Construis une 'kbeauty_routine' en maximum 5 étapes. Chaque étape doit renvoyer la catégorie de produit exacte (ex: 'Nettoyant à l'huile', 'Sérum Acide Hyaluronique') pour que notre base de données Medusa.js puisse les chercher.
+
+FORMAT JSON ATTENDU :
+{
+  "final_skin_type": "...",
+  "empathetic_message": "...",
+  "kbeauty_routine": [
+    {
+      "step_number": 1,
+      "category": "...",
+      "target_concern": "...",
+      "explanation": "..."
+    }
+  ]
+}`;
+
+    const claudeResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://thewelfare.com", 
+        "X-Title": "The Welfare Skin Coach"
+      },
+      body: JSON.stringify({
+        model: "anthropic/claude-3.5-sonnet",
+        response_format: { type: "json_object" }, // Si supporté par Anthropic via OpenRouter
+        messages: [
+          { role: "system", content: claudeSystemPrompt },
+          { role: "user", content: "Génère la routine VIP finale." }
+        ]
+      })
+    });
+
+    if (!claudeResponse.ok) {
+      console.error(`[Appel 2 Claude] Erreur:`, await claudeResponse.text());
+      return { success: false, error: "Échec de la prescription par le Skin Coach." };
+    }
+
+    const claudeData = await claudeResponse.json();
+    const claudeRawContent = claudeData.choices?.[0]?.message?.content;
+    const cleanedClaudeContent = claudeRawContent?.replace(/```json/gi, "")?.replace(/```/g, "")?.trim() || "{}";
     
-    if (!rawContent) {
-      return { success: false, error: "Le modèle d'IA n'a retourné aucune réponse." };
-    }
-
-    // 6. Extraction et Parsing robuste du JSON
-    let parsedJson: SkinAnalysisResult;
+    let finalResult: SkinAnalysisResult;
     try {
-      // Nettoyage : Certains modèles renvoient le JSON encadré par des backticks Markdown (```json ... ```)
-      const cleanedContent = rawContent.replace(/```json/gi, "").replace(/```/g, "").trim();
-      parsedJson = JSON.parse(cleanedContent);
-      
-      // Validation basique de structure (optionnel mais recommandé)
-      if (typeof parsedJson.estimated_skin_age !== "number" || !parsedJson.melanin_skin_type) {
-        throw new Error("Structure JSON invalide : champs manquants");
-      }
-      
-    } catch (parseError) {
-      console.error("[SkinCoach] Échec du parsing JSON:", rawContent);
-      return { success: false, error: "L'IA a retourné un format illisible. Veuillez réessayer." };
+      finalResult = JSON.parse(cleanedClaudeContent);
+      // Inject Qwen metrics for the UI progress bars
+      finalResult.metrics = qwenResult.metrics;
+    } catch (e) {
+      console.error("[Appel 2 Claude] Parsing error:", claudeRawContent);
+      return { success: false, error: "Erreur de formatage de la routine finale." };
     }
 
-    // 7. Succès
-    return { success: true, data: parsedJson };
+    return { success: true, data: finalResult };
 
   } catch (error: any) {
     console.error("[SkinCoach] Erreur critique dans analyzeSkin:", error);
     
-    // Gérer spécifiquement le timeout réseau si nécessaire
     if (error.name === "AbortError" || error.message.includes("fetch")) {
-        return { success: false, error: "Le délai d'attente est dépassé ou le réseau est instable." };
+        return { success: false, error: "Le délai d'attente est dépassé. La requête est trop lourde." };
     }
 
     return { 

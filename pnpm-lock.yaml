@@ -198,6 +198,9 @@ importers:
 
   apps/storefront:
     dependencies:
+      '@mediapipe/tasks-vision':
+        specifier: ^1.0.1
+        version: 1.0.1
       '@medusajs/js-sdk':
         specifier: ^2.18.0
         version: 2.18.0
@@ -1435,6 +1438,9 @@ packages:
   '@lukeed/ms@2.0.2':
     resolution: {integrity: sha512-9I2Zn6+NJLfaGoz9jN3lpwDgAYvfGeNYdbAIjJOqzs4Tpc+VU3Jqq4IofSUBKajiDS8k9fZIg18/z13mpk1bsA==}
     engines: {node: '>=8'}
+
+  '@mediapipe/tasks-vision@1.0.1':
+    resolution: {integrity: sha512-rvRE2FmAZ6ZxKSw7wq+e+jQDpN3t1B/tD2mJz9SmAzb1msoDkd4dMoE4wAh8Z30Um0PQwLiHr9QtomhmXk3aUQ==}
 
   '@medusajs/admin-bundler@2.18.0':
     resolution: {integrity: sha512-DijXu1NxVgoCCetMFLqMJiZ5KtehPLlacGnjV7fGkyxSYJhMg8wJxHVt2uWr6aJag2eMUI8fPT/UeC+oZEm5bw==}
@@ -9206,6 +9212,8 @@ snapshots:
       - zod
 
   '@lukeed/ms@2.0.2': {}
+
+  '@mediapipe/tasks-vision@1.0.1': {}
 
   '@medusajs/admin-bundler@2.18.0(@types/node@22.15.3)(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(lightningcss@1.32.0)(tsx@4.23.0)(typescript@5.9.2)(yaml@2.9.0)':
     dependencies:

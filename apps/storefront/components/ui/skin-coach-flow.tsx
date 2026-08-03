@@ -7,6 +7,7 @@ import Webcam from "react-webcam";
 import { analyzeSkin, SkinAnalysisResult } from "@/app/actions/analyze-skin";
 import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
 import { useRouter } from "next/navigation";
+import SmartCameraCapture, { CaptureResult } from "./smart-camera-capture";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -134,10 +135,8 @@ const DECISION_TREE: QuestionNode[] = [
 export default function SkinCoachFlow() {
   const router = useRouter();
   // Capture states
-  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [captures, setCaptures] = useState<CaptureResult | null>(null);
   const [hasCaptured, setHasCaptured] = useState(false);
-  const webcamRef = useRef<Webcam>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Chat states
   const [currentQuestionId, setCurrentQuestionId] = useState<string>("q_knows_skin_type");
@@ -172,30 +171,13 @@ export default function SkinCoachFlow() {
     }
   }, [hasCaptured, messages.length]);
 
-  const captureWebcam = useCallback(() => {
-    if (webcamRef.current) {
-      const imageSrc = webcamRef.current.getScreenshot();
-      if (imageSrc) {
-        setImageBase64(imageSrc);
-        setHasCaptured(true);
-      }
-    }
-  }, [webcamRef]);
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImageBase64(reader.result as string);
-        setHasCaptured(true);
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleCaptureComplete = (result: CaptureResult) => {
+    setCaptures(result);
+    setHasCaptured(true);
   };
 
   const handleRetake = () => {
-    setImageBase64(null);
+    setCaptures(null);
     setHasCaptured(false);
     setMessages([]);
     setUserResponses([]);
@@ -205,10 +187,10 @@ export default function SkinCoachFlow() {
   };
 
   const executeAnalysis = async (finalResponses: UserResponse[]) => {
-    if (!imageBase64) return;
+    if (!captures) return;
     
     try {
-      const result = await analyzeSkin(imageBase64, finalResponses);
+      const result = await analyzeSkin(captures, finalResponses);
       if (result.success && result.data) {
         setResult(result.data);
         router.push("/skin-coach/result");
@@ -278,93 +260,37 @@ export default function SkinCoachFlow() {
       <div className={`absolute inset-0 z-0 ${hasCaptured ? "h-[65vh]" : "h-[100dvh]"} w-full bg-slate-900 transition-all duration-700 ease-in-out`}>
         
         {!hasCaptured ? (
-          // Flux Webcam en direct
-          <div className="relative w-full h-full flex flex-col items-center justify-center overflow-hidden">
-            <Webcam
-              audio={false}
-              ref={webcamRef}
-              screenshotFormat="image/jpeg"
-              videoConstraints={{ facingMode: "user" }}
-              mirrored={true}
-              className="absolute inset-0 w-full h-full object-cover object-center"
-            />
-            
-            {/* Calque et Guide Ovale */}
-            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center p-8 pointer-events-none">
-              <div className="text-white text-center mb-6 px-4">
-                <h2 className="text-2xl font-semibold mb-2">Scanner votre visage</h2>
-                <p className="text-white/80 text-sm">Placez votre visage au centre du cadre pour une analyse optimale.</p>
-              </div>
-              
-              <div className="relative w-64 h-80 rounded-[4rem] border-2 border-dashed border-white/50 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] overflow-hidden">
-                {/* Repères visuels (optionnel) */}
-                <motion.div
-                  animate={{ y: ["0%", "400%", "0%"] }}
-                  transition={{ repeat: Infinity, duration: 4.5, ease: "linear" }}
-                  className="absolute top-0 left-0 right-0 h-1 bg-emerald-400/80 shadow-[0_0_20px_4px_rgba(52,211,153,0.5)]"
-                />
-              </div>
-            </div>
-
-            {/* Boutons d'actions */}
-            <div className="absolute bottom-12 left-0 right-0 px-6 flex flex-col gap-4">
-              <button 
-                onClick={captureWebcam}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 shadow-xl transition-all"
-              >
-                <Camera className="w-5 h-5" />
-                Scanner mon visage
-              </button>
-              
-              <button 
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white py-4 rounded-2xl font-semibold flex items-center justify-center gap-2 transition-colors"
-              >
-                <UploadCloud className="w-5 h-5" />
-                Uploader une photo
-              </button>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                accept="image/*" 
-                onChange={handleFileUpload} 
-              />
-            </div>
-          </div>
+          <SmartCameraCapture 
+            onComplete={handleCaptureComplete} 
+            onCancel={() => router.push("/")} 
+          />
         ) : (
-          // Image Capturée (Gele)
-          <div className="relative w-full h-full">
+          // Images Capturées (Gele)
+          <div className="relative w-full h-full flex flex-row">
             <img 
-              src={imageBase64!} 
-              alt="Analyse de peau" 
-              className="w-full h-full object-cover object-top opacity-90"
+              src={captures?.front} 
+              alt="Analyse de peau Face" 
+              className="w-1/3 h-full object-cover object-top opacity-90"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-[#F4EAEB] pointer-events-none" />
-            
-            {/* Cadre de Scan Animé sur la photo gélée */}
-              <div className="absolute inset-0 flex items-start justify-center pt-[15vh]">
-                <div className="relative w-[75%] max-w-sm aspect-[3/4] border-2 border-white/30 rounded-[2.5rem] overflow-hidden">
-                  <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-white rounded-tl-[2.5rem]" />
-                  <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-white rounded-tr-[2.5rem]" />
-                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-white rounded-bl-[2.5rem]" />
-                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-white rounded-br-[2.5rem]" />
-                  
-                  <motion.div
-                    animate={{ y: ["0%", "400%", "0%"] }}
-                    transition={{ repeat: Infinity, duration: 4.5, ease: "linear" }}
-                    className="absolute top-0 left-0 right-0 h-1 bg-emerald-400/80 shadow-[0_0_20px_4px_rgba(52,211,153,0.5)]"
-                  />
-                </div>
-              </div>
+            <img 
+              src={captures?.left} 
+              alt="Analyse de peau Gauche" 
+              className="w-1/3 h-full object-cover object-top opacity-90 border-l border-white/10"
+            />
+            <img 
+              src={captures?.right} 
+              alt="Analyse de peau Droite" 
+              className="w-1/3 h-full object-cover object-top opacity-90 border-l border-white/10"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-[#F4EAEB] pointer-events-none" />
             
             {/* Bouton pour recommencer */}
-              <button 
-                onClick={handleRetake}
-                className="absolute top-6 right-6 bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/20 text-white p-3 rounded-full transition-colors z-50 shadow-md"
-              >
-                <RefreshCw className="w-5 h-5" />
-              </button>
+            <button 
+              onClick={handleRetake}
+              className="absolute top-6 right-6 bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/20 text-white p-3 rounded-full transition-colors z-50 shadow-md"
+            >
+              <RefreshCw className="w-5 h-5" />
+            </button>
           </div>
         )}
       </div>

@@ -83,13 +83,8 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
           </motion.h1>
           
           <motion.p variants={itemVariants} className="text-xl font-medium text-emerald-900 leading-tight mb-4">
-            {result.melanin_skin_type}
+            {result.final_skin_type}
           </motion.p>
-          
-          <motion.div variants={itemVariants} className="inline-block bg-slate-800 text-emerald-100 text-sm font-semibold px-4 py-2 rounded-2xl shadow-sm">
-            Âge Cutané Estimé : {result.estimated_skin_age} ans
-          </motion.div>
-        </motion.div>
 
         <motion.div 
           variants={containerVariants} initial="hidden" animate="show"
@@ -101,10 +96,14 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
               <Activity className="w-5 h-5 text-emerald-600" />
               Vos Indices Cutanés
             </h2>
-            <ProgressBar label="Acné & Imperfections" value={result.metrics.acne_percentage} type="bad" />
-            <ProgressBar label="Sécheresse" value={result.metrics.dryness_percentage} type="bad" />
-            <ProgressBar label="Niveau d'Hydratation" value={result.metrics.hydration_percentage} type="good" />
-            <ProgressBar label="Qualité de la Texture" value={result.metrics.texture_quality_percentage} type="good" />
+            {result.metrics && (
+              <>
+                <ProgressBar label="Acné & Imperfections" value={result.metrics.acne_severity_percentage} type="bad" />
+                <ProgressBar label="Niveau de Sébum" value={result.metrics.sebum_level_percentage} type="bad" />
+                <ProgressBar label="Dilatation des Pores" value={result.metrics.pore_visibility_percentage} type="bad" />
+                <ProgressBar label="Barrière d'Hydratation" value={result.metrics.hydration_barrier_percentage} type="good" />
+              </>
+            )}
           </motion.div>
 
           {/* Empathetic Message & Concerns */}
@@ -121,7 +120,7 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
             <div className="pt-4 border-t border-stone-100">
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Points d'attention</h3>
               <div className="flex flex-wrap gap-2">
-                {result.detected_concerns.map((concern, idx) => (
+                {Array.from(new Set(result.kbeauty_routine.map(s => s.target_concern))).map((concern, idx) => (
                   <span key={idx} className="bg-[#F4EAEB] text-amber-900 text-[13px] font-semibold px-3 py-1.5 rounded-xl">
                     {concern}
                   </span>
@@ -134,22 +133,25 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
           <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-md rounded-3xl p-6 border border-stone-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
             <h2 className="text-lg font-bold text-slate-800 mb-5">Votre Routine Sur-Mesure</h2>
             <div className="space-y-4">
-              {result.recommended_routine_steps.map((step, idx) => (
+              {result.kbeauty_routine.map((step, idx) => (
                 <motion.div 
                   key={idx}
                   variants={itemVariants}
-                  className="flex gap-4 p-4 bg-[#F9F6F0] rounded-2xl relative overflow-hidden group cursor-pointer"
+                  className="flex flex-col gap-2 p-4 bg-[#F9F6F0] rounded-2xl relative overflow-hidden group cursor-pointer"
                 >
-                  <div className="text-3xl font-black text-emerald-900/10 shrink-0 select-none">
-                    0{idx + 1}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-[15px] font-semibold text-slate-800 mb-2 leading-snug">
-                      {step}
-                    </p>
-                    <div className="inline-flex items-center gap-1 text-[13px] font-bold text-emerald-600">
-                      Voir les soins recommandés <ChevronRight className="w-3.5 h-3.5" />
+                  <div className="flex gap-4 items-center mb-1">
+                    <div className="text-3xl font-black text-emerald-900/10 shrink-0 select-none">
+                      0{step.step_number}
                     </div>
+                    <p className="text-[15px] font-bold text-slate-800 leading-snug">
+                      {step.category}
+                    </p>
+                  </div>
+                  <p className="text-[14px] text-slate-600 pl-[3.25rem] leading-relaxed">
+                    {step.explanation}
+                  </p>
+                  <div className="inline-flex items-center gap-1 text-[13px] font-bold text-emerald-600 pl-[3.25rem] mt-1">
+                    Voir la sélection {step.category.toLowerCase()} <ChevronRight className="w-3.5 h-3.5" />
                   </div>
                 </motion.div>
               ))}
