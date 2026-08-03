@@ -85,6 +85,12 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
           <motion.p variants={itemVariants} className="text-xl font-medium text-emerald-900 leading-tight mb-4">
             {result.final_skin_type}
           </motion.p>
+          
+          {result.estimated_skin_age && (
+            <motion.div variants={itemVariants} className="inline-block bg-slate-800 text-emerald-100 text-sm font-semibold px-4 py-2 rounded-2xl shadow-sm">
+              Âge Cutané Estimé : {result.estimated_skin_age} ans
+            </motion.div>
+          )}
         </motion.div>
 
         <motion.div 

@@ -14,6 +14,7 @@ export type RoutineStep = {
 
 export type SkinAnalysisResult = {
   final_skin_type: string;
+  estimated_skin_age: number;
   empathetic_message: string;
   kbeauty_routine: RoutineStep[];
   // Include raw metrics from Qwen for UI display if needed
@@ -50,6 +51,7 @@ FORMAT JSON ATTENDU :
   "visual_reasoning": "...",
   "clinical_observations": ["...", "..."],
   "melanin_phototype": "...",
+  "estimated_skin_age": 0,
   "metrics": {
     "sebum_level_percentage": 0-100,
     "acne_severity_percentage": 0-100,
@@ -100,7 +102,7 @@ FORMAT JSON ATTENDU :
     const qwenResult = JSON.parse(cleanedQwenContent);
 
     // =========================================================================
-    // APPEL 2 : Le Skin Coach Prescripteur (CLAUDE 3.5 SONNET)
+    // APPEL 2 : Le Skin Coach Prescripteur (CLAUDE)
     // =========================================================================
     const userChatJson = JSON.stringify(userResponses);
     const qwenResultJson = JSON.stringify(qwenResult);
@@ -115,12 +117,14 @@ ${userChatJson}
 MISSION :
 1. Rédige un message empathique ('empathetic_message') extrêmement humain et bienveillant, justifiant les observations visuelles avec le ressenti du client.
 2. Déduis le 'final_skin_type' (ex: Mixte à tendance déshydratée).
-3. Construis une 'kbeauty_routine' en maximum 5 étapes. Chaque étape doit renvoyer la catégorie de produit exacte (ex: 'Nettoyant à l'huile', 'Sérum Acide Hyaluronique') pour que notre base de données Medusa.js puisse les chercher.
+3. Transmets l'estimation de l'âge cutané faite par le scanner dans 'estimated_skin_age'.
+4. Construis une 'kbeauty_routine' en maximum 5 étapes. Chaque étape doit renvoyer la catégorie de produit exacte (ex: 'Nettoyant à l'huile', 'Sérum Acide Hyaluronique') pour que notre base de données Medusa.js puisse les chercher.
 
 IMPORTANT : Tu dois répondre UNIQUEMENT avec un objet JSON valide, sans aucun texte avant ou après.
 FORMAT JSON ATTENDU :
 {
   "final_skin_type": "...",
+  "estimated_skin_age": 0,
   "empathetic_message": "...",
   "kbeauty_routine": [
     {
