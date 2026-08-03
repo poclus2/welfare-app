@@ -118,7 +118,7 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
             setIsPerfect(false);
           }
         } else if (step === "LEFT") {
-          if (yaw > 25) { // Tourné vers la gauche (du point de vue de l'utilisateur, face à la caméra)
+          if (yaw < -25) { // Tourné vers la gauche (du point de vue de l'utilisateur, face à la caméra)
             setFeedback("Parfait !");
             setIsPerfect(true);
           } else {
@@ -126,7 +126,7 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
             setIsPerfect(false);
           }
         } else if (step === "RIGHT") {
-          if (yaw < -25) {
+          if (yaw > 25) {
             setFeedback("Parfait !");
             setIsPerfect(true);
           } else {

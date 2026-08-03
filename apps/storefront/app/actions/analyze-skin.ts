@@ -117,6 +117,7 @@ MISSION :
 2. Déduis le 'final_skin_type' (ex: Mixte à tendance déshydratée).
 3. Construis une 'kbeauty_routine' en maximum 5 étapes. Chaque étape doit renvoyer la catégorie de produit exacte (ex: 'Nettoyant à l'huile', 'Sérum Acide Hyaluronique') pour que notre base de données Medusa.js puisse les chercher.
 
+IMPORTANT : Tu dois répondre UNIQUEMENT avec un objet JSON valide, sans aucun texte avant ou après.
 FORMAT JSON ATTENDU :
 {
   "final_skin_type": "...",
@@ -141,7 +142,6 @@ FORMAT JSON ATTENDU :
       },
       body: JSON.stringify({
         model: "anthropic/claude-3.5-sonnet",
-        response_format: { type: "json_object" }, // Si supporté par Anthropic via OpenRouter
         messages: [
           { role: "system", content: claudeSystemPrompt },
           { role: "user", content: "Génère la routine VIP finale." }
