@@ -70,6 +70,7 @@ FORMAT JSON ATTENDU :
       },
       body: JSON.stringify({
         model: "qwen/qwen-2.5-vl-72b-instruct",
+        max_tokens: 1500,
         response_format: { type: "json_object" },
         messages: [
           {
@@ -146,6 +147,7 @@ FORMAT JSON ATTENDU :
       },
       body: JSON.stringify({
         model: "anthropic/claude-sonnet-4.6",
+        max_tokens: 1500,
         messages: [
           { role: "system", content: claudeSystemPrompt },
           { role: "user", content: "Génère la routine VIP finale." }
