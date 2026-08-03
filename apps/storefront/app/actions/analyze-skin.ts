@@ -1,7 +1,5 @@
 "use server";
 
-export const maxDuration = 120; // Vercel timeout 120 seconds
-
 export type UserResponse = {
   questionId: string;
   answer: string;
