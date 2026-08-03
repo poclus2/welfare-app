@@ -141,7 +141,7 @@ FORMAT JSON ATTENDU :
         "X-Title": "The Welfare Skin Coach"
       },
       body: JSON.stringify({
-        model: "anthropic/claude-3.5-sonnet",
+        model: "anthropic/claude-sonnet-4.6",
         messages: [
           { role: "system", content: claudeSystemPrompt },
           { role: "user", content: "Génère la routine VIP finale." }
