@@ -89,7 +89,7 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
       const startTimeMs = performance.now();
       const results = faceLandmarkerRef.current.detectForVideo(video, startTimeMs);
 
-      if (results.facialTransformationMatrixes && results.facialTransformationMatrixes.length > 0) {
+      if (results.facialTransformationMatrixes && results.facialTransformationMatrixes.length > 0 && results.facialTransformationMatrixes[0]) {
         const matrix = results.facialTransformationMatrixes[0].data;
         
         // Extract Yaw and Pitch (simplified from rotation matrix)
