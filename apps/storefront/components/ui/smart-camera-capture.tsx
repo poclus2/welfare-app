@@ -99,9 +99,9 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
         // [ m00, m10, m20, m30, m01, m11, m21, m31, m02, m12, m22, m32, m03, m13, m23, m33 ]
         // Indices: 0-15.
         // Yaw = atan2(-m20, sqrt(m21^2 + m22^2)) -> atan2(-matrix[8], sqrt(matrix[9]**2 + matrix[10]**2))
-        const m20 = matrix[2];
-        const m21 = matrix[6];
-        const m22 = matrix[10];
+        const m20 = matrix[2] ?? 0;
+        const m21 = matrix[6] ?? 0;
+        const m22 = matrix[10] ?? 0;
         
         // Yaw is rotation around Y axis (Left/Right)
         const yaw = Math.atan2(m20, Math.sqrt(m21 * m21 + m22 * m22)) * (180 / Math.PI);
