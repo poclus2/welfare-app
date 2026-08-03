@@ -85,6 +85,7 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
           <motion.p variants={itemVariants} className="text-xl font-medium text-emerald-900 leading-tight mb-4">
             {result.final_skin_type}
           </motion.p>
+        </motion.div>
 
         <motion.div 
           variants={containerVariants} initial="hidden" animate="show"
