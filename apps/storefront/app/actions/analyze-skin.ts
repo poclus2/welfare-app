@@ -69,7 +69,7 @@ FORMAT JSON ATTENDU :
         "X-Title": "The Welfare Skin Coach"
       },
       body: JSON.stringify({
-        model: "qwen/qwen-2.5-vl-72b-instruct",
+        model: "qwen/qwen3-vl-235b-a22b-instruct",
         max_tokens: 1500,
         response_format: { type: "json_object" },
         messages: [
