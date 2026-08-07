@@ -2,7 +2,7 @@
 
 export type UserResponse = {
   questionId: string;
-  answer: string;
+  answer: string | { type: "image"; base64: string };
 };
 
 export type RoutineStep = {
@@ -105,7 +105,14 @@ FORMAT JSON ATTENDU :
     // =========================================================================
     // APPEL 2 : Le Skin Coach Prescripteur (CLAUDE)
     // =========================================================================
-    const userChatJson = JSON.stringify(userResponses);
+    
+    // On retire le base64 pour ne pas surcharger le prompt textuel
+    const sanitizedUserResponses = userResponses.map(r => ({
+      ...r,
+      answer: typeof r.answer === 'string' ? r.answer : "[Image de produit attachée par l'utilisateur]"
+    }));
+    
+    const userChatJson = JSON.stringify(sanitizedUserResponses);
     const qwenResultJson = JSON.stringify(qwenResult);
 
     const claudeSystemPrompt = `Tu es le 'Skin Coach VIP' de la marque K-Beauty 'The Welfare'. Ton rôle est de concevoir la routine finale.
@@ -150,7 +157,18 @@ FORMAT JSON ATTENDU :
         max_tokens: 1500,
         messages: [
           { role: "system", content: claudeSystemPrompt },
-          { role: "user", content: "Génère la routine VIP finale." }
+          { 
+            role: "user", 
+            content: [
+              { type: "text", text: "Génère la routine VIP finale en te basant sur le diagnostic et les images des produits s'il y en a." },
+              ...userResponses
+                .filter(r => typeof r.answer !== 'string' && r.answer.type === 'image')
+                .map(r => ({
+                  type: "image_url",
+                  image_url: { url: (r.answer as { type: "image"; base64: string }).base64 }
+                }))
+            ]
+          }
         ]
       })
     });

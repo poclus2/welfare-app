@@ -14,7 +14,8 @@ import SmartCameraCapture, { CaptureResult } from "./smart-camera-capture";
 type Message = {
   id: string;
   sender: "ai" | "user";
-  text: string;
+  text?: string;
+  image?: string;
 };
 
 type Option = {
@@ -25,14 +26,14 @@ type Option = {
 type QuestionNode = {
   id: string;
   text: string;
-  type: "choice" | "text";
+  type: "choice" | "text" | "text_or_photo";
   options?: Option[];
   nextQuestionId?: string;
 };
 
 type UserResponse = {
   questionId: string;
-  answer: string;
+  answer: string | { type: "image"; base64: string };
 };
 
 // ─── Flow Data ──────────────────────────────────────────────────────────────
@@ -85,8 +86,8 @@ const DECISION_TREE: QuestionNode[] = [
   },
   {
     id: "q_routine_details",
-    text: "Super ! Listez-moi brièvement les produits que vous utilisez (ex: Nettoyant CeraVe, Crème hydratante classique...) pour que je puisse les intégrer à mon diagnostic :",
-    type: "text",
+    text: "Super ! Écrivez-moi le nom des produits que vous utilisez, ou prenez-les simplement en photo 📸 :",
+    type: "text_or_photo",
     nextQuestionId: "q_sun_exposure"
   },
   {
@@ -117,6 +118,10 @@ export default function SkinCoachFlow() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressPercent, setProgressPercent] = useState<number>(5);
   const [inputText, setInputText] = useState("");
+  
+  // Photo capture state for text_or_photo
+  const [showCamera, setShowCamera] = useState(false);
+  const webcamRef = useRef<Webcam>(null);
   
   // Analysis states
   const setResult = useSkinCoachStore((state) => state.setResult);
@@ -184,18 +189,35 @@ export default function SkinCoachFlow() {
 
   const handleTextSubmit = (text: string, nextQuestionId?: string) => {
     if (!text.trim() || !nextQuestionId) return;
-    processAnswer(text.trim(), nextQuestionId);
-    setInputText("");
-  };
-
-  const processAnswer = (answer: string, nextQuestionId: string) => {
+    
     // 1. Enregistrer la réponse
-    const newResponses = [...userResponses, { questionId: currentQuestionId, answer }];
+    const newResponses = [...userResponses, { questionId: currentQuestionId, answer: text.trim() }];
     setUserResponses(newResponses);
 
     // 2. Add user response bubble
-    const userMsg: Message = { id: `msg-user-${Date.now()}`, sender: "user", text: answer };
+    const userMsg: Message = { id: `msg-user-${Date.now()}`, sender: "user", text: text.trim() };
     setMessages((prev) => [...prev, userMsg]);
+    
+    setInputText("");
+    processNextStep(newResponses, nextQuestionId);
+  };
+
+  const handlePhotoSubmit = (base64Image: string, nextQuestionId?: string) => {
+    if (!nextQuestionId) return;
+
+    // 1. Enregistrer la réponse
+    const newResponses = [...userResponses, { questionId: currentQuestionId, answer: { type: "image" as const, base64: base64Image } }];
+    setUserResponses(newResponses);
+
+    // 2. Add user response bubble
+    const userMsg: Message = { id: `msg-user-${Date.now()}`, sender: "user", image: base64Image };
+    setMessages((prev) => [...prev, userMsg]);
+
+    setShowCamera(false);
+    processNextStep(newResponses, nextQuestionId);
+  };
+
+  const processNextStep = (newResponses: UserResponse[], nextQuestionId: string) => {
     
     // 3. Hide options and show AI typing indicator
     setIsTyping(true);
@@ -317,7 +339,7 @@ export default function SkinCoachFlow() {
                     </div>
                   )}
                   
-                  {/* Bulle de texte */}
+                  {/* Bulle de texte ou image */}
                   <div 
                     className={`max-w-[75%] p-4 text-[14px] leading-relaxed ${
                       msg.sender === "user" 
@@ -325,7 +347,11 @@ export default function SkinCoachFlow() {
                         : "bg-white text-slate-800 rounded-3xl rounded-bl-sm shadow-sm border border-[#EDE0E0]/60"
                     }`}
                   >
-                    {msg.text}
+                    {msg.image ? (
+                      <img src={msg.image} alt="Photo utilisateur" className="w-full h-auto rounded-xl object-cover" />
+                    ) : (
+                      msg.text
+                    )}
                   </div>
                 </motion.div>
               ))}
@@ -395,7 +421,7 @@ export default function SkinCoachFlow() {
                   ))}
                 </div>
               ) : (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 relative">
                   <input
                     type="text"
                     value={inputText}
@@ -406,8 +432,16 @@ export default function SkinCoachFlow() {
                       }
                     }}
                     placeholder="Votre réponse..."
-                    className="flex-1 bg-white border border-[#EDE0E0] text-slate-800 placeholder-slate-400 px-5 py-4 rounded-2xl outline-none focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50 transition-all shadow-sm"
+                    className={`flex-1 bg-white border border-[#EDE0E0] text-slate-800 placeholder-slate-400 py-4 ${currentNode.type === "text_or_photo" ? 'pl-5 pr-14' : 'px-5'} rounded-2xl outline-none focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50 transition-all shadow-sm`}
                   />
+                  {currentNode.type === "text_or_photo" && (
+                    <button
+                      onClick={() => setShowCamera(true)}
+                      className="absolute right-[80px] top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600 transition-colors p-2"
+                    >
+                      <Camera className="w-6 h-6" />
+                    </button>
+                  )}
                   <button
                     onClick={() => handleTextSubmit(inputText, currentNode.nextQuestionId)}
                     disabled={!inputText.trim()}
@@ -421,6 +455,51 @@ export default function SkinCoachFlow() {
           )}
         </div>
       )}
+
+      {/* ─── 4. Camera Overlay pour les produits ─── */}
+      <AnimatePresence>
+        {showCamera && (
+          <motion.div
+            initial={{ opacity: 0, y: "100%" }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="absolute inset-0 z-50 bg-black flex flex-col"
+          >
+            <div className="relative flex-1 overflow-hidden">
+              <Webcam
+                audio={false}
+                ref={webcamRef}
+                screenshotFormat="image/jpeg"
+                videoConstraints={{ facingMode: "environment" }}
+                className="w-full h-full object-cover"
+              />
+              {/* Controles */}
+              <div className="absolute top-6 left-6">
+                <button 
+                  onClick={() => setShowCamera(false)}
+                  className="bg-black/50 text-white px-4 py-2 rounded-full backdrop-blur-md border border-white/20 text-sm font-semibold"
+                >
+                  Annuler
+                </button>
+              </div>
+              <div className="absolute bottom-10 left-0 right-0 flex justify-center items-center">
+                <button
+                  onClick={() => {
+                    const src = webcamRef.current?.getScreenshot();
+                    if (src && currentNode?.nextQuestionId) {
+                      handlePhotoSubmit(src, currentNode.nextQuestionId);
+                    }
+                  }}
+                  className="w-20 h-20 bg-white/20 rounded-full border-4 border-white flex items-center justify-center p-2 backdrop-blur-sm hover:scale-105 active:scale-95 transition-transform"
+                >
+                  <div className="w-full h-full bg-white rounded-full shadow-lg" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
