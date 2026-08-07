@@ -25,7 +25,9 @@ type Option = {
 type QuestionNode = {
   id: string;
   text: string;
-  options: Option[];
+  type: "choice" | "text";
+  options?: Option[];
+  nextQuestionId?: string;
 };
 
 type UserResponse = {
@@ -37,95 +39,64 @@ type UserResponse = {
 
 const DECISION_TREE: QuestionNode[] = [
   {
-    "id": "q_knows_skin_type",
-    "text": "👋 Bonjour ! Je suis My Skin Coach. En moins de 3 minutes, je vais analyser votre peau et vous proposer une routine personnalisée. Commençons : Connaissez-vous votre type de peau ?",
-    "options": [
-      { "label": "Oui", "nextQuestionId": "q_skin_type_direct" },
-      { "label": "Non", "nextQuestionId": "q_morning_skin" }
+    id: "q_main_goal",
+    text: "👋 Bonjour ! Pendant que j'analyse vos photos, dites-m'en plus sur vous. Quel est votre objectif numéro 1 aujourd'hui ?",
+    type: "choice",
+    options: [
+      { label: "Combattre l'acné & imperfections", nextQuestionId: "q_sensitivity" },
+      { label: "Atténuer les taches (Hyperpigmentation)", nextQuestionId: "q_sensitivity" },
+      { label: "Hydratation & effet Glow", nextQuestionId: "q_sensitivity" },
+      { label: "Anti-âge & fermeté", nextQuestionId: "q_sensitivity" }
     ]
   },
   {
-    "id": "q_skin_type_direct",
-    "text": "Super ! Quel est votre type de peau ?",
-    "options": [
-      { "label": "Grasse", "nextQuestionId": "q_main_goal" },
-      { "label": "Mixte", "nextQuestionId": "q_main_goal" },
-      { "label": "Sèche", "nextQuestionId": "q_main_goal" },
-      { "label": "Normale", "nextQuestionId": "q_main_goal" }
+    id: "q_sensitivity",
+    text: "C'est noté. Comment réagit généralement votre peau aux nouveaux produits ?",
+    type: "choice",
+    options: [
+      { label: "Très bien, elle supporte tout", nextQuestionId: "q_allergies_check" },
+      { label: "Sensible, parfois des rougeurs", nextQuestionId: "q_allergies_check" },
+      { label: "Très réactive et intolérante", nextQuestionId: "q_allergies_check" }
     ]
   },
   {
-    "id": "q_morning_skin",
-    "text": "Pas de soucis, on va le découvrir ensemble ! Au réveil, avant de laver votre visage, comment est votre peau ?",
-    "options": [
-      { "label": "✨ Elle brille sur tout le visage", "nextQuestionId": "q_day_shine" },
-      { "label": "✨ Elle brille uniquement sur la zone T", "nextQuestionId": "q_day_shine" },
-      { "label": "✨ Elle ne brille presque pas et je me sens confortable", "nextQuestionId": "q_day_shine" }
+    id: "q_allergies_check",
+    text: "Une question de sécurité : avez-vous des allergies connues à certains cosmétiques ou ingrédients ?",
+    type: "choice",
+    options: [
+      { label: "Oui", nextQuestionId: "q_allergies_details" },
+      { label: "Non", nextQuestionId: "q_current_routine" }
     ]
   },
   {
-    "id": "q_day_shine",
-    "text": "Au cours de la journée, votre peau devient-elle brillante ?",
-    "options": [
-      { "label": "Oui, très rapidement", "nextQuestionId": "q_tightness" },
-      { "label": "Oui, seulement sur la zone T", "nextQuestionId": "q_tightness" },
-      { "label": "Très peu", "nextQuestionId": "q_tightness" },
-      { "label": "Presque jamais", "nextQuestionId": "q_tightness" }
+    id: "q_allergies_details",
+    text: "Aïe ! Dites-moi quels sont les ingrédients ou produits que votre peau ne supporte pas :",
+    type: "text",
+    nextQuestionId: "q_current_routine"
+  },
+  {
+    id: "q_current_routine",
+    text: "Utilisez-vous déjà une routine de soins au quotidien ?",
+    type: "choice",
+    options: [
+      { label: "Oui", nextQuestionId: "q_routine_details" },
+      { label: "Non, je commence tout juste", nextQuestionId: "q_sun_exposure" }
     ]
   },
   {
-    "id": "q_tightness",
-    "text": "Avez-vous souvent des sensations de tiraillement ou de sécheresse ?",
-    "options": [
-      { "label": "Jamais", "nextQuestionId": "q_moisturizer_freq" },
-      { "label": "Parfois", "nextQuestionId": "q_moisturizer_freq" },
-      { "label": "Souvent", "nextQuestionId": "q_moisturizer_freq" },
-      { "label": "Presque tout le temps", "nextQuestionId": "q_moisturizer_freq" }
-    ]
+    id: "q_routine_details",
+    text: "Super ! Listez-moi brièvement les produits que vous utilisez (ex: Nettoyant CeraVe, Crème hydratante classique...) pour que je puisse les intégrer à mon diagnostic :",
+    type: "text",
+    nextQuestionId: "q_sun_exposure"
   },
   {
-    "id": "q_moisturizer_freq",
-    "text": "À quelle fréquence appliquez-vous une crème hydratante parce que votre peau en ressent le besoin ?",
-    "options": [
-      { "label": "Tous les jours", "nextQuestionId": "q_main_goal" },
-      { "label": "Quelques fois par semaine", "nextQuestionId": "q_main_goal" },
-      { "label": "Rarement", "nextQuestionId": "q_main_goal" },
-      { "label": "Jamais", "nextQuestionId": "q_main_goal" }
-    ]
-  },
-  {
-    "id": "q_main_goal",
-    "text": "C'est noté ! Quels sont vos objectifs principaux pour votre peau aujourd'hui ?",
-    "options": [
-      { "label": "Traiter l'Acné & Imperfections", "nextQuestionId": "q_dermatologist" },
-      { "label": "Cibler l'Hyperpigmentation & Taches", "nextQuestionId": "q_dermatologist" },
-      { "label": "Anti-âge & Fermeté", "nextQuestionId": "q_dermatologist" },
-      { "label": "Hydratation & Effet Glow", "nextQuestionId": "q_dermatologist" },
-      { "label": "Apaiser les rougeurs & Sensibilité", "nextQuestionId": "q_dermatologist" }
-    ]
-  },
-  {
-    "id": "q_dermatologist",
-    "text": "Une question importante : avez-vous déjà consulté un dermatologue pour ces préoccupations ?",
-    "options": [
-      { "label": "Oui", "nextQuestionId": "q_current_routine" },
-      { "label": "Non", "nextQuestionId": "q_reaction_history" }
-    ]
-  },
-  {
-    "id": "q_reaction_history",
-    "text": "Avez-vous déjà eu une réaction allergique ou une forte sensibilité à un produit cosmétique ?",
-    "options": [
-      { "label": "Oui", "nextQuestionId": "q_current_routine" },
-      { "label": "Non", "nextQuestionId": "q_current_routine" }
-    ]
-  },
-  {
-    "id": "q_current_routine",
-    "text": "Utilisez-vous une routine de soins actuellement ?",
-    "options": [
-      { "label": "Oui", "nextQuestionId": "q_finish" },
-      { "label": "Non", "nextQuestionId": "q_finish" }
+    id: "q_sun_exposure",
+    text: "Dernière question : à quelle fréquence êtes-vous exposée au soleil dans la journée ?",
+    type: "choice",
+    options: [
+      { label: "Très peu (surtout en intérieur)", nextQuestionId: "q_finish" },
+      { label: "Modérément (trajets, balades)", nextQuestionId: "q_finish" },
+      { label: "Beaucoup (travail/sport en extérieur)", nextQuestionId: "q_finish" }
     ]
   }
 ];
@@ -139,12 +110,13 @@ export default function SkinCoachFlow() {
   const [hasCaptured, setHasCaptured] = useState(false);
 
   // Chat states
-  const [currentQuestionId, setCurrentQuestionId] = useState<string>("q_knows_skin_type");
+  const [currentQuestionId, setCurrentQuestionId] = useState<string>("q_main_goal");
   const [messages, setMessages] = useState<Message[]>([]);
   const [userResponses, setUserResponses] = useState<UserResponse[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressPercent, setProgressPercent] = useState<number>(5);
+  const [inputText, setInputText] = useState("");
   
   // Analysis states
   const setResult = useSkinCoachStore((state) => state.setResult);
@@ -163,7 +135,7 @@ export default function SkinCoachFlow() {
     if (hasCaptured && messages.length === 0) {
       setIsTyping(true);
       const timer = setTimeout(() => {
-        const firstNode = DECISION_TREE.find(n => n.id === "q_knows_skin_type");
+        const firstNode = DECISION_TREE.find(n => n.id === "q_main_goal");
         setMessages([{ id: "msg-1", sender: "ai", text: firstNode?.text || "" }]);
         setIsTyping(false);
       }, 1200);
@@ -181,7 +153,7 @@ export default function SkinCoachFlow() {
     setHasCaptured(false);
     setMessages([]);
     setUserResponses([]);
-    setCurrentQuestionId("q_knows_skin_type");
+    setCurrentQuestionId("q_main_goal");
     setProgressPercent(5);
     setIsGenerating(false);
   };
@@ -207,12 +179,22 @@ export default function SkinCoachFlow() {
   };
 
   const handleOptionSelect = (option: Option) => {
+    processAnswer(option.label, option.nextQuestionId);
+  };
+
+  const handleTextSubmit = (text: string, nextQuestionId?: string) => {
+    if (!text.trim() || !nextQuestionId) return;
+    processAnswer(text.trim(), nextQuestionId);
+    setInputText("");
+  };
+
+  const processAnswer = (answer: string, nextQuestionId: string) => {
     // 1. Enregistrer la réponse
-    const newResponses = [...userResponses, { questionId: currentQuestionId, answer: option.label }];
+    const newResponses = [...userResponses, { questionId: currentQuestionId, answer }];
     setUserResponses(newResponses);
 
     // 2. Add user response bubble
-    const userMsg: Message = { id: `msg-user-${Date.now()}`, sender: "user", text: option.label };
+    const userMsg: Message = { id: `msg-user-${Date.now()}`, sender: "user", text: answer };
     setMessages((prev) => [...prev, userMsg]);
     
     // 3. Hide options and show AI typing indicator
@@ -227,7 +209,7 @@ export default function SkinCoachFlow() {
 
     // 5. Process next step after a realistic delay
     setTimeout(() => {
-      if (option.nextQuestionId === "q_finish") {
+      if (nextQuestionId === "q_finish") {
         // End of the flow
         setProgressPercent(100);
         setIsGenerating(true);
@@ -241,10 +223,10 @@ export default function SkinCoachFlow() {
         executeAnalysis(newResponses);
       } else {
         // Next question
-        const nextNode = DECISION_TREE.find((n) => n.id === option.nextQuestionId);
+        const nextNode = DECISION_TREE.find((n) => n.id === nextQuestionId);
         if (nextNode) {
           setMessages((prev) => [...prev, { id: `msg-ai-${Date.now()}`, sender: "ai", text: nextNode.text }]);
-          setCurrentQuestionId(option.nextQuestionId);
+          setCurrentQuestionId(nextQuestionId);
           setIsTyping(false);
         }
       }
@@ -389,7 +371,7 @@ export default function SkinCoachFlow() {
             </AnimatePresence>
           </div>
 
-          {/* ─── 3. Quick Replies (Boutons Chips) ─── */}
+          {/* ─── 3. Quick Replies (Boutons Chips) & Text Input ─── */}
           {!isTyping && !isGenerating && currentNode && (
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
@@ -397,20 +379,44 @@ export default function SkinCoachFlow() {
               transition={{ type: "spring", bounce: 0.2 }}
               className="p-6 pt-2 bg-white/40 shrink-0"
             >
-              <div className="flex flex-col gap-2.5">
-                {currentNode.options.map((option, index) => (
+              {currentNode.type === "choice" && currentNode.options ? (
+                <div className="flex flex-col gap-2.5">
+                  {currentNode.options.map((option, index) => (
+                    <button
+                      key={`${option.label}-${index}`}
+                      onClick={() => handleOptionSelect(option)}
+                      className="w-full bg-slate-800 text-white hover:bg-slate-900 active:scale-[0.98] transition-all py-4 px-6 rounded-2xl text-[15px] font-semibold flex items-center justify-between group shadow-sm"
+                    >
+                      {option.label}
+                      <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                        <ChevronRight className="w-4 h-4 text-white/90 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleTextSubmit(inputText, currentNode.nextQuestionId);
+                      }
+                    }}
+                    placeholder="Votre réponse..."
+                    className="flex-1 bg-white border border-[#EDE0E0] text-slate-800 placeholder-slate-400 px-5 py-4 rounded-2xl outline-none focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50 transition-all shadow-sm"
+                  />
                   <button
-                    key={`${option.label}-${index}`}
-                    onClick={() => handleOptionSelect(option)}
-                    className="w-full bg-slate-800 text-white hover:bg-slate-900 active:scale-[0.98] transition-all py-4 px-6 rounded-2xl text-[15px] font-semibold flex items-center justify-between group shadow-sm"
+                    onClick={() => handleTextSubmit(inputText, currentNode.nextQuestionId)}
+                    disabled={!inputText.trim()}
+                    className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white p-4 rounded-2xl transition-colors shadow-sm"
                   >
-                    {option.label}
-                    <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
-                      <ChevronRight className="w-4 h-4 text-white/90 group-hover:translate-x-0.5 transition-transform" />
-                    </div>
+                    <ChevronRight className="w-6 h-6" />
                   </button>
-                ))}
-              </div>
+                </div>
+              )}
             </motion.div>
           )}
         </div>
