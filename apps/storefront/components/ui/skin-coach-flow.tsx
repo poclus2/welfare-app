@@ -184,7 +184,11 @@ export default function SkinCoachFlow() {
   };
 
   const handleOptionSelect = (option: Option) => {
-    processAnswer(option.label, option.nextQuestionId);
+    const newResponses = [...userResponses, { questionId: currentQuestionId, answer: option.label }];
+    setUserResponses(newResponses);
+    const userMsg: Message = { id: `msg-user-${Date.now()}`, sender: "user", text: option.label };
+    setMessages((prev) => [...prev, userMsg]);
+    processNextStep(newResponses, option.nextQuestionId);
   };
 
   const handleTextSubmit = (text: string, nextQuestionId?: string) => {
