@@ -78,19 +78,25 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
             Diagnostic IA Finalisé
           </motion.div>
           
-          <motion.h1 variants={itemVariants} className="text-3xl font-extrabold text-slate-800 mb-2">
-            Votre Profil Cutané
-          </motion.h1>
-          
-          <motion.p variants={itemVariants} className="text-xl font-medium text-emerald-900 leading-tight mb-4">
-            {result.final_skin_type}
-          </motion.p>
-          
-          {result.estimated_skin_age && (
-            <motion.div variants={itemVariants} className="inline-block bg-slate-800 text-emerald-100 text-sm font-semibold px-4 py-2 rounded-2xl shadow-sm">
-              Âge Cutané Estimé : {result.estimated_skin_age} ans
-            </motion.div>
-          )}
+          <motion.div variants={itemVariants} className="bg-slate-900 rounded-[2rem] p-8 text-center shadow-xl border border-slate-800 relative overflow-hidden mb-6">
+            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-emerald-500/10 to-transparent pointer-events-none" />
+            <h1 className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-3 relative z-10">
+              Votre Profil Cutané
+            </h1>
+            <p className="text-3xl font-extrabold text-white leading-tight mb-3 relative z-10">
+              {result.final_skin_type}
+            </p>
+            {result.melanin_phototype && (
+              <p className="text-slate-400 text-sm font-medium relative z-10 mb-6">
+                Phototype : {result.melanin_phototype}
+              </p>
+            )}
+            {result.estimated_skin_age && (
+              <div className="inline-block bg-white/10 backdrop-blur-md border border-white/10 text-emerald-100 text-sm font-semibold px-5 py-2.5 rounded-full relative z-10">
+                Âge Cutané Estimé : {result.estimated_skin_age} ans
+              </div>
+            )}
+          </motion.div>
         </motion.div>
 
         <motion.div 
@@ -108,6 +114,7 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
                 <ProgressBar label="Acné & Imperfections" value={result.metrics.acne_severity_percentage} type="bad" />
                 <ProgressBar label="Niveau de Sébum" value={result.metrics.sebum_level_percentage} type="bad" />
                 <ProgressBar label="Dilatation des Pores" value={result.metrics.pore_visibility_percentage} type="bad" />
+                <ProgressBar label="Fatigue du Contour des Yeux" value={result.metrics.eye_contour_fatigue_percentage} type="bad" />
                 <ProgressBar label="Barrière d'Hydratation" value={result.metrics.hydration_barrier_percentage} type="good" />
               </>
             )}

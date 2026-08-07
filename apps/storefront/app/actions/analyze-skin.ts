@@ -15,6 +15,7 @@ export type RoutineStep = {
 export type SkinAnalysisResult = {
   final_skin_type: string;
   estimated_skin_age: number;
+  melanin_phototype?: string;
   empathetic_message: string;
   kbeauty_routine: RoutineStep[];
   // Include raw metrics from Qwen for UI display if needed
@@ -23,6 +24,7 @@ export type SkinAnalysisResult = {
     acne_severity_percentage: number;
     hydration_barrier_percentage: number;
     pore_visibility_percentage: number;
+    eye_contour_fatigue_percentage: number;
   };
 };
 
@@ -56,7 +58,8 @@ FORMAT JSON ATTENDU :
     "sebum_level_percentage": 0-100,
     "acne_severity_percentage": 0-100,
     "hydration_barrier_percentage": 0-100,
-    "pore_visibility_percentage": 0-100
+    "pore_visibility_percentage": 0-100,
+    "eye_contour_fatigue_percentage": 0-100
   }
 }`;
 
@@ -124,7 +127,7 @@ ${userChatJson}
 
 MISSION :
 1. Rédige un message empathique ('empathetic_message') extrêmement humain et bienveillant, justifiant les observations visuelles avec le ressenti du client.
-2. Déduis le 'final_skin_type' (ex: Mixte à tendance déshydratée).
+2. Déduis le 'final_skin_type' de façon très qualitative et experte (ex: "Peau Mixte à tendance déshydratée", "Peau Mature en manque d'éclat").
 3. Transmets l'estimation de l'âge cutané faite par le scanner dans 'estimated_skin_age'.
 4. Construis une 'kbeauty_routine' en maximum 5 étapes. Chaque étape doit renvoyer la catégorie de produit exacte (ex: 'Nettoyant à l'huile', 'Sérum Acide Hyaluronique') pour que notre base de données Medusa.js puisse les chercher.
 
@@ -185,8 +188,9 @@ FORMAT JSON ATTENDU :
     let finalResult: SkinAnalysisResult;
     try {
       finalResult = JSON.parse(cleanedClaudeContent);
-      // Inject Qwen metrics for the UI progress bars
+      // Inject Qwen metrics and phototype for the UI
       finalResult.metrics = qwenResult.metrics;
+      finalResult.melanin_phototype = qwenResult.melanin_phototype;
     } catch (e) {
       console.error("[Appel 2 Claude] Parsing error:", claudeRawContent);
       return { success: false, error: "Erreur de formatage de la routine finale." };
