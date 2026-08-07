@@ -21,12 +21,16 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
   const webcamRef = useRef<Webcam>(null);
   const requestRef = useRef<number | undefined>(undefined);
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const lastLuminanceCheckRef = useRef<number>(0);
+  const isTooDarkRef = useRef<boolean>(false);
 
   // States
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [step, setStep] = useState<"FRONT" | "LEFT" | "RIGHT" | "DONE">("FRONT");
   const [feedback, setFeedback] = useState<string>("Placez votre visage au centre du cadre");
   const [isPerfect, setIsPerfect] = useState(false);
+  const [isTooDark, setIsTooDark] = useState(false);
   
   // Results
   const [captures, setCaptures] = useState<Partial<CaptureResult>>({});
@@ -75,6 +79,30 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
     }
   }, []);
 
+  const checkLuminance = useCallback((video: HTMLVideoElement) => {
+    if (!canvasRef.current) return isTooDarkRef.current;
+    const ctx = canvasRef.current.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return isTooDarkRef.current;
+    
+    ctx.drawImage(video, 0, 0, 50, 50);
+    const imageData = ctx.getImageData(0, 0, 50, 50);
+    const data = imageData.data;
+    
+    let sumLuminance = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      sumLuminance += 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+    }
+    
+    const avgLuminance = sumLuminance / 2500; // 50x50
+    const tooDark = avgLuminance < 80;
+    
+    if (isTooDarkRef.current !== tooDark) {
+      isTooDarkRef.current = tooDark;
+      setIsTooDark(tooDark);
+    }
+    return tooDark;
+  }, []);
+
   // Process Video Frames
   const detectFace = useCallback(() => {
     if (!faceLandmarkerRef.current || !webcamRef.current?.video || step === "DONE") return;
@@ -86,6 +114,21 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
     }
 
     try {
+      const now = performance.now();
+      
+      // Luminance check every 500ms
+      if (now - lastLuminanceCheckRef.current > 500) {
+        lastLuminanceCheckRef.current = now;
+        checkLuminance(video);
+      }
+
+      if (isTooDarkRef.current) {
+        setFeedback("⚠️ Luminosité trop faible. Placez-vous face à la lumière.");
+        setIsPerfect(false);
+        requestRef.current = requestAnimationFrame(detectFace);
+        return;
+      }
+
       const startTimeMs = performance.now();
       const results = faceLandmarkerRef.current.detectForVideo(video, startTimeMs);
 
@@ -235,7 +278,7 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
               
               {/* Animated borders based on state */}
               <motion.div 
-                animate={{ borderColor: isPerfect ? "rgba(52,211,153,1)" : "rgba(255,255,255,0.4)" }}
+                animate={{ borderColor: isTooDark ? "rgba(239,68,68,1)" : isPerfect ? "rgba(52,211,153,1)" : "rgba(255,255,255,0.4)" }}
                 className="absolute inset-0 border-4 rounded-[4rem] transition-colors duration-500"
               />
               
@@ -278,9 +321,11 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className={`px-6 py-4 rounded-2xl text-center backdrop-blur-md border shadow-xl ${
-                isPerfect 
-                  ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-100' 
-                  : 'bg-black/40 border-white/20 text-white'
+                isTooDark
+                  ? 'bg-red-500/20 border-red-400/50 text-red-100'
+                  : isPerfect 
+                    ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-100' 
+                    : 'bg-black/40 border-white/20 text-white'
               }`}
             >
               <p className="font-semibold text-lg">{feedback}</p>
@@ -288,6 +333,9 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
           </div>
         </>
       )}
+      
+      {/* Hidden canvas for luminance calculation */}
+      <canvas ref={canvasRef} width={50} height={50} className="hidden" />
     </div>
   );
 }
