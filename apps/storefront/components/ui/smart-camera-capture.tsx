@@ -90,7 +90,7 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
     
     let sumLuminance = 0;
     for (let i = 0; i < data.length; i += 4) {
-      sumLuminance += 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+      sumLuminance += 0.299 * data[i]! + 0.587 * data[i+1]! + 0.114 * data[i+2]!;
     }
     
     const avgLuminance = sumLuminance / 2500; // 50x50
@@ -186,7 +186,7 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
     }
 
     requestRef.current = requestAnimationFrame(detectFace);
-  }, [step]);
+  }, [step, checkLuminance]);
 
   // Start Detection Loop
   useEffect(() => {
