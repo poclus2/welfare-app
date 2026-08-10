@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, ScanFace, ChevronRight, Camera, UploadCloud, RefreshCw } from "lucide-react";
+import { Sparkles, ScanFace, ChevronRight, Camera, RefreshCw, Send, Zap } from "lucide-react";
 import Webcam from "react-webcam";
 import { analyzeSkin, SkinAnalysisResult } from "@/app/actions/analyze-skin";
 import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
@@ -123,6 +123,18 @@ const DECISION_TREE: QuestionNode[] = [
   }
 ];
 
+// ─── Reusable AI Avatar ──────────────────────────────────────────────────────
+
+const AIAvatar = () => (
+  <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 mr-2.5 mt-auto shadow-lg"
+    style={{ background: "linear-gradient(135deg, #1a2e23 0%, #2d4a37 100%)", border: "1.5px solid rgba(110,231,183,0.25)" }}>
+    <Sparkles className="w-4 h-4 text-emerald-300" />
+  </div>
+);
+
+// ─── Progress steps ──────────────────────────────────────────────────────────
+const TOTAL_STEPS = 8; // DECISION_TREE length (excluding q_finish)
+
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export default function SkinCoachFlow() {
@@ -139,6 +151,7 @@ export default function SkinCoachFlow() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progressPercent, setProgressPercent] = useState<number>(5);
   const [inputText, setInputText] = useState("");
+  const [stepIndex, setStepIndex] = useState(0);
   
   // Photo capture state for text_or_photo
   const [showCamera, setShowCamera] = useState(false);
@@ -181,6 +194,7 @@ export default function SkinCoachFlow() {
     setUserResponses([]);
     setCurrentQuestionId("q_main_goal");
     setProgressPercent(5);
+    setStepIndex(0);
     setIsGenerating(false);
   };
 
@@ -215,11 +229,8 @@ export default function SkinCoachFlow() {
   const handleTextSubmit = (text: string, nextQuestionId?: string) => {
     if (!text.trim() || !nextQuestionId) return;
     
-    // 1. Enregistrer la réponse
     const newResponses = [...userResponses, { questionId: currentQuestionId, answer: text.trim() }];
     setUserResponses(newResponses);
-
-    // 2. Add user response bubble
     const userMsg: Message = { id: `msg-user-${Date.now()}`, sender: "user", text: text.trim() };
     setMessages((prev) => [...prev, userMsg]);
     
@@ -230,11 +241,8 @@ export default function SkinCoachFlow() {
   const handlePhotoSubmit = (base64Image: string, nextQuestionId?: string) => {
     if (!nextQuestionId) return;
 
-    // 1. Enregistrer la réponse
     const newResponses = [...userResponses, { questionId: currentQuestionId, answer: { type: "image" as const, base64: base64Image } }];
     setUserResponses(newResponses);
-
-    // 2. Add user response bubble
     const userMsg: Message = { id: `msg-user-${Date.now()}`, sender: "user", image: base64Image };
     setMessages((prev) => [...prev, userMsg]);
 
@@ -243,21 +251,17 @@ export default function SkinCoachFlow() {
   };
 
   const processNextStep = (newResponses: UserResponse[], nextQuestionId: string) => {
-    
-    // 3. Hide options and show AI typing indicator
     setIsTyping(true);
+    setStepIndex(prev => Math.min(prev + 1, TOTAL_STEPS));
 
-    // 4. Progress bar increment (random between 10 and 20)
     setProgressPercent((prev) => {
-      const increment = Math.floor(Math.random() * 11) + 10; // 10 to 20
+      const increment = Math.floor(Math.random() * 11) + 10;
       const newProgress = prev + increment;
       return newProgress > 95 ? 95 : newProgress;
     });
 
-    // 5. Process next step after a realistic delay
     setTimeout(() => {
       if (nextQuestionId === "q_finish") {
-        // End of the flow
         setProgressPercent(100);
         setIsGenerating(true);
         setIsTyping(false);
@@ -266,10 +270,8 @@ export default function SkinCoachFlow() {
           { id: `msg-ai-${Date.now()}`, sender: "ai", text: "Parfait ! Laissez-moi analyser tout ça... Génération de votre routine personnalisée en cours ✨" }
         ]);
         
-        // Exécute l'analyse avec la Server Action
         executeAnalysis(newResponses);
       } else {
-        // Next question
         const nextNode = DECISION_TREE.find((n) => n.id === nextQuestionId);
         if (nextNode) {
           setMessages((prev) => [...prev, { id: `msg-ai-${Date.now()}`, sender: "ai", text: nextNode.text }]);
@@ -277,16 +279,16 @@ export default function SkinCoachFlow() {
           setIsTyping(false);
         }
       }
-    }, 1200); // 1.2s typing delay
+    }, 1200);
   };
 
   const currentNode = DECISION_TREE.find((n) => n.id === currentQuestionId);
 
   return (
-    <div className="relative w-full h-[100dvh] bg-[#F4EAEB] overflow-hidden flex flex-col font-sans">
+    <div className="relative w-full h-[100dvh] overflow-hidden flex flex-col font-sans" style={{ background: "#0c0f0c" }}>
       
-      {/* ─── 1. BACKGROUND (Scanner Visuel / Caméra) ─── */}
-      <div className={`absolute inset-0 z-0 ${hasCaptured ? "h-[65vh]" : "h-[100dvh]"} w-full bg-slate-900 transition-all duration-700 ease-in-out`}>
+      {/* ─── 1. BACKGROUND ─── */}
+      <div className={`absolute z-0 ${hasCaptured ? "inset-x-0 top-0 h-[52vh]" : "inset-0"} w-full bg-slate-900 transition-all duration-700 ease-in-out`}>
         
         {!hasCaptured ? (
           <SmartCameraCapture 
@@ -294,83 +296,109 @@ export default function SkinCoachFlow() {
             onCancel={() => router.push("/")} 
           />
         ) : (
-          // Images Capturées (Gele)
+          // Images Capturées
           <div className="relative w-full h-full flex flex-row">
             <img 
               src={captures?.front} 
               alt="Analyse de peau Face" 
-              className="w-1/3 h-full object-cover object-top opacity-90"
+              className="w-1/3 h-full object-cover object-top"
             />
             <img 
               src={captures?.left} 
               alt="Analyse de peau Gauche" 
-              className="w-1/3 h-full object-cover object-top opacity-90 border-l border-white/10"
+              className="w-1/3 h-full object-cover object-top border-l border-white/10"
             />
             <img 
               src={captures?.right} 
               alt="Analyse de peau Droite" 
-              className="w-1/3 h-full object-cover object-top opacity-90 border-l border-white/10"
+              className="w-1/3 h-full object-cover object-top border-l border-white/10"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-[#F4EAEB] pointer-events-none" />
+
+            {/* Overlay gradient dégradant vers le bas */}
+            <div className="absolute inset-0 pointer-events-none"
+              style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(12,15,12,0.7) 70%, #0c0f0c 100%)" }}
+            />
+
+            {/* Scanning animation bars */}
+            <motion.div 
+              className="absolute inset-x-0 h-[2px] pointer-events-none"
+              style={{ background: "linear-gradient(90deg, transparent, rgba(110,231,183,0.6), transparent)" }}
+              animate={{ top: ["10%", "90%", "10%"] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+            />
+            
+            {/* Étiquettes d'analyse */}
+            <div className="absolute top-5 left-0 right-0 flex justify-around px-2 pointer-events-none">
+              {["FACE", "GAUCHE", "DROITE"].map((label) => (
+                <div key={label} className="text-[10px] font-bold text-emerald-300/70 tracking-widest uppercase bg-black/30 px-2 py-1 rounded-full backdrop-blur-sm border border-white/5">
+                  {label}
+                </div>
+              ))}
+            </div>
             
             {/* Bouton pour recommencer */}
             <button 
               onClick={handleRetake}
-              className="absolute top-6 right-6 bg-black/40 hover:bg-black/60 backdrop-blur-md border border-white/20 text-white p-3 rounded-full transition-colors z-50 shadow-md"
+              className="absolute top-5 right-4 bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/10 text-white p-2.5 rounded-full transition-all z-50 shadow-md hover:scale-105 active:scale-95"
             >
-              <RefreshCw className="w-5 h-5" />
+              <RefreshCw className="w-4 h-4" />
             </button>
           </div>
         )}
       </div>
 
-      {/* ─── 2. FOREGROUND (Chatbot Conversationnel Glassmorphism) ─── */}
+      {/* ─── 2. CHAT PANEL ─── */}
       {hasCaptured && (
-        <div className="relative z-10 flex-1 flex flex-col mt-[45vh] bg-white/70 backdrop-blur-2xl border-t border-white/50 rounded-t-[2.5rem] shadow-[0_-15px_40px_rgba(0,0,0,0.06)] animate-in slide-in-from-bottom duration-700 ease-out">
+        <div className="relative z-10 flex-1 flex flex-col mt-[45vh] rounded-t-[2rem] overflow-hidden"
+          style={{ background: "linear-gradient(180deg, rgba(18,24,20,0.98) 0%, #0f1812 100%)", backdropFilter: "blur(30px)", borderTop: "1px solid rgba(110,231,183,0.1)" }}>
           
-          {/* Barre de progression & Poignée (Drag Handle) */}
-            <div className="flex flex-col items-center pt-4 pb-3 px-6 shrink-0">
-              <div className="w-12 h-1.5 bg-slate-300/40 rounded-full mb-5" />
-              <div className="w-full flex items-center gap-4">
-                <div className="flex-1 h-1.5 bg-[#EDE0E0] rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progressPercent}%` }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
-                    className="h-full bg-slate-800 rounded-full"
-                  />
-                </div>
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">
-                  Diagnostic {progressPercent}%
+          {/* ─── Header ─── */}
+          <div className="flex flex-col items-center pt-3 pb-4 px-6 shrink-0 border-b border-white/5">
+            {/* Drag handle */}
+            <div className="w-10 h-1 rounded-full mb-4" style={{ background: "rgba(255,255,255,0.1)" }} />
+            
+            {/* Progress bar */}
+            <div className="w-full flex items-center gap-3">
+              <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progressPercent}%` }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                  className="h-full rounded-full"
+                  style={{ background: "linear-gradient(90deg, #10b981, #34d399)" }}
+                />
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Zap className="w-3 h-3 text-emerald-400" />
+                <span className="text-[10px] font-bold text-emerald-400/70 uppercase tracking-widest">
+                  {progressPercent}%
                 </span>
               </div>
             </div>
+          </div>
 
-          {/* Zone de Messages (Scrollable) */}
-          <div className="flex-1 overflow-y-auto px-6 pb-6 pt-2 space-y-5 scroll-smooth">
+          {/* ─── Messages ─── */}
+          <div className="flex-1 overflow-y-auto px-5 pb-6 pt-5 space-y-4 scroll-smooth">
             <AnimatePresence initial={false}>
               {messages.map((msg) => (
                 <motion.div
                   key={msg.id}
-                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  initial={{ opacity: 0, y: 16, scale: 0.97 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.4, type: "spring", bounce: 0.3 }}
-                  className={`flex w-full ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
+                  transition={{ duration: 0.35, type: "spring", bounce: 0.25 }}
+                  className={`flex w-full ${msg.sender === "user" ? "justify-end" : "justify-start items-end"}`}
                 >
-                  {/* Avatar IA */}
-                  {msg.sender === "ai" && (
-                    <div className="w-8 h-8 rounded-full bg-[#182823] flex items-center justify-center shrink-0 mr-3 mt-auto shadow-sm">
-                      <Sparkles className="w-4 h-4 text-emerald-100" />
-                    </div>
-                  )}
+                  {msg.sender === "ai" && <AIAvatar />}
                   
-                  {/* Bulle de texte ou image */}
-                  <div 
-                    className={`max-w-[75%] p-4 text-[14px] leading-relaxed ${
-                      msg.sender === "user" 
-                        ? "bg-slate-800 text-white rounded-3xl rounded-br-sm shadow-md"
-                        : "bg-white text-slate-800 rounded-3xl rounded-bl-sm shadow-sm border border-[#EDE0E0]/60"
-                    }`}
+                  <div className={`max-w-[78%] text-[14px] leading-relaxed ${
+                    msg.sender === "user" 
+                      ? "text-white rounded-2xl rounded-br-sm px-4 py-3 shadow-lg"
+                      : "rounded-2xl rounded-bl-sm px-4 py-3.5 shadow-sm"
+                  }`}
+                    style={msg.sender === "user"
+                      ? { background: "linear-gradient(135deg, #1e4d38, #2d6650)", border: "1px solid rgba(110,231,183,0.2)" }
+                      : { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.88)" }
+                    }
                   >
                     {msg.image ? (
                       <img src={msg.image} alt="Photo utilisateur" className="w-full h-auto rounded-xl object-cover" />
@@ -381,98 +409,153 @@ export default function SkinCoachFlow() {
                 </motion.div>
               ))}
               
-              {/* Indicateur de Frappe (Typing) */}
+              {/* Typing Indicator */}
               {isTyping && (
                 <motion.div
                   key="typing-indicator"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-                  className="flex w-full justify-start items-end gap-3"
+                  className="flex w-full justify-start items-end gap-2.5"
                 >
-                  <div className="w-8 h-8 rounded-full bg-[#182823] flex items-center justify-center shrink-0 shadow-sm">
-                    <Sparkles className="w-4 h-4 text-emerald-100" />
-                  </div>
-                  <div className="bg-white px-4 py-3.5 rounded-3xl rounded-bl-sm shadow-sm border border-[#EDE0E0]/60 flex items-center gap-1.5 h-[46px]">
-                    <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.9, delay: 0 }} className="w-1.5 h-1.5 bg-slate-400 rounded-full" />
-                    <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.9, delay: 0.2 }} className="w-1.5 h-1.5 bg-slate-400 rounded-full" />
-                    <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.9, delay: 0.4 }} className="w-1.5 h-1.5 bg-slate-400 rounded-full" />
+                  <AIAvatar />
+                  <div className="px-4 py-3.5 rounded-2xl rounded-bl-sm flex items-center gap-1.5"
+                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    {[0, 0.2, 0.4].map((delay, i) => (
+                      <motion.div key={i}
+                        animate={{ y: [0, -5, 0] }}
+                        transition={{ repeat: Infinity, duration: 0.9, delay }}
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{ background: "rgba(110,231,183,0.6)" }}
+                      />
+                    ))}
                   </div>
                 </motion.div>
               )}
 
-              {/* État final : Chargement de la routine */}
+              {/* Generating State */}
               {isGenerating && (
                 <motion.div
                   key="generating-state"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.6, duration: 0.5 }}
-                  className="w-full flex flex-col items-center justify-center pt-10 pb-4 space-y-5"
+                  className="w-full flex flex-col items-center justify-center pt-8 pb-4 space-y-5"
                 >
-                  <div className="w-20 h-20 rounded-full bg-emerald-50 border-4 border-emerald-100/50 flex items-center justify-center shadow-inner">
-                    <ScanFace className="w-10 h-10 text-[#182823] animate-pulse" />
+                  <div className="relative">
+                    {/* Pulsing rings */}
+                    <motion.div 
+                      className="absolute inset-0 rounded-full"
+                      style={{ border: "2px solid rgba(110,231,183,0.2)" }}
+                      animate={{ scale: [1, 1.5, 1], opacity: [0.8, 0, 0.8] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    />
+                    <motion.div 
+                      className="absolute inset-0 rounded-full"
+                      style={{ border: "2px solid rgba(110,231,183,0.15)" }}
+                      animate={{ scale: [1, 1.8, 1], opacity: [0.6, 0, 0.6] }}
+                      transition={{ duration: 2, repeat: Infinity, delay: 0.3 }}
+                    />
+                    <div className="w-20 h-20 rounded-full flex items-center justify-center shadow-2xl relative z-10"
+                      style={{ background: "linear-gradient(135deg, #1a2e23 0%, #2d4a37 100%)", border: "2px solid rgba(110,231,183,0.25)" }}>
+                      <ScanFace className="w-9 h-9 text-emerald-300" />
+                    </div>
                   </div>
-                  <p className="text-sm font-semibold text-slate-800 animate-pulse">Analyse de vos besoins en cours...</p>
+                  <div className="text-center space-y-1.5">
+                    <p className="text-sm font-bold text-white">Analyse dermatologique en cours</p>
+                    <motion.p 
+                      animate={{ opacity: [0.4, 1, 0.4] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="text-xs text-emerald-400/70"
+                    >
+                      Traitement par IA · Quelques instants...
+                    </motion.p>
+                  </div>
                 </motion.div>
               )}
               
-              {/* Point d'ancrage pour l'auto-scroll */}
               <div ref={chatEndRef} className="h-1" />
             </AnimatePresence>
           </div>
 
-          {/* ─── 3. Quick Replies (Boutons Chips) & Text Input ─── */}
+          {/* ─── Input Zone ─── */}
           {!isTyping && !isGenerating && currentNode && (
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ type: "spring", bounce: 0.2 }}
-              className="p-6 pt-2 bg-white/40 shrink-0"
+              className="px-5 pb-8 pt-3 shrink-0"
+              style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
             >
               {currentNode.type === "choice" && currentNode.options ? (
                 <div className="flex flex-col gap-2.5">
                   {currentNode.options.map((option, index) => (
-                    <button
+                    <motion.button
                       key={`${option.label}-${index}`}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.07, type: "spring", bounce: 0.2 }}
                       onClick={() => handleOptionSelect(option)}
-                      className="w-full bg-slate-800 text-white hover:bg-slate-900 active:scale-[0.98] transition-all py-4 px-6 rounded-2xl text-[15px] font-semibold flex items-center justify-between group shadow-sm"
+                      className="w-full text-left py-3.5 px-5 rounded-2xl text-[14px] font-semibold flex items-center justify-between group transition-all active:scale-[0.98]"
+                      style={{
+                        background: "rgba(255,255,255,0.04)",
+                        border: "1px solid rgba(110,231,183,0.15)",
+                        color: "rgba(255,255,255,0.85)"
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "rgba(110,231,183,0.08)";
+                        e.currentTarget.style.borderColor = "rgba(110,231,183,0.4)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+                        e.currentTarget.style.borderColor = "rgba(110,231,183,0.15)";
+                      }}
                     >
-                      {option.label}
-                      <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
-                        <ChevronRight className="w-4 h-4 text-white/90 group-hover:translate-x-0.5 transition-transform" />
+                      <span>{option.label}</span>
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 ml-3 transition-all"
+                        style={{ background: "rgba(110,231,183,0.1)", border: "1px solid rgba(110,231,183,0.2)" }}>
+                        <ChevronRight className="w-3.5 h-3.5 text-emerald-400" />
                       </div>
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               ) : (
                 <div className="flex items-center gap-3 relative">
-                  <input
-                    type="text"
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        handleTextSubmit(inputText, currentNode.nextQuestionId);
-                      }
-                    }}
-                    placeholder="Votre réponse..."
-                    className={`flex-1 bg-white border border-[#EDE0E0] text-slate-800 placeholder-slate-400 py-4 ${currentNode.type === "text_or_photo" ? 'pl-5 pr-14' : 'px-5'} rounded-2xl outline-none focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50 transition-all shadow-sm`}
-                  />
-                  {currentNode.type === "text_or_photo" && (
-                    <button
-                      onClick={() => setShowCamera(true)}
-                      className="absolute right-[80px] top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-600 transition-colors p-2"
-                    >
-                      <Camera className="w-6 h-6" />
-                    </button>
-                  )}
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={inputText}
+                      onChange={(e) => setInputText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleTextSubmit(inputText, currentNode.nextQuestionId);
+                        }
+                      }}
+                      placeholder="Votre réponse..."
+                      className={`w-full text-[14px] py-4 ${currentNode.type === "text_or_photo" ? 'pl-5 pr-14' : 'pl-5 pr-5'} rounded-2xl outline-none transition-all`}
+                      style={{
+                        background: "rgba(255,255,255,0.05)",
+                        border: "1px solid rgba(110,231,183,0.2)",
+                        color: "rgba(255,255,255,0.9)",
+                      }}
+                    />
+                    {currentNode.type === "text_or_photo" && (
+                      <button
+                        onClick={() => setShowCamera(true)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors"
+                        style={{ color: "rgba(110,231,183,0.6)" }}
+                      >
+                        <Camera className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
                   <button
                     onClick={() => handleTextSubmit(inputText, currentNode.nextQuestionId)}
                     disabled={!inputText.trim()}
-                    className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white p-4 rounded-2xl transition-colors shadow-sm"
+                    className="p-4 rounded-2xl transition-all disabled:opacity-30 shadow-lg active:scale-95"
+                    style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}
                   >
-                    <ChevronRight className="w-6 h-6" />
+                    <Send className="w-5 h-5 text-white" />
                   </button>
                 </div>
               )}
@@ -481,7 +564,7 @@ export default function SkinCoachFlow() {
         </div>
       )}
 
-      {/* ─── 4. Camera Overlay pour les produits ─── */}
+      {/* ─── Camera Overlay ─── */}
       <AnimatePresence>
         {showCamera && (
           <motion.div
@@ -499,7 +582,6 @@ export default function SkinCoachFlow() {
                 videoConstraints={{ facingMode: "environment" }}
                 className="w-full h-full object-cover"
               />
-              {/* Controles */}
               <div className="absolute top-6 left-6">
                 <button 
                   onClick={() => setShowCamera(false)}
@@ -508,7 +590,7 @@ export default function SkinCoachFlow() {
                   Annuler
                 </button>
               </div>
-              <div className="absolute bottom-10 left-0 right-0 flex justify-center items-center">
+              <div className="absolute bottom-12 left-0 right-0 flex justify-center items-center">
                 <button
                   onClick={() => {
                     const src = webcamRef.current?.getScreenshot();
