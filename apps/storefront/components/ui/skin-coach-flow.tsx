@@ -44,10 +44,31 @@ const DECISION_TREE: QuestionNode[] = [
     text: "👋 Bonjour ! Pendant que j'analyse vos photos, dites-m'en plus sur vous. Quel est votre objectif numéro 1 aujourd'hui ?",
     type: "choice",
     options: [
-      { label: "Combattre l'acné & imperfections", nextQuestionId: "q_sensitivity" },
-      { label: "Atténuer les taches (Hyperpigmentation)", nextQuestionId: "q_sensitivity" },
-      { label: "Hydratation & effet Glow", nextQuestionId: "q_sensitivity" },
-      { label: "Anti-âge & fermeté", nextQuestionId: "q_sensitivity" }
+      { label: "Combattre l'acné & imperfections", nextQuestionId: "q_post_wash" },
+      { label: "Atténuer les taches (Hyperpigmentation)", nextQuestionId: "q_post_wash" },
+      { label: "Hydratation & effet Glow", nextQuestionId: "q_post_wash" },
+      { label: "Anti-âge & fermeté", nextQuestionId: "q_post_wash" }
+    ]
+  },
+  {
+    id: "q_post_wash",
+    text: "Pour bien comprendre votre métabolisme, dites-moi : comment ressentez-vous votre peau dans les minutes qui suivent son nettoyage ?",
+    type: "choice",
+    options: [
+      { label: "Elle tiraille, j'ai un besoin urgent de l'hydrater", nextQuestionId: "q_midday_behavior" },
+      { label: "Elle est normale et plutôt confortable", nextQuestionId: "q_midday_behavior" },
+      { label: "Elle regraisse très rapidement", nextQuestionId: "q_midday_behavior" }
+    ]
+  },
+  {
+    id: "q_midday_behavior",
+    text: "Et au milieu de la journée (vers 14h), comment évolue-t-elle généralement ?",
+    type: "choice",
+    options: [
+      { label: "Elle brille sur tout le visage", nextQuestionId: "q_sensitivity" },
+      { label: "Elle brille uniquement sur la zone T (Front, Nez, Menton)", nextQuestionId: "q_sensitivity" },
+      { label: "Elle reste mate, mais j'ai des zones sèches ou squameuses", nextQuestionId: "q_sensitivity" },
+      { label: "Elle ne bouge pas, elle reste confortable", nextQuestionId: "q_sensitivity" }
     ]
   },
   {

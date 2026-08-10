@@ -127,7 +127,7 @@ ${userChatJson}
 
 MISSION :
 1. Rédige un message empathique ('empathetic_message') extrêmement humain et bienveillant, justifiant les observations visuelles avec le ressenti du client.
-2. Déduis le 'final_skin_type' de façon très qualitative et experte (ex: "Peau Mixte à tendance déshydratée", "Peau Mature en manque d'éclat").
+2. Déduis le 'final_skin_type' (ex: Peau Mixte à tendance déshydratée). RÈGLE ABSOLUE POUR LE TYPE DE PEAU : Tu dois croiser les métriques visuelles de l'image (brillance, pores) avec le COMPORTEMENT déclaré par le client dans le chat (le ressenti post-lavage ET l'évolution à la mi-journée). Exemples de déductions : Tiraillement post-lavage + Brillance mi-journée = Peau Grasse ou Mixte Déshydratée. Tiraillement + Sécheresse mi-journée = Peau Sèche. Le ressenti physique temporel du client prime toujours pour nuancer l'image.
 3. Transmets l'estimation de l'âge cutané faite par le scanner dans 'estimated_skin_age'.
 4. Construis une 'kbeauty_routine' en maximum 5 étapes. Chaque étape doit renvoyer la catégorie de produit exacte (ex: 'Nettoyant à l'huile', 'Sérum Acide Hyaluronique') pour que notre base de données Medusa.js puisse les chercher.
 
