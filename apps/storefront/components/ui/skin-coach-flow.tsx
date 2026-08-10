@@ -433,47 +433,7 @@ export default function SkinCoachFlow() {
                 </motion.div>
               )}
 
-              {/* Generating State */}
-              {isGenerating && (
-                <motion.div
-                  key="generating-state"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6, duration: 0.5 }}
-                  className="w-full flex flex-col items-center justify-center pt-8 pb-4 space-y-5"
-                >
-                  <div className="relative">
-                    {/* Pulsing rings */}
-                    <motion.div 
-                      className="absolute inset-0 rounded-full"
-                      style={{ border: "2px solid rgba(110,231,183,0.2)" }}
-                      animate={{ scale: [1, 1.5, 1], opacity: [0.8, 0, 0.8] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    />
-                    <motion.div 
-                      className="absolute inset-0 rounded-full"
-                      style={{ border: "2px solid rgba(110,231,183,0.15)" }}
-                      animate={{ scale: [1, 1.8, 1], opacity: [0.6, 0, 0.6] }}
-                      transition={{ duration: 2, repeat: Infinity, delay: 0.3 }}
-                    />
-                    <div className="w-20 h-20 rounded-full flex items-center justify-center shadow-2xl relative z-10"
-                      style={{ background: "linear-gradient(135deg, #1a2e23 0%, #2d4a37 100%)", border: "2px solid rgba(110,231,183,0.25)" }}>
-                      <ScanFace className="w-9 h-9 text-emerald-300" />
-                    </div>
-                  </div>
-                  <div className="text-center space-y-1.5">
-                    <p className="text-sm font-bold text-white">Analyse dermatologique en cours</p>
-                    <motion.p 
-                      animate={{ opacity: [0.4, 1, 0.4] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                      className="text-xs text-emerald-400/70"
-                    >
-                      Traitement par IA · Quelques instants...
-                    </motion.p>
-                  </div>
-                </motion.div>
-              )}
-              
+
               <div ref={chatEndRef} className="h-1" />
             </AnimatePresence>
           </div>
@@ -603,6 +563,134 @@ export default function SkinCoachFlow() {
                   <div className="w-full h-full bg-white rounded-full shadow-lg" />
                 </button>
               </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* ─── Analysis Popup Modal ─── */}
+      <AnimatePresence>
+        {isGenerating && (
+          <motion.div
+            key="analysis-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+            className="absolute inset-0 z-[100] flex flex-col items-center justify-center"
+            style={{ background: "rgba(8, 12, 8, 0.92)", backdropFilter: "blur(20px)" }}
+          >
+            {/* Animated background orbs */}
+            <motion.div
+              className="absolute rounded-full pointer-events-none"
+              style={{ width: 400, height: 400, background: "radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%)", top: "10%", left: "50%", translateX: "-50%" }}
+              animate={{ scale: [1, 1.15, 1], opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute rounded-full pointer-events-none"
+              style={{ width: 300, height: 300, background: "radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)", bottom: "15%", left: "20%" }}
+              animate={{ scale: [1.1, 1, 1.1], opacity: [0.3, 0.7, 0.3] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+            />
+
+            {/* DNA helix-like scan rings */}
+            <div className="relative flex items-center justify-center mb-10">
+              {[0, 1, 2, 3].map((i) => (
+                <motion.div
+                  key={i}
+                  className="absolute rounded-full border"
+                  style={{
+                    width: 80 + i * 50,
+                    height: 80 + i * 50,
+                    borderColor: `rgba(110,231,183,${0.35 - i * 0.07})`,
+                  }}
+                  animate={{ rotate: i % 2 === 0 ? [0, 360] : [360, 0], scale: [1, 1.04, 1] }}
+                  transition={{ duration: 6 + i * 2, repeat: Infinity, ease: "linear" }}
+                />
+              ))}
+
+              {/* Center logo */}
+              <motion.div
+                className="relative z-10 w-20 h-20 rounded-full flex items-center justify-center"
+                style={{
+                  background: "linear-gradient(135deg, #1a2e23 0%, #2d4a37 100%)",
+                  border: "2px solid rgba(110,231,183,0.35)",
+                  boxShadow: "0 0 40px rgba(16,185,129,0.25), inset 0 0 20px rgba(16,185,129,0.08)"
+                }}
+                animate={{ scale: [1, 1.06, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <ScanFace className="w-9 h-9 text-emerald-300" />
+              </motion.div>
+            </div>
+
+            {/* Text block */}
+            <div className="text-center px-8 space-y-4 relative z-10">
+              <motion.h2
+                className="text-2xl font-extrabold text-white"
+                style={{ letterSpacing: "-0.02em" }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                Analyse en cours...
+              </motion.h2>
+
+              <motion.p
+                className="text-sm font-medium"
+                style={{ color: "rgba(255,255,255,0.45)" }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+              >
+                Notre IA dermatologique croise vos données visuelles avec vos réponses pour créer votre routine parfaite.
+              </motion.p>
+
+              {/* Animated step list */}
+              <div className="mt-6 space-y-2.5 text-left">
+                {[
+                  { label: "Analyse des photos (Face, Gauche, Droite)", delay: 0.6 },
+                  { label: "Calcul des indices cutanés", delay: 1.1 },
+                  { label: "Croisement avec vos réponses", delay: 1.6 },
+                  { label: "Génération de votre routine K-Beauty", delay: 2.1 },
+                ].map((step, i) => (
+                  <motion.div
+                    key={i}
+                    className="flex items-center gap-3 px-4 py-3 rounded-2xl"
+                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: step.delay, type: "spring", bounce: 0.3 }}
+                  >
+                    <motion.div
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ background: "#10b981" }}
+                      animate={{ opacity: [0.4, 1, 0.4], scale: [0.8, 1.2, 0.8] }}
+                      transition={{ duration: 1.5, repeat: Infinity, delay: step.delay }}
+                    />
+                    <span className="text-[13px] font-medium" style={{ color: "rgba(255,255,255,0.6)" }}>
+                      {step.label}
+                    </span>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Bottom loading bar */}
+              <motion.div
+                className="mt-6 w-full h-1 rounded-full overflow-hidden"
+                style={{ background: "rgba(255,255,255,0.06)" }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.8 }}
+              >
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ background: "linear-gradient(90deg, #10b981, #34d399, #10b981)", backgroundSize: "200%" }}
+                  animate={{ backgroundPosition: ["0%", "200%"] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  initial={{ width: "0%" }}
+                />
+              </motion.div>
             </div>
           </motion.div>
         )}
