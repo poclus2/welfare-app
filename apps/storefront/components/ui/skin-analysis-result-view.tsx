@@ -10,7 +10,10 @@ interface Props {
   onRetake: () => void;
 }
 
-// ─── Score global calculé à partir des métriques ────────────────────────────
+// Brand palette
+// Primary: #E5B6B9 (blush rose)
+// Dark bg: #1A1516
+// Foreground: #2A2424
 
 function computeOverallScore(metrics?: SkinAnalysisResult["metrics"]): number {
   if (!metrics) return 72;
@@ -119,12 +122,14 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
   };
 
   const metrics = result.metrics;
+  const metricIconColor = "#E5B6B9";
+  const iconStyle = { color: metricIconColor };
   const metricDefs = metrics ? [
-    { label: "Acné & Imperfections", value: metrics.acne_severity_percentage, type: "bad" as const, icon: <Zap className="w-3.5 h-3.5 text-emerald-400" /> },
-    { label: "Niveau de Sébum", value: metrics.sebum_level_percentage, type: "bad" as const, icon: <Droplets className="w-3.5 h-3.5 text-emerald-400" /> },
-    { label: "Dilatation des Pores", value: metrics.pore_visibility_percentage, type: "bad" as const, icon: <Sun className="w-3.5 h-3.5 text-emerald-400" /> },
-    { label: "Contour des Yeux", value: metrics.eye_contour_fatigue_percentage, type: "bad" as const, icon: <Eye className="w-3.5 h-3.5 text-emerald-400" /> },
-    { label: "Barrière d'Hydratation", value: metrics.hydration_barrier_percentage, type: "good" as const, icon: <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> },
+    { label: "Acné & Imperfections", value: metrics.acne_severity_percentage, type: "bad" as const, icon: <Zap className="w-3.5 h-3.5" style={iconStyle} /> },
+    { label: "Niveau de Sébum", value: metrics.sebum_level_percentage, type: "bad" as const, icon: <Droplets className="w-3.5 h-3.5" style={iconStyle} /> },
+    { label: "Dilatation des Pores", value: metrics.pore_visibility_percentage, type: "bad" as const, icon: <Sun className="w-3.5 h-3.5" style={iconStyle} /> },
+    { label: "Contour des Yeux", value: metrics.eye_contour_fatigue_percentage, type: "bad" as const, icon: <Eye className="w-3.5 h-3.5" style={iconStyle} /> },
+    { label: "Barrière d'Hydratation", value: metrics.hydration_barrier_percentage, type: "good" as const, icon: <TrendingUp className="w-3.5 h-3.5" style={iconStyle} /> },
   ] : [];
 
   return (
@@ -134,14 +139,14 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5 }}
       className="min-h-[100dvh] relative w-full flex flex-col font-sans"
-      style={{ background: "#0c0f0c" }}
+      style={{ background: "#1A1516" }}
     >
       {/* Background subtle orbs */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-[-20%] left-[-10%] w-96 h-96 rounded-full opacity-[0.04]"
-          style={{ background: "#10b981", filter: "blur(100px)" }} />
+        <div className="absolute top-[-20%] left-[-10%] w-96 h-96 rounded-full opacity-[0.05]"
+          style={{ background: "#E5B6B9", filter: "blur(100px)" }} />
         <div className="absolute bottom-[20%] right-[-15%] w-80 h-80 rounded-full opacity-[0.03]"
-          style={{ background: "#6366f1", filter: "blur(100px)" }} />
+          style={{ background: "#C8868A", filter: "blur(100px)" }} />
       </div>
 
       <div className="relative z-10 flex-1 pb-36 overflow-y-auto">
@@ -153,21 +158,21 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
         >
           {/* Badge */}
           <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-6 text-[11px] font-bold uppercase tracking-widest"
-            style={{ background: "rgba(110,231,183,0.08)", border: "1px solid rgba(110,231,183,0.2)", color: "#6ee7b7" }}>
+            style={{ background: "rgba(229,182,185,0.08)", border: "1px solid rgba(229,182,185,0.2)", color: "#E5B6B9" }}>
             <Sparkles className="w-3 h-3" />
             Diagnostic IA Finalisé
           </motion.div>
 
           {/* ─── HERO CARD ─── */}
           <motion.div variants={itemVariants} className="rounded-3xl overflow-hidden relative mb-5"
-            style={{ background: "linear-gradient(135deg, #111c16 0%, #0d1a12 100%)", border: "1px solid rgba(110,231,183,0.12)" }}>
+            style={{ background: "linear-gradient(135deg, #231819 0%, #1A1516 100%)", border: "1px solid rgba(229,182,185,0.12)" }}>
             
             {/* Glowing corner accent */}
             <div className="absolute top-0 right-0 w-32 h-32 rounded-full pointer-events-none"
-              style={{ background: "radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%)", transform: "translate(30%, -30%)" }} />
+              style={{ background: "radial-gradient(circle, rgba(229,182,185,0.1) 0%, transparent 70%)", transform: "translate(30%, -30%)" }} />
             
             <div className="p-7">
-              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "rgba(110,231,183,0.5)" }}>
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "rgba(229,182,185,0.5)" }}>
                 Votre Profil Cutané
               </p>
               <h1 className="text-2xl font-extrabold text-white leading-tight mb-1" style={{ letterSpacing: "-0.02em" }}>
@@ -249,7 +254,7 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
         >
           <motion.div variants={itemVariants}>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-1 h-4 rounded-full" style={{ background: "#10b981" }} />
+              <div className="w-1 h-4 rounded-full" style={{ background: "#E5B6B9" }} />
               <h2 className="text-sm font-bold text-white">Indices Cutanés</h2>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -290,7 +295,7 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
           {/* ─── ROUTINE ─── */}
           <motion.div variants={itemVariants}>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-1 h-4 rounded-full" style={{ background: "#6366f1" }} />
+              <div className="w-1 h-4 rounded-full" style={{ background: "#E5B6B9" }} />
               <h2 className="text-sm font-bold text-white">Votre Routine Sur-Mesure</h2>
             </div>
             <div className="space-y-3">
@@ -332,12 +337,12 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
         animate={{ y: 0 }}
         transition={{ delay: 0.8, type: "spring", bounce: 0.2 }}
         className="fixed bottom-0 left-0 right-0 z-50 px-5 pb-8 pt-4"
-        style={{ background: "linear-gradient(to top, #0c0f0c 60%, transparent)" }}
+        style={{ background: "linear-gradient(to top, #1A1516 60%, transparent)" }}
       >
         <button 
           onClick={() => router.push('/shop')}
           className="w-full py-4 px-6 rounded-2xl font-bold text-[15px] flex justify-center items-center gap-2.5 mb-3 transition-all active:scale-[0.98] shadow-2xl"
-          style={{ background: "linear-gradient(135deg, #10b981, #059669)", color: "white", boxShadow: "0 8px 30px rgba(16,185,129,0.35)" }}
+          style={{ background: "linear-gradient(135deg, #C8868A, #E5B6B9)", color: "white", boxShadow: "0 8px 30px rgba(229,182,185,0.3)" }}
         >
           <ShoppingBag className="w-5 h-5" />
           Découvrir ma sélection de soins

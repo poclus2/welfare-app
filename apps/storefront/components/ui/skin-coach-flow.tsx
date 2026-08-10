@@ -127,8 +127,8 @@ const DECISION_TREE: QuestionNode[] = [
 
 const AIAvatar = () => (
   <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 mr-2.5 mt-auto shadow-lg"
-    style={{ background: "linear-gradient(135deg, #1a2e23 0%, #2d4a37 100%)", border: "1.5px solid rgba(110,231,183,0.25)" }}>
-    <Sparkles className="w-4 h-4 text-emerald-300" />
+    style={{ background: "linear-gradient(135deg, #2A1E1F 0%, #4a2c2e 100%)", border: "1.5px solid rgba(229,182,185,0.3)" }}>
+    <Sparkles className="w-4 h-4" style={{ color: "#E5B6B9" }} />
   </div>
 );
 
@@ -155,6 +155,7 @@ export default function SkinCoachFlow() {
   
   // Photo capture state for text_or_photo
   const [showCamera, setShowCamera] = useState(false);
+  const [cameraNextQuestionId, setCameraNextQuestionId] = useState<string | undefined>(undefined);
   const webcamRef = useRef<Webcam>(null);
   
   // Analysis states
@@ -285,7 +286,7 @@ export default function SkinCoachFlow() {
   const currentNode = DECISION_TREE.find((n) => n.id === currentQuestionId);
 
   return (
-    <div className="relative w-full h-[100dvh] overflow-hidden flex flex-col font-sans" style={{ background: "#0c0f0c" }}>
+    <div className="relative w-full h-[100dvh] overflow-hidden flex flex-col font-sans" style={{ background: "#1A1516" }}>
       
       {/* ─── 1. BACKGROUND ─── */}
       <div className={`absolute z-0 ${hasCaptured ? "inset-x-0 top-0 h-[52vh]" : "inset-0"} w-full bg-slate-900 transition-all duration-700 ease-in-out`}>
@@ -316,13 +317,13 @@ export default function SkinCoachFlow() {
 
             {/* Overlay gradient dégradant vers le bas */}
             <div className="absolute inset-0 pointer-events-none"
-              style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(12,15,12,0.7) 70%, #0c0f0c 100%)" }}
+              style={{ background: "linear-gradient(to bottom, rgba(26,21,22,0.15) 0%, rgba(26,21,22,0.7) 70%, #1A1516 100%)" }}
             />
 
             {/* Scanning animation bars */}
             <motion.div 
               className="absolute inset-x-0 h-[2px] pointer-events-none"
-              style={{ background: "linear-gradient(90deg, transparent, rgba(110,231,183,0.6), transparent)" }}
+              style={{ background: "linear-gradient(90deg, transparent, rgba(229,182,185,0.7), transparent)" }}
               animate={{ top: ["10%", "90%", "10%"] }}
               transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
             />
@@ -330,7 +331,7 @@ export default function SkinCoachFlow() {
             {/* Étiquettes d'analyse */}
             <div className="absolute top-5 left-0 right-0 flex justify-around px-2 pointer-events-none">
               {["FACE", "GAUCHE", "DROITE"].map((label) => (
-                <div key={label} className="text-[10px] font-bold text-emerald-300/70 tracking-widest uppercase bg-black/30 px-2 py-1 rounded-full backdrop-blur-sm border border-white/5">
+                <div key={label} className="text-[10px] font-bold tracking-widest uppercase bg-black/30 px-2 py-1 rounded-full backdrop-blur-sm border border-white/5" style={{ color: "rgba(229,182,185,0.8)" }}>
                   {label}
                 </div>
               ))}
@@ -350,7 +351,7 @@ export default function SkinCoachFlow() {
       {/* ─── 2. CHAT PANEL ─── */}
       {hasCaptured && (
         <div className="relative z-10 flex-1 flex flex-col mt-[45vh] rounded-t-[2rem] overflow-hidden"
-          style={{ background: "linear-gradient(180deg, rgba(18,24,20,0.98) 0%, #0f1812 100%)", backdropFilter: "blur(30px)", borderTop: "1px solid rgba(110,231,183,0.1)" }}>
+          style={{ background: "linear-gradient(180deg, rgba(36,26,27,0.99) 0%, #1A1516 100%)", backdropFilter: "blur(30px)", borderTop: "1px solid rgba(229,182,185,0.12)" }}>
           
           {/* ─── Header ─── */}
           <div className="flex flex-col items-center pt-3 pb-4 px-6 shrink-0 border-b border-white/5">
@@ -365,12 +366,12 @@ export default function SkinCoachFlow() {
                   animate={{ width: `${progressPercent}%` }}
                   transition={{ duration: 0.6, ease: "easeOut" }}
                   className="h-full rounded-full"
-                  style={{ background: "linear-gradient(90deg, #10b981, #34d399)" }}
+                  style={{ background: "linear-gradient(90deg, #C8868A, #E5B6B9)" }}
                 />
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
-                <Zap className="w-3 h-3 text-emerald-400" />
-                <span className="text-[10px] font-bold text-emerald-400/70 uppercase tracking-widest">
+                <Zap className="w-3 h-3" style={{ color: "#E5B6B9" }} />
+                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "rgba(229,182,185,0.7)" }}>
                   {progressPercent}%
                 </span>
               </div>
@@ -396,7 +397,7 @@ export default function SkinCoachFlow() {
                       : "rounded-2xl rounded-bl-sm px-4 py-3.5 shadow-sm"
                   }`}
                     style={msg.sender === "user"
-                      ? { background: "linear-gradient(135deg, #1e4d38, #2d6650)", border: "1px solid rgba(110,231,183,0.2)" }
+                      ? { background: "linear-gradient(135deg, #4a2c2e, #6b3d40)", border: "1px solid rgba(229,182,185,0.25)" }
                       : { background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.88)" }
                     }
                   >
@@ -426,7 +427,7 @@ export default function SkinCoachFlow() {
                         animate={{ y: [0, -5, 0] }}
                         transition={{ repeat: Infinity, duration: 0.9, delay }}
                         className="w-1.5 h-1.5 rounded-full"
-                        style={{ background: "rgba(110,231,183,0.6)" }}
+                        style={{ background: "rgba(229,182,185,0.7)" }}
                       />
                     ))}
                   </div>
@@ -458,23 +459,23 @@ export default function SkinCoachFlow() {
                       onClick={() => handleOptionSelect(option)}
                       className="w-full text-left py-3.5 px-5 rounded-2xl text-[14px] font-semibold flex items-center justify-between group transition-all active:scale-[0.98]"
                       style={{
-                        background: "rgba(255,255,255,0.04)",
-                        border: "1px solid rgba(110,231,183,0.15)",
+                        background: "rgba(229,182,185,0.05)",
+                        border: "1px solid rgba(229,182,185,0.15)",
                         color: "rgba(255,255,255,0.85)"
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "rgba(110,231,183,0.08)";
-                        e.currentTarget.style.borderColor = "rgba(110,231,183,0.4)";
+                        e.currentTarget.style.background = "rgba(229,182,185,0.1)";
+                        e.currentTarget.style.borderColor = "rgba(229,182,185,0.4)";
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "rgba(255,255,255,0.04)";
-                        e.currentTarget.style.borderColor = "rgba(110,231,183,0.15)";
+                        e.currentTarget.style.background = "rgba(229,182,185,0.05)";
+                        e.currentTarget.style.borderColor = "rgba(229,182,185,0.15)";
                       }}
                     >
                       <span>{option.label}</span>
                       <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 ml-3 transition-all"
-                        style={{ background: "rgba(110,231,183,0.1)", border: "1px solid rgba(110,231,183,0.2)" }}>
-                        <ChevronRight className="w-3.5 h-3.5 text-emerald-400" />
+                        style={{ background: "rgba(229,182,185,0.1)", border: "1px solid rgba(229,182,185,0.2)" }}>
+                        <ChevronRight className="w-3.5 h-3.5" style={{ color: "#E5B6B9" }} />
                       </div>
                     </motion.button>
                   ))}
@@ -494,16 +495,19 @@ export default function SkinCoachFlow() {
                       placeholder="Votre réponse..."
                       className={`w-full text-[14px] py-4 ${currentNode.type === "text_or_photo" ? 'pl-5 pr-14' : 'pl-5 pr-5'} rounded-2xl outline-none transition-all`}
                       style={{
-                        background: "rgba(255,255,255,0.05)",
-                        border: "1px solid rgba(110,231,183,0.2)",
+                        background: "rgba(229,182,185,0.06)",
+                        border: "1px solid rgba(229,182,185,0.2)",
                         color: "rgba(255,255,255,0.9)",
                       }}
                     />
                     {currentNode.type === "text_or_photo" && (
                       <button
-                        onClick={() => setShowCamera(true)}
+                        onClick={() => {
+                          setCameraNextQuestionId(currentNode.nextQuestionId);
+                          setShowCamera(true);
+                        }}
                         className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors"
-                        style={{ color: "rgba(110,231,183,0.6)" }}
+                        style={{ color: "rgba(229,182,185,0.7)" }}
                       >
                         <Camera className="w-5 h-5" />
                       </button>
@@ -513,7 +517,7 @@ export default function SkinCoachFlow() {
                     onClick={() => handleTextSubmit(inputText, currentNode.nextQuestionId)}
                     disabled={!inputText.trim()}
                     className="p-4 rounded-2xl transition-all disabled:opacity-30 shadow-lg active:scale-95"
-                    style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}
+                    style={{ background: "linear-gradient(135deg, #C8868A, #E5B6B9)" }}
                   >
                     <Send className="w-5 h-5 text-white" />
                   </button>
@@ -554,8 +558,8 @@ export default function SkinCoachFlow() {
                 <button
                   onClick={() => {
                     const src = webcamRef.current?.getScreenshot();
-                    if (src && currentNode?.nextQuestionId) {
-                      handlePhotoSubmit(src, currentNode.nextQuestionId);
+                    if (src && cameraNextQuestionId) {
+                      handlePhotoSubmit(src, cameraNextQuestionId);
                     }
                   }}
                   className="w-20 h-20 bg-white/20 rounded-full border-4 border-white flex items-center justify-center p-2 backdrop-blur-sm hover:scale-105 active:scale-95 transition-transform"
@@ -577,18 +581,18 @@ export default function SkinCoachFlow() {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
             className="absolute inset-0 z-[100] flex flex-col items-center justify-center"
-            style={{ background: "rgba(8, 12, 8, 0.92)", backdropFilter: "blur(20px)" }}
+            style={{ background: "rgba(26, 21, 22, 0.94)", backdropFilter: "blur(20px)" }}
           >
             {/* Animated background orbs */}
             <motion.div
               className="absolute rounded-full pointer-events-none"
-              style={{ width: 400, height: 400, background: "radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%)", top: "10%", left: "50%", translateX: "-50%" }}
+              style={{ width: 400, height: 400, background: "radial-gradient(circle, rgba(229,182,185,0.1) 0%, transparent 70%)", top: "10%", left: "50%", translateX: "-50%" }}
               animate={{ scale: [1, 1.15, 1], opacity: [0.5, 1, 0.5] }}
               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
             />
             <motion.div
               className="absolute rounded-full pointer-events-none"
-              style={{ width: 300, height: 300, background: "radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)", bottom: "15%", left: "20%" }}
+              style={{ width: 300, height: 300, background: "radial-gradient(circle, rgba(200,134,138,0.08) 0%, transparent 70%)", bottom: "15%", left: "20%" }}
               animate={{ scale: [1.1, 1, 1.1], opacity: [0.3, 0.7, 0.3] }}
               transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
             />
@@ -602,7 +606,7 @@ export default function SkinCoachFlow() {
                   style={{
                     width: 80 + i * 50,
                     height: 80 + i * 50,
-                    borderColor: `rgba(110,231,183,${0.35 - i * 0.07})`,
+                    borderColor: `rgba(229,182,185,${0.35 - i * 0.07})`,
                   }}
                   animate={{ rotate: i % 2 === 0 ? [0, 360] : [360, 0], scale: [1, 1.04, 1] }}
                   transition={{ duration: 6 + i * 2, repeat: Infinity, ease: "linear" }}
@@ -613,9 +617,9 @@ export default function SkinCoachFlow() {
               <motion.div
                 className="relative z-10 w-20 h-20 rounded-full flex items-center justify-center"
                 style={{
-                  background: "linear-gradient(135deg, #1a2e23 0%, #2d4a37 100%)",
-                  border: "2px solid rgba(110,231,183,0.35)",
-                  boxShadow: "0 0 40px rgba(16,185,129,0.25), inset 0 0 20px rgba(16,185,129,0.08)"
+                  background: "linear-gradient(135deg, #2A1E1F 0%, #4a2c2e 100%)",
+                  border: "2px solid rgba(229,182,185,0.35)",
+                  boxShadow: "0 0 40px rgba(229,182,185,0.2), inset 0 0 20px rgba(229,182,185,0.06)"
                 }}
                 animate={{ scale: [1, 1.06, 1] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
