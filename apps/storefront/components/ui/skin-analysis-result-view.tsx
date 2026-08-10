@@ -295,7 +295,7 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
             </div>
             <div className="space-y-3">
               {result.kbeauty_routine.map((step, idx) => {
-                const colors = stepColors[idx % stepColors.length];
+                const colors = stepColors[idx % stepColors.length] ?? stepColors[0]!
                 return (
                   <motion.div
                     key={idx}
