@@ -9,6 +9,7 @@ export const SkinScan = model.define("skin_scan", {
   concerns: model.json().nullable(),
   metrics: model.json().nullable(),
   routine: model.json().nullable(),
+  images: model.json().nullable(),
   qwen_raw_summary: model.text().nullable(),
   claude_raw_summary: model.text().nullable(),
 })

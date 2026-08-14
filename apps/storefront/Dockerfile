@@ -39,6 +39,15 @@ WORKDIR /app/apps/storefront
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Server-side runtime vars for RAG pipeline (Meilisearch)
+# These are NOT baked into the image — they are injected at container start via docker-compose environment
+ARG MEILISEARCH_HOST
+ARG MEILISEARCH_SEARCH_KEY
+ARG OPENROUTER_API_KEY
+ENV MEILISEARCH_HOST=${MEILISEARCH_HOST}
+ENV MEILISEARCH_SEARCH_KEY=${MEILISEARCH_SEARCH_KEY}
+ENV OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 

@@ -15,6 +15,7 @@ export async function POST(
     concerns,
     metrics,
     routine,
+    images,
     qwen_raw_summary,
     claude_raw_summary,
   } = req.body as any
@@ -31,6 +32,7 @@ export async function POST(
     concerns,
     metrics,
     routine,
+    images,
     qwen_raw_summary,
     claude_raw_summary,
   })

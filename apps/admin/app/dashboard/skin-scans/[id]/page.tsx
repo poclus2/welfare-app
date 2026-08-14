@@ -141,6 +141,48 @@ export default async function SkinScanDetailsPage({ params }: { params: Promise<
         </div>
       </div>
 
+      {/* Face Images */}
+      {scan.images && (scan.images.front || scan.images.left || scan.images.right) && (
+        <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-9 h-9 rounded-xl bg-[#C08A8E]/10 flex items-center justify-center">
+              <ScanFace className="w-4 h-4 text-[#C08A8E]" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-[#2A2424]">Photos du Scan</h2>
+              <p className="text-xs text-[#2A2424]/40">3 angles capturés par l&apos;IA faciale</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { key: "front", label: "Face" },
+              { key: "left", label: "Profil Gauche" },
+              { key: "right", label: "Profil Droit" },
+            ].map(({ key, label }) => {
+              const src = scan.images[key];
+              return (
+                <div key={key} className="flex flex-col gap-2">
+                  <div className="aspect-[3/4] rounded-xl overflow-hidden bg-[#F5F0EB] border border-[#EDE0E0]">
+                    {src ? (
+                      <img
+                        src={src}
+                        alt={label}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <ScanFace className="w-8 h-8 text-[#2A2424]/20" />
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs font-semibold text-[#2A2424]/50 text-center">{label}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Main content grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
@@ -199,11 +241,11 @@ export default async function SkinScanDetailsPage({ params }: { params: Promise<
             </div>
 
             {/* Routine recommendations */}
-            {scan.routine_recommendations && scan.routine_recommendations.length > 0 ? (
+            {scan.routine && scan.routine.length > 0 ? (
               <div className="mb-5">
                 <span className="text-[10px] uppercase font-bold text-[#2A2424]/40 tracking-widest block mb-3">Routine K-Beauty recommandée</span>
                 <div className="space-y-3">
-                  {scan.routine_recommendations.map((rec: any, i: number) => (
+                  {scan.routine.map((rec: any, i: number) => (
                     <div key={i} className="flex items-start gap-3 bg-emerald-50/60 border border-emerald-100 p-4 rounded-xl">
                       <div className="flex items-center justify-center w-6 h-6 bg-emerald-500/20 rounded-lg shrink-0 mt-0.5">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />

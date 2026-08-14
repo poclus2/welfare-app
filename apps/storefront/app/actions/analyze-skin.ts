@@ -5,11 +5,17 @@ export type UserResponse = {
   answer: string | { type: "image"; base64: string };
 };
 
+// === Updated RoutineStep with Medusa product linking ===
 export type RoutineStep = {
   step_number: number;
-  category: string;
-  target_concern: string;
-  explanation: string;
+  step_name: string;
+  explanation_for_client: string;
+  medusa_product_id?: string;
+  product_name?: string;
+  // Legacy fields kept for backward compat
+  category?: string;
+  target_concern?: string;
+  explanation?: string;
 };
 
 export type SkinAnalysisResult = {
@@ -18,7 +24,6 @@ export type SkinAnalysisResult = {
   melanin_phototype?: string;
   empathetic_message: string;
   kbeauty_routine: RoutineStep[];
-  // Include raw metrics from Qwen for UI display if needed
   metrics?: {
     sebum_level_percentage: number;
     acne_severity_percentage: number;
@@ -27,6 +32,105 @@ export type SkinAnalysisResult = {
     eye_contour_fatigue_percentage: number;
   };
 };
+
+// =========================================================================
+// RAG HELPER : Pré-filtrage Meilisearch → Mini-Catalogue
+// =========================================================================
+
+type MeiliProduct = {
+  id: string;
+  title: string;
+  description?: string;
+  category: string;
+};
+
+async function fetchProductCatalogForSkin(
+  skinType: string,
+  concerns: string[]
+): Promise<MeiliProduct[]> {
+  const host = process.env.MEILISEARCH_HOST;
+  const searchKey = process.env.MEILISEARCH_SEARCH_KEY;
+
+  if (!host || !searchKey) {
+    console.warn("[RAG] Variables Meilisearch manquantes, mode dégradé activé.");
+    return [];
+  }
+
+  // Determine keywords from skin type and concerns to enrich queries
+  const skinKeywords = buildSkinKeywords(skinType, concerns);
+
+  // 5 K-Beauty category searches in parallel
+  const categories = [
+    { name: "Nettoyant", queries: ["nettoyant", "cleanser", "cleansing", "mousse"] },
+    { name: "Toner / Essence", queries: ["toner", "essence", "lotion", "eau de soin"] },
+    { name: "Sérum", queries: ["sérum", "serum", "ampoule", "concentré"] },
+    { name: "Hydratant", queries: ["crème", "hydratant", "moisturizer", "gel crème"] },
+    { name: "Solaire", queries: ["solaire", "spf", "sunscreen", "protection solaire"] },
+  ];
+
+  const results = await Promise.allSettled(
+    categories.map(async (cat) => {
+      // Build a combined query: category terms + skin-specific keywords
+      const query = [...cat.queries, ...skinKeywords].slice(0, 3).join(" ");
+      try {
+        const res = await fetch(`${host}/indexes/products/search`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${searchKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            q: query,
+            limit: 3,
+            attributesToRetrieve: ["id", "title", "description"],
+          }),
+        });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return (data.hits || []).map((hit: any) => ({
+          id: hit.id,
+          title: hit.title,
+          description: hit.description,
+          category: cat.name,
+        }));
+      } catch {
+        return [];
+      }
+    })
+  );
+
+  const allProducts: MeiliProduct[] = [];
+  results.forEach((r) => {
+    if (r.status === "fulfilled") allProducts.push(...r.value);
+  });
+
+  console.log(`[RAG] ${allProducts.length} produits récupérés depuis Meilisearch`);
+  return allProducts;
+}
+
+function buildSkinKeywords(skinType: string, concerns: string[]): string[] {
+  const keywords: string[] = [];
+  const st = skinType.toLowerCase();
+
+  if (st.includes("grasse") || st.includes("mixte")) keywords.push("pore", "sébum", "matifiant");
+  if (st.includes("sèche") || st.includes("déshydratée")) keywords.push("hydratation", "nourrissant");
+  if (st.includes("sensible")) keywords.push("apaisant", "calmant", "centella");
+  if (st.includes("terne") || st.includes("éclat")) keywords.push("vitamine c", "éclat", "luminosité");
+
+  // Add concern-based keywords (take first 2 concerns)
+  concerns.slice(0, 2).forEach((c) => {
+    const lc = c.toLowerCase();
+    if (lc.includes("acné") || lc.includes("imperfection")) keywords.push("acné", "BHA", "salicylique");
+    if (lc.includes("rides") || lc.includes("antiâge")) keywords.push("rétinol", "antiâge", "firming");
+    if (lc.includes("taches") || lc.includes("pigmentation")) keywords.push("niacinamide", "acide kojique");
+  });
+
+  return keywords;
+}
+
+// =========================================================================
+// MAIN ACTION
+// =========================================================================
 
 export async function analyzeSkin(
   images: { front: string; left: string; right: string },
@@ -69,7 +173,7 @@ FORMAT JSON ATTENDU :
       headers: {
         "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://thewelfare.com", 
+        "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://thewelfare.com",
         "X-Title": "The Welfare Skin Coach"
       },
       body: JSON.stringify({
@@ -77,10 +181,7 @@ FORMAT JSON ATTENDU :
         max_tokens: 4000,
         response_format: { type: "json_object" },
         messages: [
-          {
-            role: "system",
-            content: qwenSystemPrompt
-          },
+          { role: "system", content: qwenSystemPrompt },
           {
             role: "user",
             content: [
@@ -104,7 +205,7 @@ FORMAT JSON ATTENDU :
     const qwenData = await qwenResponse.json();
     const qwenRawContent = qwenData.choices?.[0]?.message?.content;
     const cleanedQwenContent = qwenRawContent?.replace(/```json/gi, "")?.replace(/```/g, "")?.trim() || "{}";
-    
+
     let qwenResult;
     try {
       qwenResult = JSON.parse(cleanedQwenContent);
@@ -118,30 +219,57 @@ FORMAT JSON ATTENDU :
     }
 
     // =========================================================================
-    // APPEL 2 : Le Skin Coach Prescripteur (CLAUDE)
+    // APPEL 1.5 : RAG — Pré-filtrage Meilisearch (mini-catalogue)
     // =========================================================================
-    
-    // On retire le base64 pour ne pas surcharger le prompt textuel
-    const sanitizedUserResponses = userResponses.map(r => ({
+    const productCatalog = await fetchProductCatalogForSkin(
+      qwenResult.visual_reasoning || "",
+      qwenResult.clinical_observations || []
+    );
+
+    const hasCatalog = productCatalog.length > 0;
+    const miniCatalogText = hasCatalog
+      ? productCatalog
+          .map((p) => `[${p.category}] ${p.title} (medusa_product_id: "${p.id}") — ${(p.description || "").slice(0, 100)}`)
+          .join("\n")
+      : "Aucun produit spécifique disponible pour le moment.";
+
+    // =========================================================================
+    // APPEL 2 : Le Skin Coach Prescripteur (CLAUDE) — avec catalogue injecté
+    // =========================================================================
+
+    const sanitizedUserResponses = userResponses.map((r) => ({
       ...r,
-      answer: typeof r.answer === 'string' ? r.answer : "[Image de produit attachée par l'utilisateur]"
+      answer: typeof r.answer === "string" ? r.answer : "[Image de produit attachée par l'utilisateur]"
     }));
-    
+
     const userChatJson = JSON.stringify(sanitizedUserResponses);
     const qwenResultJson = JSON.stringify(qwenResult);
 
-    const claudeSystemPrompt = `Tu es le 'Skin Coach VIP' de la marque K-Beauty 'The Welfare'. Ton rôle est de concevoir la routine finale.
-Voici les mesures cliniques extraites des photos du client par notre scanner : 
+    const catalogConstraint = hasCatalog
+      ? `CONTRAINTE ABSOLUE SUR LES PRODUITS :
+Tu ne peux PAS inventer de produits. Tu dois OBLIGATOIREMENT choisir parmi le catalogue ci-dessous.
+Pour chaque étape, copie exactement le medusa_product_id du produit sélectionné.
+Si aucun produit du catalogue ne convient parfaitement pour une étape, laisse medusa_product_id à null.
+
+CATALOGUE EN STOCK :
+${miniCatalogText}`
+      : `Note: Le catalogue produit n'est pas disponible pour le moment. Génère une routine K-Beauty générique de qualité. Laisse medusa_product_id à null pour chaque étape.`;
+
+    const claudeSystemPrompt = `Tu es le 'Skin Coach VIP' de la marque K-Beauty premium 'The Welfare'. Tu es l'expert qui va concevoir la routine de soin idéale.
+
+Voici les mesures cliniques extraites des photos de la cliente par notre scanner IA :
 ${qwenResultJson}
 
-Voici les sensations physiques et besoins déclarés par le client via notre questionnaire : 
+Voici les sensations physiques et besoins déclarés par la cliente via notre questionnaire :
 ${userChatJson}
 
-MISSION :
-1. Rédige un message empathique ('empathetic_message') extrêmement humain et bienveillant, justifiant les observations visuelles avec le ressenti du client.
-2. Déduis le 'final_skin_type' (ex: Peau Mixte à tendance déshydratée). RÈGLE ABSOLUE POUR LE TYPE DE PEAU : Tu dois croiser les métriques visuelles de l'image (brillance, pores) avec le COMPORTEMENT déclaré par le client dans le chat (le ressenti post-lavage ET l'évolution à la mi-journée). Exemples de déductions : Tiraillement post-lavage + Brillance mi-journée = Peau Grasse ou Mixte Déshydratée. Tiraillement + Sécheresse mi-journée = Peau Sèche. Le ressenti physique temporel du client prime toujours pour nuancer l'image.
-3. Transmets l'estimation de l'âge cutané faite par le scanner dans 'estimated_skin_age'.
-4. Construis une 'kbeauty_routine' en maximum 5 étapes. Chaque étape doit renvoyer la catégorie de produit exacte (ex: 'Nettoyant à l'huile', 'Sérum Acide Hyaluronique') pour que notre base de données Medusa.js puisse les chercher.
+${catalogConstraint}
+
+TA MISSION :
+1. Rédige un message empathique ('empathetic_message') extrêmement humain et bienveillant, en vouvoyant la cliente, justifiant les observations visuelles avec son ressenti personnel.
+2. Déduis le 'final_skin_type' (ex: Peau Mixte à tendance déshydratée). RÈGLE ABSOLUE : Croise les métriques visuelles (brillance, pores) avec le COMPORTEMENT déclaré (ressenti post-lavage, mi-journée). Le ressenti physique prime toujours.
+3. Transmets l'estimation d'âge cutané dans 'estimated_skin_age'.
+4. Construis une 'routine_steps' de 4 à 6 étapes, en vouvoiement, avec des explications chaleureuses et expertes.
 
 IMPORTANT : Tu dois répondre UNIQUEMENT avec un objet JSON valide, sans aucun texte avant ou après.
 FORMAT JSON ATTENDU :
@@ -149,12 +277,13 @@ FORMAT JSON ATTENDU :
   "final_skin_type": "...",
   "estimated_skin_age": 0,
   "empathetic_message": "...",
-  "kbeauty_routine": [
+  "routine_steps": [
     {
       "step_number": 1,
-      "category": "...",
-      "target_concern": "...",
-      "explanation": "..."
+      "step_name": "Double Nettoyage - Huile",
+      "explanation_for_client": "Pour dissoudre le sébum et les impuretés en douceur, nous vous recommandons...",
+      "medusa_product_id": "prod_01H8X...",
+      "product_name": "Anua Heartleaf Pore Control Cleansing Oil"
     }
   ]
 }`;
@@ -164,21 +293,22 @@ FORMAT JSON ATTENDU :
       headers: {
         "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://thewelfare.com", 
+        "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://thewelfare.com",
         "X-Title": "The Welfare Skin Coach"
       },
       body: JSON.stringify({
         model: "anthropic/claude-opus-4.8",
         max_tokens: 4000,
+        response_format: { type: "json_object" },
         messages: [
           { role: "system", content: claudeSystemPrompt },
-          { 
-            role: "user", 
+          {
+            role: "user",
             content: [
               { type: "text", text: "Génère la routine VIP finale en te basant sur le diagnostic et les images des produits s'il y en a." },
               ...userResponses
-                .filter(r => typeof r.answer !== 'string' && r.answer.type === 'image')
-                .map(r => ({
+                .filter((r) => typeof r.answer !== "string" && r.answer.type === "image")
+                .map((r) => ({
                   type: "image_url",
                   image_url: { url: (r.answer as { type: "image"; base64: string }).base64 }
                 }))
@@ -196,15 +326,24 @@ FORMAT JSON ATTENDU :
     const claudeData = await claudeResponse.json();
     const claudeRawContent = claudeData.choices?.[0]?.message?.content;
     const cleanedClaudeContent = claudeRawContent?.replace(/```json/gi, "")?.replace(/```/g, "")?.trim() || "{}";
-    
+
     let finalResult: SkinAnalysisResult;
     try {
-      finalResult = JSON.parse(cleanedClaudeContent);
-      // Inject Qwen metrics and phototype for the UI
-      finalResult.metrics = qwenResult.metrics;
-      finalResult.melanin_phototype = qwenResult.melanin_phototype;
-      
-      // Sauvegarde silencieuse dans le journal du backend Medusa
+      const parsed = JSON.parse(cleanedClaudeContent);
+
+      // Normalize: support both routine_steps (new) and kbeauty_routine (legacy)
+      const routineSteps = parsed.routine_steps || parsed.kbeauty_routine || [];
+
+      finalResult = {
+        final_skin_type: parsed.final_skin_type,
+        estimated_skin_age: parsed.estimated_skin_age,
+        empathetic_message: parsed.empathetic_message,
+        kbeauty_routine: routineSteps,
+        metrics: qwenResult.metrics,
+        melanin_phototype: qwenResult.melanin_phototype,
+      };
+
+      // Silent save to Medusa backend
       try {
         const medusaBackendUrl = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000";
         await fetch(`${medusaBackendUrl}/store/skin-scans`, {
@@ -220,13 +359,17 @@ FORMAT JSON ATTENDU :
             concerns: qwenResult.clinical_observations || [],
             metrics: finalResult.metrics,
             routine: finalResult.kbeauty_routine,
-            qwen_raw_summary: qwenResult.visual_reasoning || JSON.stringify(qwenResult),
+            images: {
+              front: images.front,
+              left: images.left,
+              right: images.right,
+            },
+            qwen_raw_summary: qwenResult.visual_reasoning || JSON.stringify(qwenResult.clinical_observations),
             claude_raw_summary: finalResult.empathetic_message || "",
           }),
         });
       } catch (logError) {
         console.error("[SkinCoach] Erreur lors de la journalisation du scan :", logError);
-        // On ne bloque pas le retour à l'utilisateur si la journalisation échoue
       }
 
     } catch (e) {
@@ -238,14 +381,14 @@ FORMAT JSON ATTENDU :
 
   } catch (error: any) {
     console.error("[SkinCoach] Erreur critique dans analyzeSkin:", error);
-    
+
     if (error.name === "AbortError" || error.message.includes("fetch")) {
-        return { success: false, error: "Le délai d'attente est dépassé. La requête est trop lourde." };
+      return { success: false, error: "Le délai d'attente est dépassé. La requête est trop lourde." };
     }
 
-    return { 
-      success: false, 
-      error: error.message || "Une erreur système inattendue est survenue." 
+    return {
+      success: false,
+      error: error.message || "Une erreur système inattendue est survenue."
     };
   }
 }

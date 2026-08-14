@@ -165,7 +165,8 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
         newFeedback = pitch > 0 ? "Baissez légèrement la tête" : "Relevez légèrement la tête";
       }
     } else if (step === "LEFT") {
-      const isAligned = yaw < -20 && yaw > -45 && Math.abs(pitch) < 15;
+      // Mirrored webcam: user turning left = positive yaw in image
+      const isAligned = yaw > 20 && yaw < 45 && Math.abs(pitch) < 15;
       if (isAligned) {
         newFeedback = "✓ Parfait ! Ne bougez plus...";
         newIsPerfect = true;
@@ -173,7 +174,8 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
         newFeedback = "Tournez votre visage vers la gauche (profil ¾)";
       }
     } else if (step === "RIGHT") {
-      const isAligned = yaw > 20 && yaw < 45 && Math.abs(pitch) < 15;
+      // Mirrored webcam: user turning right = negative yaw in image
+      const isAligned = yaw < -20 && yaw > -45 && Math.abs(pitch) < 15;
       if (isAligned) {
         newFeedback = "✓ Parfait ! Ne bougez plus...";
         newIsPerfect = true;
