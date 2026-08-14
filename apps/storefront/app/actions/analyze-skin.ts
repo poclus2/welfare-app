@@ -54,6 +54,7 @@ FORMAT JSON ATTENDU :
   "clinical_observations": ["...", "..."],
   "melanin_phototype": "...",
   "estimated_skin_age": 0,
+  "has_glasses": false,
   "metrics": {
     "sebum_level_percentage": 0-100,
     "acne_severity_percentage": 0-100,
@@ -73,7 +74,7 @@ FORMAT JSON ATTENDU :
       },
       body: JSON.stringify({
         model: "qwen/qwen3-vl-235b-a22b-instruct",
-        max_tokens: 1500,
+        max_tokens: 4000,
         response_format: { type: "json_object" },
         messages: [
           {
@@ -103,7 +104,18 @@ FORMAT JSON ATTENDU :
     const qwenData = await qwenResponse.json();
     const qwenRawContent = qwenData.choices?.[0]?.message?.content;
     const cleanedQwenContent = qwenRawContent?.replace(/```json/gi, "")?.replace(/```/g, "")?.trim() || "{}";
-    const qwenResult = JSON.parse(cleanedQwenContent);
+    
+    let qwenResult;
+    try {
+      qwenResult = JSON.parse(cleanedQwenContent);
+    } catch (e) {
+      console.error("[Appel 1 Qwen] Parsing error:", qwenRawContent);
+      return { success: false, error: "Erreur de formatage de l'analyse visuelle." };
+    }
+
+    if (qwenResult.has_glasses) {
+      return { success: false, error: "Veuillez retirer vos lunettes pour que l'IA puisse analyser précisément votre peau et recommencez." };
+    }
 
     // =========================================================================
     // APPEL 2 : Le Skin Coach Prescripteur (CLAUDE)
@@ -156,8 +168,8 @@ FORMAT JSON ATTENDU :
         "X-Title": "The Welfare Skin Coach"
       },
       body: JSON.stringify({
-        model: "anthropic/claude-sonnet-4.6",
-        max_tokens: 1500,
+        model: "anthropic/claude-opus-4.8",
+        max_tokens: 4000,
         messages: [
           { role: "system", content: claudeSystemPrompt },
           { 
@@ -191,6 +203,27 @@ FORMAT JSON ATTENDU :
       // Inject Qwen metrics and phototype for the UI
       finalResult.metrics = qwenResult.metrics;
       finalResult.melanin_phototype = qwenResult.melanin_phototype;
+      
+      // Sauvegarde silencieuse dans le journal du backend Medusa
+      try {
+        const medusaBackendUrl = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000";
+        await fetch(`${medusaBackendUrl}/store/skin-scans`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            final_skin_type: finalResult.final_skin_type,
+            estimated_skin_age: finalResult.estimated_skin_age,
+            metrics: finalResult.metrics,
+            routine: finalResult.kbeauty_routine
+          }),
+        });
+      } catch (logError) {
+        console.error("[SkinCoach] Erreur lors de la journalisation du scan :", logError);
+        // On ne bloque pas le retour à l'utilisateur si la journalisation échoue
+      }
+
     } catch (e) {
       console.error("[Appel 2 Claude] Parsing error:", claudeRawContent);
       return { success: false, error: "Erreur de formatage de la routine finale." };
