@@ -211,6 +211,7 @@ FORMAT JSON ATTENDU :
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "",
           },
           body: JSON.stringify({
             final_skin_type: finalResult.final_skin_type,
