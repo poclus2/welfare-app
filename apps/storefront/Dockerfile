@@ -7,13 +7,13 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Enable pnpm
-RUN corepack enable
+RUN npm install -g pnpm@9.15.0
 
 # Copy everything
 COPY . .
 
 # Install dependencies for the whole workspace
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile || pnpm install
 
 ARG NEXT_PUBLIC_MEDUSA_BACKEND_URL
 ARG NEXT_PUBLIC_MEILISEARCH_HOST

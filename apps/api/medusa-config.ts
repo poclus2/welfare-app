@@ -63,5 +63,8 @@ module.exports = defineConfig({
         },
       },
     },
+    {
+      resolve: "./src/modules/skin_scan",
+    },
   ],
 });

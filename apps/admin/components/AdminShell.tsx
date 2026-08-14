@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/stores", label: "Magasins", icon: Store },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart2 },
   { href: "/dashboard/promotions", label: "Promotions", icon: Tag },
+  { href: "/dashboard/skin-scans", label: "Skin Scans", icon: Search },
   { href: "/dashboard/settings", label: "Paramètres", icon: Settings },
 ];
 

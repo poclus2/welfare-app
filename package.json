@@ -34,7 +34,7 @@
     "@medusajs/framework": "^2.18.0",
     "@medusajs/medusa": "^2.18.0"
   },
-  "packageManager": "pnpm@9.15.0",
+  
   "engines": {
     "node": "20.x"
   }

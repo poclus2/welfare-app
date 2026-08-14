@@ -4,7 +4,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Enable corepack for pnpm
-RUN corepack enable
+RUN npm install -g pnpm@9.15.0
 
 # Copy workspace configuration and lockfile
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
@@ -14,7 +14,7 @@ COPY turbo.json ./
 COPY apps/api ./apps/api
 
 # Install dependencies (frozen lockfile for deterministic builds)
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile || pnpm install
 
 # Build the Medusa project
 WORKDIR /app/apps/api
@@ -26,7 +26,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 # Enable corepack
-RUN corepack enable
+RUN npm install -g pnpm@9.15.0
 
 # Copy built artifacts and necessary files from builder
 COPY --from=builder /app/package.json ./

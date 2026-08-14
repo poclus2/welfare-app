@@ -216,8 +216,12 @@ FORMAT JSON ATTENDU :
           body: JSON.stringify({
             final_skin_type: finalResult.final_skin_type,
             estimated_skin_age: finalResult.estimated_skin_age,
+            melanin_phototype: finalResult.melanin_phototype || qwenResult.melanin_phototype,
+            concerns: qwenResult.clinical_observations || [],
             metrics: finalResult.metrics,
-            routine: finalResult.kbeauty_routine
+            routine: finalResult.kbeauty_routine,
+            qwen_raw_summary: qwenResult.visual_reasoning || JSON.stringify(qwenResult),
+            claude_raw_summary: finalResult.empathetic_message || "",
           }),
         });
       } catch (logError) {

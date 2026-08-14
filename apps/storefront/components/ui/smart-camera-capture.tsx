@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Webcam from "react-webcam";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
-import { Loader2, Camera, Check, RefreshCw, ArrowLeft, ArrowRight } from "lucide-react";
+import { Camera, ArrowLeft, ArrowRight, Sun, Glasses, X } from "lucide-react";
 
 export type CaptureResult = {
   front: string;
@@ -26,6 +26,7 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
   const isTooDarkRef = useRef<boolean>(false);
 
   // States
+  const [showIntroModal, setShowIntroModal] = useState(true);
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [step, setStep] = useState<"FRONT" | "LEFT" | "RIGHT" | "DONE">("FRONT");
   const [feedback, setFeedback] = useState<string>("Placez votre visage au centre du cadre");
@@ -100,103 +101,100 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
       isTooDarkRef.current = tooDark;
       setIsTooDark(tooDark);
     }
+    
     return tooDark;
   }, []);
 
-  // Process Video Frames
-  const detectFace = useCallback(() => {
-    if (!faceLandmarkerRef.current || !webcamRef.current?.video || step === "DONE") return;
+  // Animation frame loop
+  const processFrame = useCallback(() => {
+    const video = webcamRef.current?.video;
+    const faceLandmarker = faceLandmarkerRef.current;
 
-    const video = webcamRef.current.video;
-    if (video.readyState !== 4) {
-      requestRef.current = requestAnimationFrame(detectFace);
+    if (!video || !faceLandmarker || video.readyState < 2) {
+      requestRef.current = requestAnimationFrame(processFrame);
       return;
     }
 
-    try {
-      const now = performance.now();
-      
-      // Luminance check every 500ms
-      if (now - lastLuminanceCheckRef.current > 500) {
-        lastLuminanceCheckRef.current = now;
-        checkLuminance(video);
-      }
-
-      if (isTooDarkRef.current) {
-        setFeedback("⚠️ Luminosité trop faible. Placez-vous face à la lumière.");
-        setIsPerfect(false);
-        requestRef.current = requestAnimationFrame(detectFace);
-        return;
-      }
-
-      const startTimeMs = performance.now();
-      const results = faceLandmarkerRef.current.detectForVideo(video, startTimeMs);
-
-      if (results.facialTransformationMatrixes && results.facialTransformationMatrixes.length > 0 && results.facialTransformationMatrixes[0]) {
-        const matrix = results.facialTransformationMatrixes[0].data;
-        
-        // Extract Yaw and Pitch (simplified from rotation matrix)
-        // matrix[8], matrix[9], matrix[10] corresponds to the 3rd column of the 4x4 matrix
-        // The rotation matrix is a 3x3 subset in the 4x4 matrix
-        // R31 = matrix[2], R32 = matrix[6], R33 = matrix[10] ? Actually MediaPipe uses column-major:
-        // [ m00, m10, m20, m30, m01, m11, m21, m31, m02, m12, m22, m32, m03, m13, m23, m33 ]
-        // Indices: 0-15.
-        // Yaw = atan2(-m20, sqrt(m21^2 + m22^2)) -> atan2(-matrix[8], sqrt(matrix[9]**2 + matrix[10]**2))
-        const m20 = matrix[2] ?? 0;
-        const m21 = matrix[6] ?? 0;
-        const m22 = matrix[10] ?? 0;
-        
-        // Yaw is rotation around Y axis (Left/Right)
-        const yaw = Math.atan2(m20, Math.sqrt(m21 * m21 + m22 * m22)) * (180 / Math.PI);
-        // Pitch is rotation around X axis (Up/Down)
-        const pitch = Math.atan2(-m21, m22) * (180 / Math.PI);
-
-        // State Machine
-        if (step === "FRONT") {
-          if (Math.abs(yaw) < 10 && Math.abs(pitch) < 15) {
-            setFeedback("Parfait ! Restez immobile...");
-            setIsPerfect(true);
-          } else {
-            setFeedback("Regardez bien droit vers l'objectif");
-            setIsPerfect(false);
-          }
-        } else if (step === "LEFT") {
-          if (yaw < -25) { // Tourné vers la gauche (du point de vue de l'utilisateur, face à la caméra)
-            setFeedback("Parfait !");
-            setIsPerfect(true);
-          } else {
-            setFeedback("Tournez doucement la tête vers la GAUCHE");
-            setIsPerfect(false);
-          }
-        } else if (step === "RIGHT") {
-          if (yaw > 25) {
-            setFeedback("Parfait !");
-            setIsPerfect(true);
-          } else {
-            setFeedback("Maintenant, tournez la tête vers la DROITE");
-            setIsPerfect(false);
-          }
-        }
-      } else {
-        setFeedback("Visage non détecté");
-        setIsPerfect(false);
-      }
-    } catch (e) {
-      console.error(e);
+    const now = performance.now();
+    
+    // Check luminance every 500ms
+    if (now - lastLuminanceCheckRef.current > 500) {
+      lastLuminanceCheckRef.current = now;
+      checkLuminance(video);
     }
 
-    requestRef.current = requestAnimationFrame(detectFace);
+    if (isTooDarkRef.current) {
+      setFeedback("⚠️ Endroit trop sombre, rapprochez-vous d'une source de lumière");
+      setIsPerfect(false);
+      requestRef.current = requestAnimationFrame(processFrame);
+      return;
+    }
+
+    const results = faceLandmarker.detectForVideo(video, now);
+    
+    if (!results.faceLandmarks || results.faceLandmarks.length === 0) {
+      setFeedback("Aucun visage détecté — regardez la caméra");
+      setIsPerfect(false);
+      requestRef.current = requestAnimationFrame(processFrame);
+      return;
+    }
+
+    const matrix = results.facialTransformationMatrixes?.[0]?.data;
+    if (!matrix) {
+      setFeedback("Visage détecté — ajustez votre position");
+      setIsPerfect(false);
+      requestRef.current = requestAnimationFrame(processFrame);
+      return;
+    }
+
+    // Extract rotation angles from matrix
+    const pitch = Math.atan2(-matrix[9]!, matrix[10]!) * (180 / Math.PI);
+    const yaw = Math.asin(Math.max(-1, Math.min(1, matrix[8]!))) * (180 / Math.PI);
+
+    let newFeedback = "";
+    let newIsPerfect = false;
+
+    if (step === "FRONT") {
+      const isAligned = Math.abs(yaw) < 8 && Math.abs(pitch) < 10;
+      if (isAligned) {
+        newFeedback = "✓ Parfait ! Ne bougez plus...";
+        newIsPerfect = true;
+      } else if (Math.abs(yaw) >= 8) {
+        newFeedback = yaw > 0 ? "Tournez légèrement vers la gauche" : "Tournez légèrement vers la droite";
+      } else {
+        newFeedback = pitch > 0 ? "Baissez légèrement la tête" : "Relevez légèrement la tête";
+      }
+    } else if (step === "LEFT") {
+      const isAligned = yaw < -20 && yaw > -45 && Math.abs(pitch) < 15;
+      if (isAligned) {
+        newFeedback = "✓ Parfait ! Ne bougez plus...";
+        newIsPerfect = true;
+      } else {
+        newFeedback = "Tournez votre visage vers la gauche (profil ¾)";
+      }
+    } else if (step === "RIGHT") {
+      const isAligned = yaw > 20 && yaw < 45 && Math.abs(pitch) < 15;
+      if (isAligned) {
+        newFeedback = "✓ Parfait ! Ne bougez plus...";
+        newIsPerfect = true;
+      } else {
+        newFeedback = "Tournez votre visage vers la droite (profil ¾)";
+      }
+    }
+
+    setFeedback(newFeedback);
+    setIsPerfect(newIsPerfect);
+
+    requestRef.current = requestAnimationFrame(processFrame);
   }, [step, checkLuminance]);
 
-  // Start Detection Loop
   useEffect(() => {
-    if (!isModelLoading) {
-      requestRef.current = requestAnimationFrame(detectFace);
-    }
+    if (showIntroModal || isModelLoading) return;
+    requestRef.current = requestAnimationFrame(processFrame);
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
     };
-  }, [isModelLoading, detectFace]);
+  }, [processFrame, isModelLoading, showIntroModal]);
 
   // Capture Trigger Logic (when isPerfect stays true for 1 second)
   useEffect(() => {
@@ -231,7 +229,95 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
   return (
     <div className="absolute inset-0 w-full h-full bg-slate-900 overflow-hidden flex flex-col font-sans">
       
-      {isModelLoading ? (
+      {/* =========================================================
+          INTRO MODAL — Full screen popup with preparation checklist
+      ========================================================= */}
+      <AnimatePresence>
+        {showIntroModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.3 }}
+            className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 280, damping: 22, delay: 0.05 }}
+              className="bg-[#1a1a2e] border border-white/10 rounded-3xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden"
+            >
+              {/* Decorative gradient */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#C08A8E] via-pink-400 to-[#C08A8E] rounded-t-3xl" />
+              
+              {/* Close button */}
+              <button
+                onClick={onCancel}
+                className="absolute top-5 right-5 text-white/40 hover:text-white/80 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Icon */}
+              <div className="flex items-center justify-center w-16 h-16 bg-[#C08A8E]/20 rounded-2xl mb-6 mx-auto">
+                <Camera className="w-8 h-8 text-[#C08A8E]" />
+              </div>
+
+              {/* Title */}
+              <h2 className="text-2xl font-bold text-white text-center mb-2">
+                Avant de commencer
+              </h2>
+              <p className="text-white/50 text-sm text-center mb-8">
+                Pour une analyse précise de votre peau, merci de respecter ces quelques consignes :
+              </p>
+
+              {/* Checklist */}
+              <div className="space-y-4 mb-8">
+                <div className="flex items-start gap-4 bg-white/5 rounded-2xl p-4 border border-white/10">
+                  <div className="flex items-center justify-center w-10 h-10 bg-amber-400/20 rounded-xl shrink-0 mt-0.5">
+                    <Sun className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold text-sm">Bonne luminosité</p>
+                    <p className="text-white/50 text-xs mt-1">
+                      Placez-vous près d'une fenêtre ou sous une lumière directe. Évitez les pièces sombres ou le contre-jour.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4 bg-white/5 rounded-2xl p-4 border border-white/10">
+                  <div className="flex items-center justify-center w-10 h-10 bg-blue-400/20 rounded-xl shrink-0 mt-0.5">
+                    <Glasses className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold text-sm">Retirez vos lunettes</p>
+                    <p className="text-white/50 text-xs mt-1">
+                      Les lunettes masquent une partie du visage et faussent l'analyse cutanée par notre IA.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* CTA Button */}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowIntroModal(false)}
+                className="w-full py-4 bg-gradient-to-r from-[#C08A8E] to-pink-500 text-white font-bold text-lg rounded-2xl shadow-lg shadow-pink-900/30 transition-all"
+              >
+                Commencer le scan
+              </motion.button>
+
+              <p className="text-white/25 text-xs text-center mt-4">
+                3 photos seront prises automatiquement par notre IA
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {isModelLoading && !showIntroModal ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6">
           <div className="relative">
             <div className="w-24 h-24 border-4 border-slate-700 rounded-full animate-spin border-t-emerald-400" />
@@ -244,7 +330,7 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
             <p className="text-slate-400 text-sm">Chargement des modèles haute précision...</p>
           </div>
         </div>
-      ) : (
+      ) : !showIntroModal ? (
         <>
           {/* Header */}
           <div className="absolute top-0 left-0 w-full p-6 z-20 flex justify-between items-center bg-gradient-to-b from-black/60 to-transparent">
@@ -264,6 +350,7 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
               audio={false}
               ref={webcamRef}
               screenshotFormat="image/jpeg"
+              screenshotQuality={0.5}
               videoConstraints={{ facingMode: "user" }}
               mirrored={true}
               className="absolute inset-0 w-full h-full object-cover object-center"
@@ -315,7 +402,7 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
           </div>
 
           {/* Footer Text */}
-          <div className="absolute bottom-12 left-0 w-full px-6 flex flex-col items-center z-20">
+          <div className="absolute bottom-28 left-0 w-full px-6 flex flex-col items-center z-20 gap-3">
             <motion.div 
               key={feedback}
               initial={{ opacity: 0, y: 10 }}
@@ -332,7 +419,7 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
             </motion.div>
           </div>
         </>
-      )}
+      ) : null}
       
       {/* Hidden canvas for luminance calculation */}
       <canvas ref={canvasRef} width={50} height={50} className="hidden" />
