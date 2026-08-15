@@ -87,7 +87,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try {
       setState(s => ({ ...s, isLoading: true }));
       
-      let currentCartId = state.cartId;
+      let currentCartId = localStorage.getItem("welfare_cart_id");
       if (!currentCartId) {
         // Fetch regions first
         const { regions } = await sdk.store.region.list();
@@ -111,35 +111,37 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setState(s => ({ ...s, isLoading: false }));
       alert("Erreur lors de l'ajout au panier");
     }
-  }, [state.cartId, openCart]);
+  }, [openCart]);
 
   const removeItem = useCallback(async (lineId: string) => {
-    if (!state.cartId) return;
+    const currentCartId = localStorage.getItem("welfare_cart_id");
+    if (!currentCartId) return;
     try {
       setState(s => ({ ...s, isLoading: true }));
-      await sdk.store.cart.deleteLineItem(state.cartId, lineId);
-      await refreshCart(state.cartId);
+      await sdk.store.cart.deleteLineItem(currentCartId, lineId);
+      await refreshCart(currentCartId);
     } catch (err) {
       console.error("Failed to remove item:", err);
       setState(s => ({ ...s, isLoading: false }));
     }
-  }, [state.cartId]);
+  }, []);
 
   const updateQuantity = useCallback(async (lineId: string, qty: number) => {
-    if (!state.cartId) return;
+    const currentCartId = localStorage.getItem("welfare_cart_id");
+    if (!currentCartId) return;
     try {
       if (qty <= 0) {
         await removeItem(lineId);
         return;
       }
       setState(s => ({ ...s, isLoading: true }));
-      await sdk.store.cart.updateLineItem(state.cartId, lineId, { quantity: qty });
-      await refreshCart(state.cartId);
+      await sdk.store.cart.updateLineItem(currentCartId, lineId, { quantity: qty });
+      await refreshCart(currentCartId);
     } catch (err) {
       console.error("Failed to update quantity:", err);
       setState(s => ({ ...s, isLoading: false }));
     }
-  }, [state.cartId, removeItem]);
+  }, [removeItem]);
 
   const clearCart = useCallback(() => {
     localStorage.removeItem("welfare_cart_id");
