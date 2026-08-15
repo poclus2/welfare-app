@@ -550,6 +550,9 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
           <motion.div variants={itemVariants}
             className="rounded-3xl p-6"
             style={{ background: "white", border: "1px solid rgba(200,134,138,0.15)", boxShadow: "0 4px 16px rgba(200,134,138,0.08)" }}>
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: "rgba(176,96,104,0.7)" }}>
+              Mot de votre Skin Coach
+            </p>
             <div className="flex gap-3 mb-4">
               <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
                 style={{ background: "rgba(200,134,138,0.1)", border: "1px solid rgba(200,134,138,0.18)" }}>
