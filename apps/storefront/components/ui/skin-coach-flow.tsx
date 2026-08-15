@@ -148,6 +148,7 @@ export default function SkinCoachFlow() {
   const [userResponses, setUserResponses] = useState<UserResponse[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
   const [progressPercent, setProgressPercent] = useState<number>(5);
   const [inputText, setInputText] = useState("");
   const [stepIndex, setStepIndex] = useState(0);
@@ -166,6 +167,19 @@ export default function SkinCoachFlow() {
       }, 100);
     }
   }, [messages, isTyping, isGenerating, currentQuestionId]);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isGenerating && analysisProgress < 99) {
+      interval = setInterval(() => {
+        setAnalysisProgress(prev => {
+          const increment = (99 - prev) * 0.05;
+          return prev + Math.max(increment, 0.1);
+        });
+      }, 500);
+    }
+    return () => clearInterval(interval);
+  }, [isGenerating, analysisProgress]);
 
   useEffect(() => {
     if (hasCaptured && messages.length === 0) {
@@ -201,7 +215,10 @@ export default function SkinCoachFlow() {
       const result = await analyzeSkin(captures, finalResponses);
       if (result.success && result.data) {
         setResult(result.data);
-        router.push("/skin-coach/result");
+        setAnalysisProgress(100);
+        setTimeout(() => {
+          router.push("/skin-coach/result");
+        }, 600);
       } else {
         setMessages(prev => [...prev, { id: `msg-ai-err-${Date.now()}`, sender: "ai", text: "Oups, une erreur est survenue lors de l'analyse : " + result.error }]);
         setIsGenerating(false);
@@ -209,7 +226,6 @@ export default function SkinCoachFlow() {
     } catch (error) {
       console.error(error);
       setMessages(prev => [...prev, { id: `msg-ai-err-${Date.now()}`, sender: "ai", text: "Erreur de connexion au serveur d'analyse." }]);
-    } finally {
       setIsGenerating(false);
     }
   };
@@ -254,6 +270,7 @@ export default function SkinCoachFlow() {
     setTimeout(() => {
       if (nextQuestionId === "q_finish") {
         setProgressPercent(100);
+        setAnalysisProgress(0);
         setIsGenerating(true);
         setIsTyping(false);
         setMessages((prev) => [
@@ -663,21 +680,48 @@ export default function SkinCoachFlow() {
                 ))}
               </div>
 
-              {/* Loading bar */}
+              {/* Circular Progress bar */}
               <motion.div
-                className="mt-6 w-full h-1.5 rounded-full overflow-hidden"
-                style={{ background: "rgba(200,134,138,0.1)" }}
+                className="mt-8 flex flex-col items-center justify-center"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.8 }}
               >
-                <motion.div
-                  className="h-full rounded-full"
-                  style={{ background: "linear-gradient(90deg, #C8868A, #E5B6B9, #C8868A)", backgroundSize: "200%" }}
-                  animate={{ backgroundPosition: ["0%", "200%"] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  initial={{ width: "0%" }}
-                />
+                <div className="relative w-20 h-20">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="40"
+                      stroke="rgba(200,134,138,0.15)"
+                      strokeWidth="8"
+                      fill="none"
+                    />
+                    <motion.circle
+                      cx="50"
+                      cy="50"
+                      r="40"
+                      stroke="url(#progress-gradient)"
+                      strokeWidth="8"
+                      fill="none"
+                      strokeLinecap="round"
+                      initial={{ strokeDasharray: "251.2", strokeDashoffset: 251.2 }}
+                      animate={{ strokeDashoffset: 251.2 - (251.2 * analysisProgress) / 100 }}
+                      transition={{ duration: 0.5, ease: "easeOut" }}
+                    />
+                    <defs>
+                      <linearGradient id="progress-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#C8868A" />
+                        <stop offset="100%" stopColor="#E5B6B9" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-sm font-bold" style={{ color: "#3D2B2D" }}>
+                      {Math.round(analysisProgress)}%
+                    </span>
+                  </div>
+                </div>
               </motion.div>
             </div>
           </motion.div>
