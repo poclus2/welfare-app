@@ -248,53 +248,53 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
               animate={{ scale: 1, y: 0, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ type: "spring", stiffness: 280, damping: 22, delay: 0.05 }}
-              className="bg-[#1a1a2e] border border-white/10 rounded-3xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden"
+              className="bg-white border border-[rgba(200,134,138,0.2)] rounded-3xl p-8 max-w-md w-full shadow-[0_8px_30px_rgba(200,134,138,0.15)] relative overflow-hidden"
             >
               {/* Decorative gradient */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#C08A8E] via-pink-400 to-[#C08A8E] rounded-t-3xl" />
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#C8868A] via-[#E8B4B8] to-[#C8868A] rounded-t-3xl" />
               
               {/* Close button */}
               <button
                 onClick={onCancel}
-                className="absolute top-5 right-5 text-white/40 hover:text-white/80 transition-colors"
+                className="absolute top-5 right-5 text-[rgba(61,43,45,0.4)] hover:text-[#3D2B2D] transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
 
               {/* Icon */}
-              <div className="flex items-center justify-center w-16 h-16 bg-[#C08A8E]/20 rounded-2xl mb-6 mx-auto">
-                <Camera className="w-8 h-8 text-[#C08A8E]" />
+              <div className="flex items-center justify-center w-16 h-16 bg-[rgba(200,134,138,0.1)] border border-[rgba(200,134,138,0.2)] rounded-2xl mb-6 mx-auto">
+                <Camera className="w-8 h-8" style={{ color: "#C8868A" }} />
               </div>
 
               {/* Title */}
-              <h2 className="text-2xl font-bold text-white text-center mb-2">
+              <h2 className="text-2xl font-bold text-center mb-2" style={{ color: "#3D2B2D" }}>
                 Avant de commencer
               </h2>
-              <p className="text-white/50 text-sm text-center mb-8">
+              <p className="text-sm text-center mb-8" style={{ color: "rgba(61,43,45,0.6)" }}>
                 Pour une analyse précise de votre peau, merci de respecter ces quelques consignes :
               </p>
 
               {/* Checklist */}
               <div className="space-y-4 mb-8">
-                <div className="flex items-start gap-4 bg-white/5 rounded-2xl p-4 border border-white/10">
-                  <div className="flex items-center justify-center w-10 h-10 bg-amber-400/20 rounded-xl shrink-0 mt-0.5">
-                    <Sun className="w-5 h-5 text-amber-400" />
+                <div className="flex items-start gap-4 rounded-2xl p-4 border border-[rgba(200,134,138,0.15)]" style={{ backgroundColor: "#FAF7F2" }}>
+                  <div className="flex items-center justify-center w-10 h-10 bg-amber-100 rounded-xl shrink-0 mt-0.5">
+                    <Sun className="w-5 h-5 text-amber-500" />
                   </div>
                   <div>
-                    <p className="text-white font-semibold text-sm">Bonne luminosité</p>
-                    <p className="text-white/50 text-xs mt-1">
+                    <p className="font-semibold text-sm" style={{ color: "#3D2B2D" }}>Bonne luminosité</p>
+                    <p className="text-xs mt-1" style={{ color: "rgba(61,43,45,0.6)" }}>
                       Placez-vous près d'une fenêtre ou sous une lumière directe. Évitez les pièces sombres ou le contre-jour.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4 bg-white/5 rounded-2xl p-4 border border-white/10">
-                  <div className="flex items-center justify-center w-10 h-10 bg-blue-400/20 rounded-xl shrink-0 mt-0.5">
-                    <Glasses className="w-5 h-5 text-blue-400" />
+                <div className="flex items-start gap-4 rounded-2xl p-4 border border-[rgba(200,134,138,0.15)]" style={{ backgroundColor: "#FAF7F2" }}>
+                  <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-xl shrink-0 mt-0.5">
+                    <Glasses className="w-5 h-5 text-blue-500" />
                   </div>
                   <div>
-                    <p className="text-white font-semibold text-sm">Retirez vos lunettes</p>
-                    <p className="text-white/50 text-xs mt-1">
+                    <p className="font-semibold text-sm" style={{ color: "#3D2B2D" }}>Retirez vos lunettes</p>
+                    <p className="text-xs mt-1" style={{ color: "rgba(61,43,45,0.6)" }}>
                       Les lunettes masquent une partie du visage et faussent l'analyse cutanée par notre IA.
                     </p>
                   </div>
@@ -306,12 +306,13 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setShowIntroModal(false)}
-                className="w-full py-4 bg-gradient-to-r from-[#C08A8E] to-pink-500 text-white font-bold text-lg rounded-2xl shadow-lg shadow-pink-900/30 transition-all"
+                className="w-full py-4 font-bold text-lg rounded-2xl shadow-lg transition-all"
+                style={{ backgroundColor: "#3D2B2D", color: "#FAF7F2", boxShadow: "0 10px 25px rgba(61,43,45,0.2)" }}
               >
                 Commencer le scan
               </motion.button>
 
-              <p className="text-white/25 text-xs text-center mt-4">
+              <p className="text-xs text-center mt-4" style={{ color: "rgba(61,43,45,0.4)" }}>
                 3 photos seront prises automatiquement par notre IA
               </p>
             </motion.div>
