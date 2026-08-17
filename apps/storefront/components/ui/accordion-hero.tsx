@@ -12,52 +12,61 @@ import Link from "next/link";
 const PANELS = [
   {
     id: "01",
-    title: "ANUA",
-    subtitle: "HEARTLEAF 77%",
+    brand: "ANUA",
+    title: "L'apaisement absolu au Heartleaf.",
+    subtitle: "ANUA · SOIN APAISANT",
     desc: "La gamme culte pour apaiser instantanément les peaux sensibles.",
     media: "/anua_hero.jpg",
-    isVideo: false, // Set to true if using an mp4
-    isPhoto: true,  // Use standard object-cover without multiply blend
+    isVideo: false,
+    isPhoto: true,
     link: "/shop/all",
     bg: "#E8A359"
   },
   {
     id: "02",
-    title: "MEDICUBE",
-    subtitle: "INNOVATION CLINIQUE",
-    desc: "Des soins dermo-cosmétiques pour une peau sans défaut.",
-    media: "/medicube_products.png",
+    brand: "MEDICUBE",
+    title: "L'innovation clinique, redéfinie.",
+    subtitle: "MEDICUBE · DERMO-COSMÉTIQUE",
+    desc: "La haute technologie dermo-cosmétique pour lisser le grain de peau et resserrer les pores. L'efficacité d'un soin clinique, à la maison.",
+    media: "/medicube_hero.jpg",
     isVideo: false,
+    isPhoto: true,
     link: "/shop/all",
-    bg: "#E8B4B8"
+    bg: "#3B2E2A"
   },
   {
     id: "03",
-    title: "COSRX",
-    subtitle: "SNAIL MUCIN",
-    desc: "L'hydratation ultime réparatrice pour un glow instantané.",
-    media: "/im_cat_nettoyant.png",
+    brand: "COSRX",
+    title: "Réparez. Repulpez. Rayonnez.",
+    subtitle: "COSRX · SNAIL MUCIN",
+    desc: "Le pouvoir réparateur de la mucine d'escargot pour restaurer votre barrière cutanée. Une hydratation continue pour un éclat \"Glass Skin\" naturel.",
+    media: "/cosrx_hero.jpg",
     isVideo: false,
+    isPhoto: true,
     link: "/shop/all",
-    bg: "#DABCAE"
+    bg: "#C49A82"
   },
   {
     id: "04",
-    title: "LANEIGE",
-    subtitle: "WATER BANK",
-    desc: "Hydratation profonde 24h avec une texture légère et rafraîchissante.",
-    media: "/im_cat_creme.png",
+    brand: "HAPPY BATH",
+    title: "L'art du bain coréen.",
+    subtitle: "HAPPY BATH · CORPS & SPA",
+    desc: "Une mousse onctueuse aux extraits botaniques qui respecte et hydrate votre peau. Transformez votre douche quotidienne en une véritable parenthèse spa.",
+    media: "/happybath_hero.jpg",
     isVideo: false,
+    isPhoto: true,
     link: "/shop/all",
-    bg: "#D08882"
+    bg: "#8E354A"
   },
   {
     id: "05",
-    title: "JOSEON",
-    subtitle: "RELIEF SUN",
-    desc: "Protection SPF50 avec un fini totalement invisible et apaisant.",
-    media: "/im_cat_sunscreen.png",
+    brand: "BEAUTY OF JOSEON",
+    title: "La protection solaire invisible.",
+    subtitle: "BEAUTY OF JOSEON · SPF50+ ÉCLAT",
+    desc: "Un SPF50+ infusé au riz qui fond sur les peaux mélanisées sans laisser aucun film blanc. Protège, nourrit et illumine le teint instantanément.",
+    media: "/beautyofjoseon_hero.jpg",
     isVideo: false,
+    isPhoto: true,
     link: "/shop/all",
     bg: "#B28C84"
   },
@@ -146,7 +155,7 @@ export function AccordionHero() {
               ) : (
                 <img
                   src={panel.media}
-                  alt={panel.title}
+                  alt={panel.brand || panel.title}
                   className={
                     (panel as any).isPhoto
                       ? "w-full h-full object-cover"
@@ -158,7 +167,7 @@ export function AccordionHero() {
 
             {/* Gradient Overlay for Text Readability */}
             <div
-              className={`absolute inset-0 bg-gradient-to-t from-[#2A2424]/90 via-[#2A2424]/30 to-transparent transition-opacity duration-500 z-10 ${
+              className={`absolute inset-0 bg-gradient-to-t from-[#2A2424]/95 via-[#2A2424]/40 to-transparent transition-opacity duration-500 z-10 ${
                 isActive ? "opacity-100" : "opacity-0"
               }`}
             />
@@ -176,8 +185,8 @@ export function AccordionHero() {
               }`}
             >
               <div className="h-full flex items-end pb-12 overflow-hidden">
-                <span className="text-white font-bold tracking-widest text-xs md:text-sm whitespace-nowrap -rotate-90 origin-bottom">
-                  {panel.title}
+                <span className="text-white font-bold tracking-widest text-xs md:text-sm whitespace-nowrap -rotate-90 origin-bottom uppercase">
+                  {panel.brand || panel.title}
                 </span>
               </div>
               <span className="text-white/80 text-[10px] font-bold mt-auto mb-2">{panel.id}</span>
@@ -193,14 +202,14 @@ export function AccordionHero() {
                 / {panel.id}
               </div>
 
-              <div className="flex flex-col items-start w-full min-w-[280px] md:min-w-[400px]">
-                <p className="text-white/80 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-1 md:mb-2 bg-black/20 px-3 py-1 rounded-full backdrop-blur-sm">
+              <div className="flex flex-col items-start w-full min-w-[280px] md:min-w-[420px] max-w-lg">
+                <p className="text-white/90 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-1 md:mb-2 bg-black/30 px-3.5 py-1 rounded-full backdrop-blur-md border border-white/10">
                   {panel.subtitle}
                 </p>
-                <h2 className="text-3xl md:text-5xl font-black text-white leading-none tracking-tight mb-2 md:mb-4 uppercase drop-shadow-md">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight tracking-tight mb-2 md:mb-4 drop-shadow-md">
                   {panel.title}
                 </h2>
-                <p className="text-white/95 text-xs md:text-[15px] font-medium max-w-[250px] md:max-w-sm mb-6 md:mb-8 leading-relaxed drop-shadow-sm">
+                <p className="text-white/90 text-xs sm:text-sm md:text-base font-normal max-w-[280px] sm:max-w-md mb-6 md:mb-8 leading-relaxed drop-shadow-sm">
                   {panel.desc}
                 </p>
 
