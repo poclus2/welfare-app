@@ -306,12 +306,15 @@ export default function ShopClient({ flashProducts, bestProducts }: { flashProdu
 
             </div>
           </div>
+        </div>
+      </div> {/* End top container */}
 
-        {/* ════════════════════════════════════
-            [2] SHOWCASE CAROUSEL (Replaces Category Bar)
-        ════════════════════════════════════ */}
-        <ShowcaseCarousel />
+      {/* ════════════════════════════════════
+          [2] SHOWCASE CAROUSEL (Full Width)
+      ════════════════════════════════════ */}
+      <ShowcaseCarousel />
 
+      <div className="w-full max-w-[1400px] mx-auto px-4 md:px-10 flex flex-col gap-5 pb-6">
         {/* ════════════════════════════════════
             [3] VENTE FLASH
         ════════════════════════════════════ */}
