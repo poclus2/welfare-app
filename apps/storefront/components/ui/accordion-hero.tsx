@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 /* ═══════════════════════════════════════════════════════
@@ -63,26 +63,73 @@ const PANELS = [
 ];
 
 export function AccordionHero() {
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(0); // Default open first panel
+  const [startIndex, setStartIndex] = useState(0);
+  const [hoveredId, setHoveredId] = useState<string>(PANELS[0].id);
+
+  const VISIBLE_COUNT = 3;
+
+  const handleNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (startIndex + VISIBLE_COUNT < PANELS.length) {
+      const newStart = startIndex + 1;
+      setStartIndex(newStart);
+      const newVisible = PANELS.slice(newStart, newStart + VISIBLE_COUNT);
+      if (!newVisible.find(p => p.id === hoveredId)) {
+        setHoveredId(newVisible[0].id);
+      }
+    }
+  };
+
+  const handlePrev = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (startIndex > 0) {
+      const newStart = startIndex - 1;
+      setStartIndex(newStart);
+      const newVisible = PANELS.slice(newStart, newStart + VISIBLE_COUNT);
+      if (!newVisible.find(p => p.id === hoveredId)) {
+        setHoveredId(newVisible[0].id);
+      }
+    }
+  };
 
   return (
-    <div className="w-full h-[450px] md:h-[550px] flex overflow-hidden rounded-[32px] bg-[#2A2424] shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+    <div className="relative w-full h-[450px] md:h-[550px] flex overflow-hidden rounded-[32px] bg-[#2A2424] shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+      
+      {/* LEFT NAVIGATION ARROW */}
+      {startIndex > 0 && (
+        <button 
+          onClick={handlePrev} 
+          className="absolute left-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-12 md:h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white hover:text-[#2A2424] transition-colors shadow-lg"
+        >
+          <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
+        </button>
+      )}
+
       {PANELS.map((panel, idx) => {
-        const isActive = hoveredIdx === idx;
+        const isVisible = idx >= startIndex && idx < startIndex + VISIBLE_COUNT;
+        const isActive = isVisible && hoveredId === panel.id;
 
         return (
           <motion.div
             key={panel.id}
-            onMouseEnter={() => setHoveredIdx(idx)}
-            onClick={() => setHoveredIdx(idx)}
+            onMouseEnter={() => {
+              if (isVisible) setHoveredId(panel.id);
+            }}
+            onClick={() => {
+              if (isVisible) setHoveredId(panel.id);
+            }}
             layout
             initial={false}
             animate={{
-              flex: isActive ? 10 : 1,
+              flex: isActive ? 10 : isVisible ? 1.5 : 0,
+              opacity: isVisible ? 1 : 0,
             }}
             transition={{ type: "spring", stiffness: 180, damping: 25 }}
-            className="relative h-full overflow-hidden border-r border-[#2A2424]/10 last:border-r-0 group cursor-pointer"
-            style={{ backgroundColor: panel.bg }}
+            className={`relative h-full overflow-hidden border-[#2A2424]/10 group cursor-pointer ${isVisible ? 'border-r last:border-r-0' : 'border-r-0'}`}
+            style={{ 
+              backgroundColor: panel.bg, 
+              pointerEvents: isVisible ? "auto" : "none" 
+            }}
           >
             {/* Background Media */}
             <div className="absolute inset-0 w-full h-full flex items-center justify-center p-0 md:p-8">
@@ -106,20 +153,20 @@ export function AccordionHero() {
 
             {/* Gradient Overlay for Text Readability */}
             <div
-              className={`absolute inset-0 bg-gradient-to-t from-[#2A2424]/90 via-[#2A2424]/30 to-transparent transition-opacity duration-500 ${
+              className={`absolute inset-0 bg-gradient-to-t from-[#2A2424]/90 via-[#2A2424]/30 to-transparent transition-opacity duration-500 z-10 ${
                 isActive ? "opacity-100" : "opacity-0"
               }`}
             />
             {/* Overlay darker on non-active to hide content slightly */}
             <div
-              className={`absolute inset-0 bg-black/30 transition-opacity duration-500 ${
+              className={`absolute inset-0 bg-black/30 transition-opacity duration-500 z-10 ${
                 isActive ? "opacity-0" : "opacity-100"
               }`}
             />
 
             {/* Vertical Title (when collapsed) */}
             <div
-              className={`absolute inset-0 py-8 flex flex-col items-center justify-end transition-opacity duration-300 ${
+              className={`absolute inset-0 py-8 flex flex-col items-center justify-end transition-opacity duration-300 z-20 ${
                 isActive ? "opacity-0 pointer-events-none" : "opacity-100 delay-100"
               }`}
             >
@@ -133,11 +180,11 @@ export function AccordionHero() {
 
             {/* Expanded Content */}
             <div
-              className={`absolute inset-0 p-6 md:p-10 flex flex-col justify-between transition-opacity duration-500 ${
+              className={`absolute inset-0 p-6 md:p-10 flex flex-col justify-between transition-opacity duration-500 z-20 ${
                 isActive ? "opacity-100 delay-200" : "opacity-0 pointer-events-none"
               }`}
             >
-              <div className="text-white/90 text-sm font-bold tracking-widest">
+              <div className="text-white/90 text-sm font-bold tracking-widest pl-10 md:pl-0">
                 / {panel.id}
               </div>
 
@@ -163,6 +210,17 @@ export function AccordionHero() {
           </motion.div>
         );
       })}
+
+      {/* RIGHT NAVIGATION ARROW */}
+      {startIndex + VISIBLE_COUNT < PANELS.length && (
+        <button 
+          onClick={handleNext} 
+          className="absolute right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-12 md:h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white hover:text-[#2A2424] transition-colors shadow-lg"
+        >
+          <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
+        </button>
+      )}
+
     </div>
   );
 }
