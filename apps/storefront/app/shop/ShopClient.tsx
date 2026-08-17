@@ -306,8 +306,7 @@ export default function ShopClient({ flashProducts, bestProducts }: { flashProdu
 
             </div>
           </div>
-        </div>
-      </div> {/* End top container */}
+        </div> {/* End top container */}
 
       {/* ════════════════════════════════════
           [2] SHOWCASE CAROUSEL (Full Width)
