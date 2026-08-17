@@ -64,7 +64,7 @@ const PANELS = [
 
 export function AccordionHero() {
   const [startIndex, setStartIndex] = useState(0);
-  const [hoveredId, setHoveredId] = useState<string>(PANELS[0].id);
+  const [hoveredId, setHoveredId] = useState<string>(PANELS[0]?.id || "");
 
   const VISIBLE_COUNT = 3;
 
@@ -75,7 +75,7 @@ export function AccordionHero() {
       setStartIndex(newStart);
       const newVisible = PANELS.slice(newStart, newStart + VISIBLE_COUNT);
       if (!newVisible.find(p => p.id === hoveredId)) {
-        setHoveredId(newVisible[0].id);
+        setHoveredId(newVisible[0]?.id || "");
       }
     }
   };
@@ -87,7 +87,7 @@ export function AccordionHero() {
       setStartIndex(newStart);
       const newVisible = PANELS.slice(newStart, newStart + VISIBLE_COUNT);
       if (!newVisible.find(p => p.id === hoveredId)) {
-        setHoveredId(newVisible[0].id);
+        setHoveredId(newVisible[0]?.id || "");
       }
     }
   };
