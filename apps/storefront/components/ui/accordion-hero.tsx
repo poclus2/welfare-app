@@ -131,7 +131,7 @@ export function AccordionHero() {
             layout
             initial={false}
             animate={{
-              flex: isActive ? 12 : isVisible ? 1 : 0,
+              flex: isActive ? 6.5 : isVisible ? 1.75 : 0,
               opacity: isVisible ? 1 : 0,
             }}
             transition={{ type: "spring", stiffness: 180, damping: 25 }}
@@ -186,11 +186,11 @@ export function AccordionHero() {
               }`}
             >
               <div className="h-full flex items-end pb-8 sm:pb-12 overflow-hidden">
-                <span className="text-white font-bold tracking-widest text-[10px] sm:text-xs md:text-sm whitespace-nowrap -rotate-90 origin-bottom uppercase">
+                <span className="text-white font-bold tracking-widest text-[11px] sm:text-xs md:text-sm whitespace-nowrap -rotate-90 origin-bottom uppercase">
                   {panel.brand || panel.title}
                 </span>
               </div>
-              <span className="text-white/80 text-[9px] sm:text-[10px] font-bold mt-auto mb-2">{panel.id}</span>
+              <span className="text-white/90 text-[10px] sm:text-xs font-bold mt-auto mb-2">{panel.id}</span>
             </div>
 
             {/* Expanded Content */}
