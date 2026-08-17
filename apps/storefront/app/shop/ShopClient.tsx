@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Footer } from "@/components/home/footer";
+import { ShowcaseCarousel } from "@/components/ui/showcase-carousel";
 
 /* ═══════════════════════════════════════════════════════
    DATA
@@ -307,26 +308,9 @@ export default function ShopClient({ flashProducts, bestProducts }: { flashProdu
           </div>
 
         {/* ════════════════════════════════════
-            [2] CATEGORY BAR — Pill Cards
+            [2] SHOWCASE CAROUSEL (Replaces Category Bar)
         ════════════════════════════════════ */}
-        <div className="flex gap-3 md:gap-4 overflow-x-auto snap-x snap-mandatory hide-scrollbar -mx-4 px-4 md:mx-0 md:px-0 pb-2 md:pb-0">
-          {CATEGORIES.map((cat, i) => (
-            <motion.a
-              key={cat.slug}
-              href={`/shop/${cat.slug}`}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1], delay: i * 0.05 }}
-              className="min-w-[115px] md:min-w-[140px] shrink-0 snap-start flex flex-col items-center justify-center bg-white rounded-[24px] p-4 border border-[#F4EAEB] hover:border-[#2A2424]/20 hover:shadow-sm transition-all cursor-pointer group"
-            >
-              <div className="w-10 h-10 md:w-14 md:h-14 rounded-full overflow-hidden mb-3 bg-[#F8F5F2] flex items-center justify-center p-2 group-hover:scale-110 transition-transform duration-500">
-                <img src={cat.image} alt={cat.label} className="w-full h-full object-contain mix-blend-multiply" />
-              </div>
-              <p className="text-xs font-bold text-[#2A2424] text-center mb-0.5">{cat.label}</p>
-              <p className="text-[9px] font-medium text-[#2A2424]/40 text-center">{cat.sub}</p>
-            </motion.a>
-          ))}
-        </div>
+        <ShowcaseCarousel />
 
         {/* ════════════════════════════════════
             [3] VENTE FLASH
