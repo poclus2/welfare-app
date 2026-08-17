@@ -103,15 +103,15 @@ export function AccordionHero() {
   };
 
   return (
-    <div className="relative w-full h-[450px] md:h-[550px] flex overflow-hidden rounded-[32px] bg-[#2A2424] shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
+    <div className="relative w-full h-[430px] sm:h-[480px] md:h-[550px] flex overflow-hidden rounded-[24px] md:rounded-[32px] bg-[#2A2424] shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
       
       {/* LEFT NAVIGATION ARROW */}
       {startIndex > 0 && (
         <button 
           onClick={handlePrev} 
-          className="absolute left-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-12 md:h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white hover:text-[#2A2424] transition-colors shadow-lg"
+          className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white hover:text-[#2A2424] transition-colors shadow-lg"
         >
-          <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
+          <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
         </button>
       )}
 
@@ -131,7 +131,7 @@ export function AccordionHero() {
             layout
             initial={false}
             animate={{
-              flex: isActive ? 10 : isVisible ? 1.5 : 0,
+              flex: isActive ? 12 : isVisible ? 1 : 0,
               opacity: isVisible ? 1 : 0,
             }}
             transition={{ type: "spring", stiffness: 180, damping: 25 }}
@@ -163,7 +163,7 @@ export function AccordionHero() {
 
             {/* Gradient Overlay for Text Readability */}
             <div
-              className={`absolute inset-0 bg-gradient-to-r from-[#2A2424]/90 via-[#2A2424]/50 to-transparent transition-opacity duration-500 z-10 ${
+              className={`absolute inset-0 bg-gradient-to-r from-[#2A2424]/95 via-[#2A2424]/60 to-transparent transition-opacity duration-500 z-10 ${
                 isActive ? "opacity-100" : "opacity-0"
               }`}
             />
@@ -181,37 +181,37 @@ export function AccordionHero() {
 
             {/* Vertical Title (when collapsed) */}
             <div
-              className={`absolute inset-0 py-8 flex flex-col items-center justify-end transition-opacity duration-300 z-20 ${
+              className={`absolute inset-0 py-6 md:py-8 flex flex-col items-center justify-end transition-opacity duration-300 z-20 ${
                 isActive ? "opacity-0 pointer-events-none" : "opacity-100 delay-100"
               }`}
             >
-              <div className="h-full flex items-end pb-12 overflow-hidden">
-                <span className="text-white font-bold tracking-widest text-xs md:text-sm whitespace-nowrap -rotate-90 origin-bottom uppercase">
+              <div className="h-full flex items-end pb-8 sm:pb-12 overflow-hidden">
+                <span className="text-white font-bold tracking-widest text-[10px] sm:text-xs md:text-sm whitespace-nowrap -rotate-90 origin-bottom uppercase">
                   {panel.brand || panel.title}
                 </span>
               </div>
-              <span className="text-white/80 text-[10px] font-bold mt-auto mb-2">{panel.id}</span>
+              <span className="text-white/80 text-[9px] sm:text-[10px] font-bold mt-auto mb-2">{panel.id}</span>
             </div>
 
             {/* Expanded Content */}
             <div
-              className={`absolute inset-0 p-5 md:p-10 flex flex-col justify-between transition-opacity duration-500 z-20 ${
+              className={`absolute inset-0 p-4 sm:p-6 md:p-10 flex flex-col justify-between transition-opacity duration-500 z-20 ${
                 isActive ? "opacity-100 delay-200" : "opacity-0 pointer-events-none"
               }`}
             >
-              <div className="text-white/90 text-xs md:text-sm font-bold tracking-widest pl-8 md:pl-0">
+              <div className="text-white/90 text-[11px] sm:text-xs md:text-sm font-bold tracking-widest pl-2 sm:pl-4 md:pl-0">
                 / {panel.id}
               </div>
 
-              <div className="flex flex-col items-start w-full min-w-[220px] md:min-w-[420px] max-w-lg">
-                <p className="text-white/90 text-[9px] md:text-xs font-bold uppercase tracking-widest mb-1 md:mb-2 bg-black/40 px-2.5 md:px-3.5 py-0.5 md:py-1 rounded-full backdrop-blur-md border border-white/10">
+              <div className="flex flex-col items-start w-full min-w-0 max-w-lg pr-2">
+                <p className="text-white/90 text-[9px] sm:text-[10px] md:text-xs font-bold uppercase tracking-widest mb-1.5 md:mb-2 bg-black/40 px-2.5 md:px-3.5 py-0.5 md:py-1 rounded-full backdrop-blur-md border border-white/10">
                   {panel.subtitle}
                 </p>
                 {/* Title: Hidden on mobile, visible on desktop */}
                 <h2 className="hidden md:block text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white leading-tight tracking-tight mb-2 md:mb-4 drop-shadow-md">
                   {panel.title}
                 </h2>
-                <p className="text-white/95 text-[11px] sm:text-sm md:text-base font-normal max-w-[240px] sm:max-w-md mb-4 md:mb-8 leading-relaxed drop-shadow-sm line-clamp-3 md:line-clamp-none">
+                <p className="text-white/95 text-xs sm:text-sm md:text-base font-normal w-full mb-3 sm:mb-4 md:mb-8 leading-relaxed drop-shadow-sm">
                   {panel.desc}
                 </p>
 
