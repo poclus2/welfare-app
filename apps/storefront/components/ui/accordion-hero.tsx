@@ -15,10 +15,11 @@ const PANELS = [
     title: "ANUA",
     subtitle: "HEARTLEAF 77%",
     desc: "La gamme culte pour apaiser instantanément les peaux sensibles.",
-    media: "/anua_products.png",
+    media: "/anua_hero.jpg",
     isVideo: false, // Set to true if using an mp4
+    isPhoto: true,  // Use standard object-cover without multiply blend
     link: "/shop/all",
-    bg: "#8E354A"
+    bg: "#E8A359"
   },
   {
     id: "02",
@@ -146,7 +147,11 @@ export function AccordionHero() {
                 <img
                   src={panel.media}
                   alt={panel.title}
-                  className="w-full h-[150%] md:h-full object-contain mix-blend-multiply opacity-90 drop-shadow-2xl translate-y-[20%] md:translate-y-[10%]"
+                  className={
+                    (panel as any).isPhoto
+                      ? "w-full h-full object-cover"
+                      : "w-full h-[150%] md:h-full object-contain mix-blend-multiply opacity-90 drop-shadow-2xl translate-y-[20%] md:translate-y-[10%]"
+                  }
                 />
               )}
             </div>
