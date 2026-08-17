@@ -131,7 +131,7 @@ export function AccordionHero() {
             layout
             initial={false}
             animate={{
-              flex: isActive ? 6.5 : isVisible ? 1.75 : 0,
+              flex: isActive ? 6.5 : isVisible ? 1.3 : 0,
               opacity: isVisible ? 1 : 0,
             }}
             transition={{ type: "spring", stiffness: 180, damping: 25 }}
