@@ -17,6 +17,7 @@ import {
 import Link from "next/link";
 import { Footer } from "@/components/home/footer";
 import { ShowcaseCarousel } from "@/components/ui/showcase-carousel";
+import { AccordionHero } from "@/components/ui/accordion-hero";
 
 /* ═══════════════════════════════════════════════════════
    DATA
@@ -182,130 +183,9 @@ export default function ShopClient({ flashProducts, bestProducts }: { flashProdu
       <div className="w-full max-w-[1400px] mx-auto px-4 md:px-10 py-6 flex flex-col gap-5">
 
         {/* ════════════════════════════════════
-            [1] HERO BENTO GRID (Stacked Layout)
+            [1] ACCORDION HERO (Replaces Bento Grid)
         ════════════════════════════════════ */}
-        <div className="flex flex-col md:grid md:grid-cols-12 gap-5 md:gap-6">
-            
-            {/* ─── LEFT COLUMN (ANUA) ─── */}
-            <div className="md:col-span-4 flex flex-col h-full">
-              {/* ─── ANUA CARD (Row 1) ─── */}
-              <div className="w-full h-full bg-[#8E354A] rounded-[32px] flex flex-col overflow-hidden group shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
-                {/* Image Container */}
-                <div className="w-full relative flex items-start justify-center order-1 md:order-2 p-5 pt-8 pb-0 md:p-8 md:pb-0 flex-1 overflow-hidden">
-                  <img 
-                    src="/anua_products.png" 
-                    alt="Produits Anua Heartleaf" 
-                    className="w-[90%] sm:w-[75%] md:w-[90%] h-auto max-h-[300px] md:max-h-[500px] object-contain drop-shadow-2xl group-hover:scale-105 transition-transform duration-700 ease-out mb-0" 
-                  />
-                </div>
-                {/* Text Container */}
-                <div className="w-full p-6 pt-0 md:p-10 md:pt-10 flex flex-col justify-end md:justify-start order-2 md:order-1 z-10 shrink-0">
-                  <h2 className="text-[28px] md:text-[36px] font-bold mb-3 md:mb-5 leading-tight tracking-tight text-white mt-2 md:mt-0">
-                    La gamme culte<br/>Anua Heartleaf.
-                  </h2>
-                  <p className="text-white/80 text-[14px] md:text-[16px] mb-6 md:mb-8 leading-relaxed font-medium">
-                    Apaisez instantanément les peaux sensibles et acnéiques avec l'extrait pur d'Heartleaf (77%).
-                  </p>
-                  <div className="flex flex-row items-center justify-between mt-auto pt-2 md:pt-4 gap-4 mb-1 md:mb-0">
-                    <button className="bg-white text-[#1C1C1C] text-[14px] md:text-[15px] font-bold py-3 px-6 md:py-3.5 md:px-7 rounded-full flex items-center justify-center gap-2 w-fit hover:bg-[#F4EAEB] transition-all shadow-sm group-hover:pl-7">
-                      Découvrir la gamme <ArrowRight className="w-4 h-4 md:w-4 md:h-4 transition-transform group-hover:translate-x-1" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* ─── RIGHT COLUMN (SMALL CARDS + MEDICUBE) ─── */}
-            <div className="md:col-span-8 flex flex-col gap-5 md:gap-6 h-full">
-
-              {/* ─── SMALL CARDS ROW ─── */}
-              <div className="order-1 md:order-2 flex overflow-x-auto snap-x snap-mandatory gap-4 pb-2 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 md:grid md:grid-cols-3 md:gap-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                
-                {/* SMALL CARD 1 */}
-                <div className="w-[230px] md:w-auto snap-center shrink-0 bg-white rounded-[24px] p-4 flex flex-col md:flex-row md:items-center gap-4 group shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-[#2A2424]/5 hover:shadow-md transition-shadow">
-                  <div className="w-full h-[150px] md:w-[90px] md:h-[90px] shrink-0 bg-[#F3EFEA] rounded-[18px] md:rounded-[16px] flex items-center justify-center p-2 overflow-hidden">
-                    <img src="/im_cat_nettoyant.png" alt="Nettoyant" className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500 ease-out" />
-                  </div>
-                  <div className="flex flex-col flex-1 text-left justify-center">
-                    <h3 className="text-[17px] md:text-[15px] font-bold text-[#111111] mb-1 tracking-tight">Nettoyant</h3>
-                    <p className="text-[10px] md:text-[9px] font-bold text-[#111111]/50 mb-3 md:mb-2 uppercase tracking-widest">COSRX</p>
-                    <div className="flex flex-col gap-2 md:gap-1 mb-6 md:mb-0 items-start w-full">
-                      <span className="text-[11px] md:text-[10px] font-medium text-[#111111]/70 flex items-center gap-2 md:gap-1.5"><span className="w-1.5 h-1.5 bg-[#D4C4B7] rounded-full shrink-0" /> Nettoyage profond</span>
-                      <span className="text-[11px] md:text-[10px] font-medium text-[#111111]/70 flex items-center gap-2 md:gap-1.5"><span className="w-1.5 h-1.5 bg-[#D4C4B7] rounded-full shrink-0" /> Sans sulfate</span>
-                    </div>
-                    <button className="bg-[#211F1F] text-white text-[13px] md:text-[11px] font-bold py-3 md:py-2.5 px-4 md:px-4 rounded-full flex items-center justify-center gap-3 md:gap-2 w-full md:w-fit mt-auto md:mt-4 hover:bg-black transition-colors">
-                      Acheter <ArrowRight className="w-4 h-4 md:w-3.5 md:h-3.5 text-white" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* SMALL CARD 2 */}
-                <div className="w-[230px] md:w-auto snap-center shrink-0 bg-white rounded-[24px] p-4 flex flex-col md:flex-row md:items-center gap-4 group shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-[#2A2424]/5 hover:shadow-md transition-shadow">
-                  <div className="w-full h-[150px] md:w-[90px] md:h-[90px] shrink-0 bg-[#F3EFEA] rounded-[18px] md:rounded-[16px] flex items-center justify-center p-2 overflow-hidden">
-                    <img src="/im_cat_creme.png" alt="Crème" className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500 ease-out" />
-                  </div>
-                  <div className="flex flex-col flex-1 text-left justify-center">
-                    <h3 className="text-[17px] md:text-[15px] font-bold text-[#111111] mb-1 tracking-tight">Crème</h3>
-                    <p className="text-[10px] md:text-[9px] font-bold text-[#111111]/50 mb-3 md:mb-2 uppercase tracking-widest">LANEIGE</p>
-                    <div className="flex flex-col gap-2 md:gap-1 mb-6 md:mb-0 items-start w-full">
-                      <span className="text-[11px] md:text-[10px] font-medium text-[#111111]/70 flex items-center gap-2 md:gap-1.5"><span className="w-1.5 h-1.5 bg-[#D4C4B7] rounded-full shrink-0" /> Hydratation 24h</span>
-                      <span className="text-[11px] md:text-[10px] font-medium text-[#111111]/70 flex items-center gap-2 md:gap-1.5"><span className="w-1.5 h-1.5 bg-[#D4C4B7] rounded-full shrink-0" /> Texture légère</span>
-                    </div>
-                    <button className="bg-[#211F1F] text-white text-[13px] md:text-[11px] font-bold py-3 md:py-2.5 px-4 md:px-4 rounded-full flex items-center justify-center gap-3 md:gap-2 w-full md:w-fit mt-auto md:mt-4 hover:bg-black transition-colors">
-                      Acheter <ArrowRight className="w-4 h-4 md:w-3.5 md:h-3.5 text-white" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* SMALL CARD 3 */}
-                <div className="w-[230px] md:w-auto snap-center shrink-0 bg-white rounded-[24px] p-4 flex flex-col md:flex-row md:items-center gap-4 group shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-[#2A2424]/5 hover:shadow-md transition-shadow">
-                  <div className="w-full h-[150px] md:w-[90px] md:h-[90px] shrink-0 bg-[#F3EFEA] rounded-[18px] md:rounded-[16px] flex items-center justify-center p-2 overflow-hidden">
-                    <img src="/im_cat_sunscreen.png" alt="Solaire" className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-500 ease-out" />
-                  </div>
-                  <div className="flex flex-col flex-1 text-left justify-center">
-                    <h3 className="text-[17px] md:text-[15px] font-bold text-[#111111] mb-1 tracking-tight">Solaire</h3>
-                    <p className="text-[10px] md:text-[9px] font-bold text-[#111111]/50 mb-3 md:mb-2 uppercase tracking-widest">B. OF JOSEON</p>
-                    <div className="flex flex-col gap-2 md:gap-1 mb-6 md:mb-0 items-start w-full">
-                      <span className="text-[11px] md:text-[10px] font-medium text-[#111111]/70 flex items-center gap-2 md:gap-1.5"><span className="w-1.5 h-1.5 bg-[#D4C4B7] rounded-full shrink-0" /> Protection SPF50</span>
-                      <span className="text-[11px] md:text-[10px] font-medium text-[#111111]/70 flex items-center gap-2 md:gap-1.5"><span className="w-1.5 h-1.5 bg-[#D4C4B7] rounded-full shrink-0" /> Fini invisible</span>
-                    </div>
-                    <button className="bg-[#211F1F] text-white text-[13px] md:text-[11px] font-bold py-3 md:py-2.5 px-4 md:px-4 rounded-full flex items-center justify-center gap-3 md:gap-2 w-full md:w-fit mt-auto md:mt-4 hover:bg-black transition-colors">
-                      Acheter <ArrowRight className="w-4 h-4 md:w-3.5 md:h-3.5 text-white" />
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* ─── MEDICUBE CARD ─── */}
-              <div className="order-2 md:order-1 w-full bg-[#F6EBEA] md:bg-white rounded-[32px] flex flex-col md:flex-row overflow-hidden group shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-[#2A2424]/5 flex-1">
-                {/* Image Container */}
-                <div className="w-full md:w-[50%] relative overflow-hidden flex items-center justify-center p-5 pt-8 pb-0 md:p-12 order-1 bg-[#F6EBEA] flex-1">
-                   <img 
-                     src="/medicube_products.png" 
-                     alt="Gamme Medicube" 
-                     className="w-[90%] sm:w-[75%] md:w-[95%] h-auto max-h-[300px] md:max-h-none object-contain group-hover:scale-105 transition-transform duration-700 ease-out mb-0" 
-                   />
-                </div>
-                {/* Text Container */}
-                <div className="w-full md:w-[50%] p-6 pt-0 md:p-12 md:py-16 flex flex-col justify-end md:justify-center order-2 shrink-0 md:bg-white">
-                  <h2 className="text-[24px] md:text-[32px] font-bold text-[#111111] mb-3 md:mb-5 leading-tight tracking-tight">
-                    L'innovation clinique Medicube pour une peau sans défaut
-                  </h2>
-                  <p className="text-[#111111]/80 text-[14px] md:text-[15px] mb-6 md:mb-10 leading-relaxed font-medium">
-                    Découvrez des soins dermo-cosmétiques de pointe, spécialement formulés pour traiter les imperfections, apaiser les rougeurs et resserrer les pores.
-                  </p>
-                  <div className="flex flex-row items-center justify-between mt-auto pt-2 gap-4 mb-1 md:mb-0">
-                    <span className="text-[11px] md:text-[13px] font-medium text-[#111111]/70">Prix de départ à partir de :</span>
-                    <button className="bg-[#211F1F] text-white text-[12px] md:text-[14px] font-bold py-2.5 px-5 md:py-3.5 md:px-7 rounded-full hover:bg-black transition-transform shadow-sm">
-                      15 000 FCFA
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          </div>
+        <AccordionHero />
         </div> {/* End top container */}
 
       {/* ════════════════════════════════════
