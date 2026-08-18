@@ -127,39 +127,35 @@ export function ShowcaseCarousel() {
                   zIndex,
                 }}
                 transition={{ type: "spring", stiffness: 280, damping: 28, mass: 0.9 }}
-                className="absolute w-[290px] md:w-[340px] h-[420px] md:h-[460px] rounded-[28px] cursor-grab active:cursor-grabbing overflow-hidden shadow-xl flex flex-col"
+                className="absolute w-[290px] md:w-[340px] h-[420px] md:h-[460px] rounded-[28px] cursor-grab active:cursor-grabbing overflow-hidden shadow-xl"
                 style={{ backgroundColor: item.color }}
               >
-                {/* Numéro */}
-                <div className="absolute top-5 left-0 right-0 text-center z-20 text-xs font-semibold tracking-[0.2em]" style={{ color: item.textColor, opacity: 0.7 }}>
+                {/* Image — couvre toute la carte du haut en bas */}
+                <img
+                  src={item.bgImage}
+                  alt={item.title}
+                  className="absolute inset-0 w-full h-full object-cover object-center"
+                  draggable={false}
+                />
+
+                {/* Numéro — par-dessus l'image */}
+                <div className="absolute top-5 left-0 right-0 text-center z-20 text-xs font-semibold tracking-[0.2em]" style={{ color: item.textColor, opacity: 0.85 }}>
                   {item.id} — 09
                 </div>
 
-                {/* Image — plein format, cover, colle au bord supérieur */}
-                <div className="flex-1 w-full overflow-hidden relative">
-                  <img
-                    src={item.bgImage}
-                    alt={item.title}
-                    className="w-full h-full object-cover object-center"
-                    draggable={false}
-                  />
-                  {/* Gradient de fondu vers le bas pour lire le texte */}
-                  <div
-                    className="absolute bottom-0 left-0 right-0 h-20"
-                    style={{ background: `linear-gradient(to bottom, transparent, ${item.color})` }}
-                  />
-                </div>
+                {/* Gradient de fondu bas → couleur de fond */}
+                <div
+                  className="absolute bottom-0 left-0 right-0 h-36 z-10 pointer-events-none"
+                  style={{ background: `linear-gradient(to bottom, transparent, ${item.color} 80%)` }}
+                />
 
-                {/* Texte */}
+                {/* Texte — par-dessus le gradient */}
                 <motion.div
-                  className="w-full px-6 pb-8 pt-3 text-center flex-shrink-0"
+                  className="absolute bottom-0 left-0 right-0 px-6 pb-8 pt-4 text-center z-20"
                   animate={{ opacity: isActive ? 1 : 0.5, y: isActive ? 0 : 8 }}
                   transition={{ duration: 0.35, delay: isActive ? 0.08 : 0 }}
                 >
-                  <h2
-                    className="text-2xl font-bold tracking-widest mb-2"
-                    style={{ color: item.textColor }}
-                  >
+                  <h2 className="text-2xl font-bold tracking-widest mb-1.5" style={{ color: item.textColor }}>
                     {item.title}
                   </h2>
                   <p className="text-xs leading-relaxed font-medium" style={{ color: item.textColor, opacity: 0.75 }}>
