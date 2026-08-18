@@ -82,6 +82,25 @@ export function ShowcaseCarousel() {
   const [activeIdx, setActiveIdx] = useState(2);
   const [dragStart, setDragStart] = useState(0);
 
+  // Responsive state pour ajuster l'effet coverflow sur mobile
+  const [windowWidth, setWindowWidth] = useState(1200);
+  const [mounted, setMounted] = useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+    setWindowWidth(window.innerWidth);
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const getSpacing = () => {
+    if (!mounted) return 285;
+    if (windowWidth < 640) return 160; // Espacement très réduit sur mobile
+    if (windowWidth < 768) return 220; // Espacement moyen sur tablette
+    return 285; // Espacement normal sur desktop
+  };
+
   const handleDragStart = (_e: any, info: any) => {
     setDragStart(info.point.x);
   };
@@ -95,16 +114,18 @@ export function ShowcaseCarousel() {
     }
   };
 
+  const spacing = getSpacing();
+
   return (
     <div className="relative w-full py-10 overflow-hidden flex flex-col items-center justify-center bg-[#F8F5F2]">
-      <div className="w-full max-w-[1200px] flex items-center justify-center h-[520px] relative" style={{ perspective: "1200px" }}>
+      <div className="w-full max-w-[1200px] flex items-center justify-center h-[450px] md:h-[520px] relative" style={{ perspective: "1200px" }}>
         <AnimatePresence initial={false}>
           {CAROUSEL_ITEMS.map((item, idx) => {
             const isActive = idx === activeIdx;
             const diff = idx - activeIdx;
 
             const zIndex = 50 - Math.abs(diff);
-            const xOffset = diff * 285;
+            const xOffset = diff * spacing;
             const scale = isActive ? 1 : 0.82;
             const opacity = Math.abs(diff) > 2 ? 0 : isActive ? 1 : 0.55;
             const rotateY = diff * -12;
@@ -127,7 +148,7 @@ export function ShowcaseCarousel() {
                   zIndex,
                 }}
                 transition={{ type: "spring", stiffness: 280, damping: 28, mass: 0.9 }}
-                className="absolute w-[290px] md:w-[340px] h-[420px] md:h-[460px] rounded-[28px] cursor-grab active:cursor-grabbing overflow-hidden shadow-xl"
+                className="absolute w-[240px] sm:w-[290px] md:w-[340px] h-[360px] sm:h-[420px] md:h-[460px] rounded-[24px] md:rounded-[28px] cursor-grab active:cursor-grabbing overflow-hidden shadow-xl"
                 style={{ backgroundColor: item.color }}
               >
                 {/* Image — couvre toute la carte du haut en bas */}
