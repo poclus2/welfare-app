@@ -6,38 +6,66 @@ import { motion, AnimatePresence } from "framer-motion";
 const CAROUSEL_ITEMS = [
   {
     id: "01",
-    title: "MIST",
-    desc: "A close-up interaction turns a small detail into the main event, making the transition feel intimate and sensory.",
-    bgImage: "/im_cat_toner.png",
-    color: "#D08882"
+    title: "NETTOYANTS",
+    desc: "Le point de départ du double cleansing. Une peau nette et purifiée, prête à recevoir ses soins.",
+    bgImage: "/carroussel/nettoyants.png",
+    color: "#6B8EAD"
   },
   {
     id: "02",
-    title: "ESSENCE",
-    desc: "A focused product moment built around atmosphere, material detail, and a quiet sense of presence.",
-    bgImage: "/im_cat_serum.png",
-    color: "#B28C84"
+    title: "TONERS",
+    desc: "Rééquilibrage et hydratation immédiate. La première étape essentielle pour préparer la peau.",
+    bgImage: "/carroussel/toners.png",
+    color: "#D08882"
   },
   {
     id: "03",
-    title: "DROP",
-    desc: "Precision, texture, and timing come together in one delicate moment designed to pull the viewer closer.",
-    bgImage: "/anua_products.png",
-    color: "#E2A490"
+    title: "SÉRUMS",
+    desc: "Des actifs concentrés pour cibler spécifiquement les besoins de votre peau : éclat, fermeté, pureté.",
+    bgImage: "/carroussel/serums.png",
+    color: "#C99B6A"
   },
   {
     id: "04",
-    title: "TOUCH",
-    desc: "Soft color, tactile product detail, and generous space create a refined beauty story with room to breathe.",
-    bgImage: "/im_cat_creme.png",
-    color: "#E5B6B9"
+    title: "CRÈMES",
+    desc: "Scellez l'hydratation et renforcez la barrière cutanée avec des textures onctueuses et réconfortantes.",
+    bgImage: "/carroussel/cremes.png",
+    color: "#A58B9D"
   },
   {
     id: "05",
-    title: "AURORA",
-    desc: "A limited edition perfume showcasing elegance and subtle beauty in every spray.",
-    bgImage: "/im_cat_sunscreen.png",
-    color: "#DABCAE"
+    title: "MASQUES",
+    desc: "Un bain d'hydratation et d'actifs en tissu ou de nuit pour une peau repulpée et lumineuse.",
+    bgImage: "/carroussel/masques.png",
+    color: "#82A691"
+  },
+  {
+    id: "06",
+    title: "SOLAIRES",
+    desc: "La protection ultime. Bouclier quotidien contre les UV avec des textures légères et invisibles.",
+    bgImage: "/carroussel/solaires.png",
+    color: "#D48D6C"
+  },
+  {
+    id: "07",
+    title: "CHEVEUX",
+    desc: "L'expertise Head Spa coréenne pour un cuir chevelu sain et des longueurs éclatantes de vitalité.",
+    bgImage: "/carroussel/cheveux.png",
+    color: "#6B9E9B"
+  },
+  {
+    id: "08",
+    title: "YEUX & LÈVRES",
+    desc: "Des soins spécifiques, doux et lissants pour les zones les plus délicates de votre visage.",
+    bgImage: "/carroussel/yeux-levres.png",
+    color: "#B86B77"
+  },
+  {
+    id: "09",
+    title: "MAQUILLAGE",
+    desc: "Des formules hybrides mi-soin, mi-makeup pour obtenir le célèbre teint « Glass Skin ».",
+    bgImage: "/carroussel/maquillage.png",
+    color: "#C47C74"
   }
 ];
 
@@ -106,7 +134,7 @@ export function ShowcaseCarousel() {
               >
                 {/* Number Indicator */}
                 <div className="absolute top-6 w-full text-center text-white/80 text-sm font-medium tracking-widest z-20">
-                  {item.id} — 05
+                  {item.id} — 09
                 </div>
 
                 {/* Product Image */}
