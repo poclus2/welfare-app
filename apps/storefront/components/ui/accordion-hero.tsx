@@ -28,9 +28,9 @@ const PANELS = [
     title: "L'innovation clinique, redéfinie.",
     subtitle: "MEDICUBE · DERMO-COSMÉTIQUE",
     desc: "La haute technologie dermo-cosmétique pour lisser le grain de peau et resserrer les pores. L'efficacité d'un soin clinique, à la maison.",
-    media: "/medicube_hero.jpg",
-    isVideo: false,
-    isPhoto: true,
+    media: "/medicube_hero.mp4",
+    isVideo: true,
+    isPhoto: false,
     link: "/shop/all",
     bg: "#3B2E2A"
   },
