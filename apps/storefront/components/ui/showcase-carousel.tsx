@@ -135,8 +135,8 @@ export function ShowcaseCarousel() {
                   {item.id} — 09
                 </div>
 
-                {/* Image — plein format, cover */}
-                <div className="flex-1 w-full overflow-hidden relative mt-8">
+                {/* Image — plein format, cover, colle au bord supérieur */}
+                <div className="flex-1 w-full overflow-hidden relative">
                   <img
                     src={item.bgImage}
                     alt={item.title}
