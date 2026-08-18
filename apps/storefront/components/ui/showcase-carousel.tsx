@@ -9,72 +9,72 @@ const CAROUSEL_ITEMS = [
     title: "NETTOYANTS",
     desc: "Le rituel du double cleansing. Une peau purifiée, prête à recevoir ses soins.",
     bgImage: "/carroussel/nettoyants.png",
-    color: "#C9DDE8",       // bleu ciel doux
-    textColor: "#2A4A5A",
+    color: "#cae3fe",
+    textColor: "#1a3a5c",
   },
   {
     id: "02",
     title: "TONERS",
     desc: "Hydratation immédiate. La première couche essentielle du soin coréen.",
     bgImage: "/carroussel/toners.png",
-    color: "#F2D4DA",       // rose poudré
-    textColor: "#5A2A35",
+    color: "#ffd3dc",
+    textColor: "#5c1a2e",
   },
   {
     id: "03",
     title: "SÉRUMS",
     desc: "Des actifs concentrés pour cibler éclat, fermeté et pureté.",
     bgImage: "/carroussel/serums.png",
-    color: "#F5E6C8",       // or pâle / champagne
-    textColor: "#5A3F10",
+    color: "#f1e7d4",
+    textColor: "#4a3010",
   },
   {
     id: "04",
     title: "CRÈMES",
     desc: "Nutrition & barrière cutanée. Des textures onctueuses pour sceller le soin.",
     bgImage: "/carroussel/cremes.png",
-    color: "#E8D9EE",       // lavande douce
-    textColor: "#3A1F4A",
+    color: "#e7cffb",
+    textColor: "#3a1f5c",
   },
   {
     id: "05",
     title: "MASQUES",
     desc: "Sheet masks & sleeping masks pour une peau repulpée du jour au lendemain.",
     bgImage: "/carroussel/masques.png",
-    color: "#C8E6D4",       // menthe pastel
-    textColor: "#1A3D2A",
+    color: "#d4e7cf",
+    textColor: "#1a3d1f",
   },
   {
     id: "06",
     title: "SOLAIRES",
     desc: "Protection SPF légère et invisible. L'étape finale incontournable.",
     bgImage: "/carroussel/solaires.png",
-    color: "#F5D9C0",       // pêche douce
-    textColor: "#5A2E0A",
+    color: "#f5cfaa",
+    textColor: "#5c2e0a",
   },
   {
     id: "07",
     title: "CHEVEUX",
     desc: "K-Haircare & Head Spa coréen pour un cuir chevelu sain.",
     bgImage: "/carroussel/cheveux.png",
-    color: "#C2E0DE",       // teal pastel
-    textColor: "#1A3D3A",
+    color: "#d0ecea",
+    textColor: "#1a3d3a",
   },
   {
     id: "08",
     title: "YEUX & LÈVRES",
     desc: "Patchs yeux et soins lèvres pour les zones les plus délicates.",
     bgImage: "/carroussel/yeux-levres.png",
-    color: "#F2C4D0",       // rose bonbon pastel
-    textColor: "#5A1A2A",
+    color: "#fcbec8",
+    textColor: "#5c1a2e",
   },
   {
     id: "09",
     title: "MAQUILLAGE",
     desc: "Cushions, BB creams & lip tints pour le Glass Skin coréen.",
     bgImage: "/carroussel/maquillage.png",
-    color: "#F0D0C8",       // terracotta rosé clair
-    textColor: "#5A2418",
+    color: "#f8c5c1",
+    textColor: "#5c1a18",
   },
 ];
 
