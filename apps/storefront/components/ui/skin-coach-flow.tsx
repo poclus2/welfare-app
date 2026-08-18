@@ -21,13 +21,14 @@ type Message = {
 
 type Option = {
   label: string;
-  nextQuestionId: string;
+  nextQuestionId?: string;
 };
 
 type QuestionNode = {
   id: string;
   text: string;
-  type: "choice" | "text" | "text_or_photo";
+  subtitle?: string;
+  type: "choice" | "multi_choice" | "text" | "text_or_photo";
   options?: Option[];
   nextQuestionId?: string;
 };
@@ -77,24 +78,34 @@ const DECISION_TREE: QuestionNode[] = [
     text: "C'est noté. Comment réagit généralement votre peau aux nouveaux produits ?",
     type: "choice",
     options: [
-      { label: "Très bien, elle supporte tout", nextQuestionId: "q_allergies_check" },
-      { label: "Sensible, parfois des rougeurs", nextQuestionId: "q_allergies_check" },
-      { label: "Très réactive et intolérante", nextQuestionId: "q_allergies_check" }
+      { label: "Très bien, elle supporte tout", nextQuestionId: "q_allergies" },
+      { label: "Sensible, parfois des rougeurs", nextQuestionId: "q_allergies" },
+      { label: "Très réactive et intolérante", nextQuestionId: "q_allergies" }
     ]
   },
   {
-    id: "q_allergies_check",
-    text: "Une question de sécurité : avez-vous des allergies connues à certains cosmétiques ou ingrédients ?",
-    type: "choice",
+    id: "q_allergies",
+    text: "Avez-vous des allergies, intolérances ou sensibilités connues à certains de ces ingrédients ?",
+    subtitle: "Vous pouvez en sélectionner plusieurs.",
+    type: "multi_choice",
     options: [
-      { label: "Oui", nextQuestionId: "q_allergies_details" },
-      { label: "Non", nextQuestionId: "q_current_routine" }
-    ]
-  },
-  {
-    id: "q_allergies_details",
-    text: "Aïe ! Dites-moi quels sont les ingrédients ou produits que votre peau ne supporte pas :",
-    type: "text",
+      { label: "Parfums synthétiques (Fragrance)" },
+      { label: "Huiles Essentielles (Tea tree, Lavande, Agrumes...)" },
+      { label: "Extraits Botaniques (Aloé Vera, Armoise, Thé vert...)" },
+      { label: "Mucine d'escargot (Snail Mucin)" },
+      { label: "Propolis / Miel / Venin d'abeille" },
+      { label: "Centella Asiatica (Cica)" },
+      { label: "Ferments (Galactomyces, Bifida...)" },
+      { label: "Vitamine C pure (Acide L-Ascorbique)" },
+      { label: "Rétinol / Rétinoïdes (Vitamine A)" },
+      { label: "Acides Exfoliants (AHA, BHA, Acide Glycolique...)" },
+      { label: "Niacinamide (Vitamine B3)" },
+      { label: "Alcools asséchants (Alcohol Denat, Ethanol)" },
+      { label: "Filtres Solaires Chimiques (Oxybenzone, Octocrylene...)" },
+      { label: "Silicones (Dimethicone...)" },
+      { label: "Aucune allergie connue" },
+      { label: "Autres (à préciser)" }
+    ],
     nextQuestionId: "q_current_routine"
   },
   {
@@ -152,6 +163,10 @@ export default function SkinCoachFlow() {
   const [progressPercent, setProgressPercent] = useState<number>(5);
   const [inputText, setInputText] = useState("");
   const [stepIndex, setStepIndex] = useState(0);
+
+  // Multi-choice state
+  const [selectedMultiChoice, setSelectedMultiChoice] = useState<string[]>([]);
+  const [otherText, setOtherText] = useState("");
 
   const [showCamera, setShowCamera] = useState(false);
   const [cameraNextQuestionId, setCameraNextQuestionId] = useState<string | undefined>(undefined);
@@ -406,38 +421,135 @@ export default function SkinCoachFlow() {
 
                   {/* Render Options inline if it's an AI message, it's the last message, and it has options */}
                   {msg.sender === "ai" && msg.options && isLastMsg && !isTyping && !isGenerating && (
-                    <div className="flex flex-col gap-2.5 mt-3 ml-[46px] w-[calc(100%-46px)] pr-4">
-                      {msg.options.map((option, index) => (
+                    currentNode?.type === "multi_choice" ? (
+                      <div className="flex flex-col gap-4 mt-3 ml-[46px] w-[calc(100%-46px)] pr-4">
+                        {currentNode.subtitle && (
+                          <p className="text-[13px] font-medium -mt-1 mb-1" style={{ color: "rgba(61,43,45,0.6)" }}>
+                            {currentNode.subtitle}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-2">
+                          {msg.options.map((option, index) => {
+                            const isSelected = selectedMultiChoice.includes(option.label);
+                            return (
+                              <motion.button
+                                key={`${option.label}-${index}`}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: index * 0.04, type: "spring", bounce: 0.3 }}
+                                onClick={() => {
+                                  if (option.label === "Aucune allergie connue") {
+                                    setSelectedMultiChoice(["Aucune allergie connue"]);
+                                  } else {
+                                    let newSel = [...selectedMultiChoice];
+                                    if (newSel.includes("Aucune allergie connue")) {
+                                      newSel = [];
+                                    }
+                                    if (newSel.includes(option.label)) {
+                                      newSel = newSel.filter(l => l !== option.label);
+                                    } else {
+                                      newSel.push(option.label);
+                                    }
+                                    setSelectedMultiChoice(newSel);
+                                  }
+                                }}
+                                className="px-3.5 py-2 rounded-full text-[12px] md:text-[13px] font-semibold transition-all duration-200"
+                                style={
+                                  isSelected
+                                    ? { background: "#2A2424", color: "white", border: "1px solid #2A2424", boxShadow: "0 2px 8px rgba(42,36,36,0.2)" }
+                                    : { background: "transparent", color: "rgba(61,43,45,0.8)", border: "1px solid rgba(200,134,138,0.4)" }
+                                }
+                              >
+                                {option.label}
+                              </motion.button>
+                            );
+                          })}
+                        </div>
+                        
+                        <AnimatePresence>
+                          {selectedMultiChoice.includes("Autres (à préciser)") && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <input
+                                type="text"
+                                placeholder="Précisez vos allergies..."
+                                value={otherText}
+                                onChange={(e) => setOtherText(e.target.value)}
+                                className="w-full mt-2 px-4 py-3 rounded-xl text-sm focus:outline-none transition-all"
+                                style={{ background: "white", border: "1px solid rgba(200,134,138,0.4)", color: "#3D2B2D" }}
+                              />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
                         <motion.button
-                          key={`${option.label}-${index}`}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.07, type: "spring", bounce: 0.2 }}
-                          onClick={() => handleOptionSelect(option)}
-                          className="w-full text-left py-3.5 px-4 rounded-2xl text-[13px] font-semibold flex items-center justify-between group transition-all active:scale-[0.98]"
-                          style={{
-                            background: "white",
-                            border: "1px solid rgba(200,134,138,0.2)",
-                            color: "#3D2B2D",
-                            boxShadow: "0 2px 8px rgba(200,134,138,0.07)"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          onClick={() => {
+                            if (selectedMultiChoice.length === 0) return;
+                            
+                            let finalChoices = [...selectedMultiChoice];
+                            if (finalChoices.includes("Autres (à préciser)") && otherText.trim()) {
+                              finalChoices = finalChoices.filter(c => c !== "Autres (à préciser)");
+                              finalChoices.push(`Autres: ${otherText.trim()}`);
+                            }
+
+                            const answerText = finalChoices.join(", ");
+                            const newResponses = [...userResponses, { questionId: currentQuestionId, answer: answerText }];
+                            setUserResponses(newResponses);
+                            const userMsg: Message = { id: `msg-user-${Date.now()}`, sender: "user", text: answerText };
+                            setMessages((prev) => [...prev, userMsg]);
+                            
+                            setSelectedMultiChoice([]);
+                            setOtherText("");
+                            
+                            processNextStep(newResponses, currentNode.nextQuestionId!);
                           }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = "rgba(200,134,138,0.06)";
-                            e.currentTarget.style.borderColor = "rgba(200,134,138,0.4)";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "white";
-                            e.currentTarget.style.borderColor = "rgba(200,134,138,0.2)";
-                          }}
+                          disabled={selectedMultiChoice.length === 0 || (selectedMultiChoice.includes("Autres (à préciser)") && !otherText.trim())}
+                          className="mt-3 w-full py-3.5 px-4 rounded-full text-sm font-bold tracking-wide transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                          style={{ background: "#2A2424", color: "white", boxShadow: "0 4px 12px rgba(42,36,36,0.15)" }}
                         >
-                          <span>{option.label}</span>
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 ml-3"
-                            style={{ background: "rgba(200,134,138,0.1)", border: "1px solid rgba(200,134,138,0.2)" }}>
-                            <ChevronRight className="w-3.5 h-3.5" style={{ color: "#C8868A" }} />
-                          </div>
+                          Valider mes choix
                         </motion.button>
-                      ))}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2.5 mt-3 ml-[46px] w-[calc(100%-46px)] pr-4">
+                        {msg.options.map((option, index) => (
+                          <motion.button
+                            key={`${option.label}-${index}`}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.07, type: "spring", bounce: 0.2 }}
+                            onClick={() => handleOptionSelect(option)}
+                            className="w-full text-left py-3.5 px-4 rounded-2xl text-[13px] font-semibold flex items-center justify-between group transition-all active:scale-[0.98]"
+                            style={{
+                              background: "white",
+                              border: "1px solid rgba(200,134,138,0.2)",
+                              color: "#3D2B2D",
+                              boxShadow: "0 2px 8px rgba(200,134,138,0.07)"
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = "rgba(200,134,138,0.06)";
+                              e.currentTarget.style.borderColor = "rgba(200,134,138,0.4)";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = "white";
+                              e.currentTarget.style.borderColor = "rgba(200,134,138,0.2)";
+                            }}
+                          >
+                            <span>{option.label}</span>
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 ml-3"
+                              style={{ background: "rgba(200,134,138,0.1)", border: "1px solid rgba(200,134,138,0.2)" }}>
+                              <ChevronRight className="w-3.5 h-3.5" style={{ color: "#C8868A" }} />
+                            </div>
+                          </motion.button>
+                        ))}
+                      </div>
+                    )
                   )}
                 </motion.div>
                 );
