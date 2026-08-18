@@ -9,10 +9,12 @@ import {
   X,
   Check,
   ChevronLeft,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { Footer } from "@/components/home/footer";
 import { FILTER_OPTIONS } from "@/lib/mock-data";
+import { useCart } from "@/lib/cart-context";
 
 /* ─────────────────────────────────────────
    CATEGORY CONFIG
@@ -21,11 +23,14 @@ const CATEGORY_LABELS: Record<string, string> = {
   all: "Tous les produits",
   nettoyants: "Nettoyants",
   toners: "Toners",
-  serums: "Sérums & Ampoules",
-  hydratants: "Hydratants",
-  "protections-solaires": "Protections Solaires",
-  masques: "Masques en Tissu",
-  "soins-yeux": "Soins Contour des Yeux",
+  serums: "Sérums",
+  cremes: "Crèmes",
+  solaires: "Solaires",
+  masques: "Masques",
+  essences: "Essences",
+  traitements: "Traitements",
+  coffrets: "Coffrets",
+  exfoliants: "Exfoliants",
 };
 
 const CATEGORY_DESCRIPTIONS: Record<string, string> = {
@@ -33,20 +38,13 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   nettoyants: "Préparez votre peau avec un nettoyage doux et efficace en profondeur.",
   toners: "La première couche d'hydratation pour préparer votre peau aux soins suivants.",
   serums: "Des actifs concentrés pour cibler vos préoccupations cutanées spécifiques.",
-  hydratants: "Restaurez et protégez la barrière cutanée de votre peau.",
-  "protections-solaires": "Le dernier geste indispensable de votre routine matinale.",
-  masques: "Des rituels ciblés K-Beauty pour une peau régénérée en une nuit.",
-  "soins-yeux": "Des soins spécialisés pour le contour délicat de vos yeux.",
-};
-
-const slugToCategory: Record<string, string> = {
-  nettoyants: "Nettoyants",
-  toners: "Toners",
-  serums: "Sérums & Ampoules",
-  hydratants: "Hydratants",
-  "protections-solaires": "Protections Solaires",
-  masques: "Masques en Tissu",
-  "soins-yeux": "Soins Contour des Yeux",
+  cremes: "Restaurez et protégez la barrière cutanée de votre peau avec des textures onctueuses.",
+  solaires: "Le dernier geste indispensable de votre routine matinale pour une protection optimale.",
+  masques: "Des rituels ciblés K-Beauty pour une peau régénérée et repulpée.",
+  essences: "Infusions concentrées pour une hydratation profonde et un éclat naturel.",
+  traitements: "Soins ciblés pour traiter intensément les imperfections.",
+  coffrets: "Nos sélections et routines complètes prêtes à l'emploi.",
+  exfoliants: "Éliminez les cellules mortes en douceur pour un teint lissé et lumineux.",
 };
 
 /* ─────────────────────────────────────────
@@ -92,8 +90,10 @@ export type CategoryProduct = {
   id: string;
   title: string;
   category: string;
+  categories?: string[];
   image: string;
   price_fcfa: number;
+  variantId?: string;
   skin_profile: {
     skin_types: string[];
     skin_concerns: string[];
@@ -108,43 +108,65 @@ export default function CategoryClient({
   category: string;
   products: CategoryProduct[];
 }) {
-  const categoryLabel = CATEGORY_LABELS[category] ?? "Boutique";
-  const categoryDesc = CATEGORY_DESCRIPTIONS[category] ?? "";
+  const categoryLabel = CATEGORY_LABELS[category] ?? (category ? category.charAt(0).toUpperCase() + category.slice(1) : "Boutique");
+  const categoryDesc = CATEGORY_DESCRIPTIONS[category] ?? "Découvrez notre sélection de soins d'exception.";
 
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [selectedSkinTypes, setSelectedSkinTypes] = useState<string[]>([]);
   const [selectedConcerns, setSelectedConcerns] = useState<string[]>([]);
   const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
+  const [addingId, setAddingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setIsSearchOpen(true);
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  const { addItem } = useCart();
+
+  const handleAddToCart = async (e: React.MouseEvent, product: CategoryProduct) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!product.variantId) return;
+    try {
+      setAddingId(product.id);
+      await addItem(product.variantId, 1, product.image, product.title, product.price_fcfa);
+    } catch (err) {
+      console.error("Failed to add item to cart:", err);
+    } finally {
+      setAddingId(null);
+    }
+  };
 
   const toggleFilter = (list: string[], setList: (l: string[]) => void, item: string) => {
     setList(list.includes(item) ? list.filter((i) => i !== item) : [...list, item]);
   };
 
+  const normalize = (str: string) =>
+    str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
   const filteredProducts = products.filter((p) => {
     if (category !== "all") {
-      const targetCat = slugToCategory[category];
-      if (targetCat && p.category !== targetCat) return false;
+      const catSlugNorm = normalize(category);
+      const catLabel = CATEGORY_LABELS[category] || "";
+      const catLabelNorm = normalize(catLabel);
+      
+      const pCatNorm = normalize(p.category || "");
+      const matchesCategory =
+        pCatNorm.includes(catSlugNorm) ||
+        pCatNorm.includes(catLabelNorm) ||
+        catSlugNorm.includes(pCatNorm) ||
+        (p.categories && p.categories.some((c) => {
+          const cNorm = normalize(c);
+          return cNorm.includes(catSlugNorm) || cNorm.includes(catLabelNorm) || catSlugNorm.includes(cNorm);
+        }));
+
+      if (!matchesCategory) return false;
     }
+
     if (selectedSkinTypes.length > 0 && !selectedSkinTypes.includes("Toutes")) {
-      if (!selectedSkinTypes.some((t) => p.skin_profile.skin_types.includes(t))) return false;
+      if (!selectedSkinTypes.some((t) => p.skin_profile.skin_types.some((st) => normalize(st).includes(normalize(t))))) return false;
     }
     if (selectedConcerns.length > 0) {
-      if (!selectedConcerns.some((c) => p.skin_profile.skin_concerns.includes(c))) return false;
+      if (!selectedConcerns.some((c) => p.skin_profile.skin_concerns.some((sc) => normalize(sc).includes(normalize(c))))) return false;
     }
     if (selectedIngredients.length > 0) {
-      if (!selectedIngredients.some((ing) => p.active_ingredients.some((ai) => ai.name === ing))) return false;
+      if (!selectedIngredients.some((ing) => p.active_ingredients.some((ai) => normalize(ai.name).includes(normalize(ing))))) return false;
     }
     return true;
   });
@@ -250,14 +272,27 @@ export default function CategoryClient({
                     <button className="absolute top-2 right-2 md:top-4 md:right-4 z-10 w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/50 backdrop-blur-md flex items-center justify-center text-[#2A2424] hover:bg-[#2A2424] hover:text-white transition-colors">
                       <Heart className="w-3.5 h-3.5 md:w-4 md:h-4" />
                     </button>
-                    <img
-                      src={product.image}
-                      alt={product.title}
-                      className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-700 ease-out"
-                    />
+                    <Link href={`/shop/product/${product.id}`} className="w-full h-full flex items-center justify-center">
+                      <img
+                        src={product.image}
+                        alt={product.title}
+                        className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-700 ease-out"
+                      />
+                    </Link>
                     <div className="absolute inset-x-2 md:inset-x-4 bottom-2 md:bottom-4 translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                      <button className="w-full py-2 md:py-3.5 bg-[#2A2424] text-white rounded-full text-[10px] md:text-sm font-semibold tracking-wide hover:bg-black transition-colors shadow-lg">
-                        Ajouter au panier
+                      <button
+                        onClick={(e) => handleAddToCart(e, product)}
+                        disabled={addingId === product.id}
+                        className="w-full py-2 md:py-3.5 bg-[#2A2424] text-white rounded-full text-[10px] md:text-sm font-semibold tracking-wide hover:bg-black transition-colors shadow-lg flex items-center justify-center gap-2"
+                      >
+                        {addingId === product.id ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Ajout en cours...</span>
+                          </>
+                        ) : (
+                          <span>Ajouter au panier</span>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -284,7 +319,7 @@ export default function CategoryClient({
                     </div>
                     <div className="flex items-center justify-between mt-auto pt-4 border-t border-[#F4EAEB]">
                       <p className="text-sm md:text-lg font-semibold text-[#2A2424]">
-                        {product.price_fcfa.toLocaleString("fr-FR")} FCFA
+                        {Number(product.price_fcfa).toLocaleString("fr-FR")} FCFA
                       </p>
                     </div>
                   </div>
