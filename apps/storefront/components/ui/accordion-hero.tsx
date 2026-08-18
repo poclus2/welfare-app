@@ -16,9 +16,9 @@ const PANELS = [
     title: "L'apaisement absolu au Heartleaf.",
     subtitle: "ANUA · SOIN APAISANT",
     desc: "La gamme culte pour apaiser instantanément les peaux sensibles.",
-    media: "/anua_hero.jpg",
-    isVideo: false,
-    isPhoto: true,
+    media: "/anua_hero.mp4",
+    isVideo: true,
+    isPhoto: false,
     link: "/shop/all",
     bg: "#E8A359"
   },
