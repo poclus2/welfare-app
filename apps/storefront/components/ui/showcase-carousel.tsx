@@ -7,104 +7,107 @@ const CAROUSEL_ITEMS = [
   {
     id: "01",
     title: "NETTOYANTS",
-    desc: "Le point de départ du double cleansing. Une peau nette et purifiée, prête à recevoir ses soins.",
+    desc: "Le rituel du double cleansing. Une peau purifiée, prête à recevoir ses soins.",
     bgImage: "/carroussel/nettoyants.png",
-    color: "#6B8EAD"
+    color: "#C9DDE8",       // bleu ciel doux
+    textColor: "#2A4A5A",
   },
   {
     id: "02",
     title: "TONERS",
-    desc: "Rééquilibrage et hydratation immédiate. La première étape essentielle pour préparer la peau.",
+    desc: "Hydratation immédiate. La première couche essentielle du soin coréen.",
     bgImage: "/carroussel/toners.png",
-    color: "#D08882"
+    color: "#F2D4DA",       // rose poudré
+    textColor: "#5A2A35",
   },
   {
     id: "03",
     title: "SÉRUMS",
-    desc: "Des actifs concentrés pour cibler spécifiquement les besoins de votre peau : éclat, fermeté, pureté.",
+    desc: "Des actifs concentrés pour cibler éclat, fermeté et pureté.",
     bgImage: "/carroussel/serums.png",
-    color: "#C99B6A"
+    color: "#F5E6C8",       // or pâle / champagne
+    textColor: "#5A3F10",
   },
   {
     id: "04",
     title: "CRÈMES",
-    desc: "Scellez l'hydratation et renforcez la barrière cutanée avec des textures onctueuses et réconfortantes.",
+    desc: "Nutrition & barrière cutanée. Des textures onctueuses pour sceller le soin.",
     bgImage: "/carroussel/cremes.png",
-    color: "#A58B9D"
+    color: "#E8D9EE",       // lavande douce
+    textColor: "#3A1F4A",
   },
   {
     id: "05",
     title: "MASQUES",
-    desc: "Un bain d'hydratation et d'actifs en tissu ou de nuit pour une peau repulpée et lumineuse.",
+    desc: "Sheet masks & sleeping masks pour une peau repulpée du jour au lendemain.",
     bgImage: "/carroussel/masques.png",
-    color: "#82A691"
+    color: "#C8E6D4",       // menthe pastel
+    textColor: "#1A3D2A",
   },
   {
     id: "06",
     title: "SOLAIRES",
-    desc: "La protection ultime. Bouclier quotidien contre les UV avec des textures légères et invisibles.",
+    desc: "Protection SPF légère et invisible. L'étape finale incontournable.",
     bgImage: "/carroussel/solaires.png",
-    color: "#D48D6C"
+    color: "#F5D9C0",       // pêche douce
+    textColor: "#5A2E0A",
   },
   {
     id: "07",
     title: "CHEVEUX",
-    desc: "L'expertise Head Spa coréenne pour un cuir chevelu sain et des longueurs éclatantes de vitalité.",
+    desc: "K-Haircare & Head Spa coréen pour un cuir chevelu sain.",
     bgImage: "/carroussel/cheveux.png",
-    color: "#6B9E9B"
+    color: "#C2E0DE",       // teal pastel
+    textColor: "#1A3D3A",
   },
   {
     id: "08",
     title: "YEUX & LÈVRES",
-    desc: "Des soins spécifiques, doux et lissants pour les zones les plus délicates de votre visage.",
+    desc: "Patchs yeux et soins lèvres pour les zones les plus délicates.",
     bgImage: "/carroussel/yeux-levres.png",
-    color: "#B86B77"
+    color: "#F2C4D0",       // rose bonbon pastel
+    textColor: "#5A1A2A",
   },
   {
     id: "09",
     title: "MAQUILLAGE",
-    desc: "Des formules hybrides mi-soin, mi-makeup pour obtenir le célèbre teint « Glass Skin ».",
+    desc: "Cushions, BB creams & lip tints pour le Glass Skin coréen.",
     bgImage: "/carroussel/maquillage.png",
-    color: "#C47C74"
-  }
+    color: "#F0D0C8",       // terracotta rosé clair
+    textColor: "#5A2418",
+  },
 ];
 
 export function ShowcaseCarousel() {
-  const [activeIdx, setActiveIdx] = useState(2); // Start at the middle (DROP)
-  
-  // Drag constraints
+  const [activeIdx, setActiveIdx] = useState(2);
   const [dragStart, setDragStart] = useState(0);
 
-  const handleDragStart = (e: any, info: any) => {
+  const handleDragStart = (_e: any, info: any) => {
     setDragStart(info.point.x);
   };
 
-  const handleDragEnd = (e: any, info: any) => {
-    const dragEnd = info.point.x;
-    const diff = dragStart - dragEnd;
-    
-    // threshold
+  const handleDragEnd = (_e: any, info: any) => {
+    const diff = dragStart - info.point.x;
     if (diff > 50 && activeIdx < CAROUSEL_ITEMS.length - 1) {
-      setActiveIdx((prev) => prev + 1);
+      setActiveIdx((p) => p + 1);
     } else if (diff < -50 && activeIdx > 0) {
-      setActiveIdx((prev) => prev - 1);
+      setActiveIdx((p) => p - 1);
     }
   };
 
   return (
     <div className="relative w-full py-10 overflow-hidden flex flex-col items-center justify-center bg-[#F8F5F2]">
-      <div className="w-full max-w-[1200px] flex items-center justify-center h-[500px] relative perspective-1000">
+      <div className="w-full max-w-[1200px] flex items-center justify-center h-[520px] relative" style={{ perspective: "1200px" }}>
         <AnimatePresence initial={false}>
           {CAROUSEL_ITEMS.map((item, idx) => {
             const isActive = idx === activeIdx;
             const diff = idx - activeIdx;
-            
-            // Calculate styles for coverflow effect
+
             const zIndex = 50 - Math.abs(diff);
-            const xOffset = diff * 280; // horizontal spacing
-            const scale = isActive ? 1 : 0.85;
-            const opacity = isActive ? 1 : 0.5;
-            const rotateY = diff * -15; // rotate side cards slightly inward
+            const xOffset = diff * 285;
+            const scale = isActive ? 1 : 0.82;
+            const opacity = Math.abs(diff) > 2 ? 0 : isActive ? 1 : 0.55;
+            const rotateY = diff * -12;
 
             return (
               <motion.div
@@ -112,76 +115,72 @@ export function ShowcaseCarousel() {
                 onClick={() => setActiveIdx(idx)}
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.2}
+                dragElastic={0.15}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
-                initial={{ opacity: 0, x: xOffset + (diff > 0 ? 100 : -100) }}
+                initial={{ opacity: 0 }}
                 animate={{
                   x: xOffset,
-                  scale: scale,
-                  opacity: opacity,
-                  rotateY: rotateY,
-                  zIndex: zIndex,
+                  scale,
+                  opacity,
+                  rotateY,
+                  zIndex,
                 }}
-                transition={{
-                  type: "spring",
-                  stiffness: 260,
-                  damping: 25,
-                  mass: 1,
-                }}
-                className={`absolute w-[300px] md:w-[350px] h-[400px] md:h-[450px] rounded-[32px] cursor-grab active:cursor-grabbing overflow-hidden shadow-2xl flex flex-col items-center justify-center`}
+                transition={{ type: "spring", stiffness: 280, damping: 28, mass: 0.9 }}
+                className="absolute w-[290px] md:w-[340px] h-[420px] md:h-[460px] rounded-[28px] cursor-grab active:cursor-grabbing overflow-hidden shadow-xl flex flex-col"
                 style={{ backgroundColor: item.color }}
               >
-                {/* Number Indicator */}
-                <div className="absolute top-6 w-full text-center text-white/80 text-sm font-medium tracking-widest z-20">
+                {/* Numéro */}
+                <div className="absolute top-5 left-0 right-0 text-center z-20 text-xs font-semibold tracking-[0.2em]" style={{ color: item.textColor, opacity: 0.7 }}>
                   {item.id} — 09
                 </div>
 
-                {/* Product Image */}
-                <motion.div 
-                  className="flex-1 w-full flex items-center justify-center p-8 mt-10 z-10"
-                  animate={{ y: isActive ? 0 : 20 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <img 
-                    src={item.bgImage} 
-                    alt={item.title} 
-                    className="w-full h-full object-contain mix-blend-multiply drop-shadow-xl"
+                {/* Image — plein format, cover */}
+                <div className="flex-1 w-full overflow-hidden relative mt-8">
+                  <img
+                    src={item.bgImage}
+                    alt={item.title}
+                    className="w-full h-full object-cover object-center"
                     draggable={false}
                   />
-                </motion.div>
+                  {/* Gradient de fondu vers le bas pour lire le texte */}
+                  <div
+                    className="absolute bottom-0 left-0 right-0 h-20"
+                    style={{ background: `linear-gradient(to bottom, transparent, ${item.color})` }}
+                  />
+                </div>
 
-                {/* Text Content */}
-                <motion.div 
-                  className="w-full px-8 pb-10 text-center z-20"
-                  animate={{ opacity: isActive ? 1 : 0, y: isActive ? 0 : 20 }}
-                  transition={{ duration: 0.4, delay: isActive ? 0.1 : 0 }}
+                {/* Texte */}
+                <motion.div
+                  className="w-full px-6 pb-8 pt-3 text-center flex-shrink-0"
+                  animate={{ opacity: isActive ? 1 : 0.5, y: isActive ? 0 : 8 }}
+                  transition={{ duration: 0.35, delay: isActive ? 0.08 : 0 }}
                 >
-                  <h2 className="text-3xl font-bold text-white tracking-widest mb-3">
+                  <h2
+                    className="text-2xl font-bold tracking-widest mb-2"
+                    style={{ color: item.textColor }}
+                  >
                     {item.title}
                   </h2>
-                  <p className="text-white/90 text-xs leading-relaxed font-medium">
+                  <p className="text-xs leading-relaxed font-medium" style={{ color: item.textColor, opacity: 0.75 }}>
                     {item.desc}
                   </p>
                 </motion.div>
-                
-                {/* Subtle gradient overlay to enhance depth */}
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/30 pointer-events-none" />
               </motion.div>
             );
           })}
         </AnimatePresence>
       </div>
 
-      {/* Pagination Dots */}
-      <div className="flex items-center gap-3 mt-6">
+      {/* Pagination */}
+      <div className="flex items-center gap-3 mt-4">
         {CAROUSEL_ITEMS.map((_, i) => (
           <button
             key={i}
             onClick={() => setActiveIdx(i)}
             className={`transition-all duration-300 rounded-full ${
-              activeIdx === i 
-                ? "w-8 h-2 bg-[#2A2424]" 
+              activeIdx === i
+                ? "w-8 h-2 bg-[#2A2424]"
                 : "w-2 h-2 bg-[#2A2424]/20 hover:bg-[#2A2424]/40"
             }`}
           />
