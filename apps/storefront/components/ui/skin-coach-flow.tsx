@@ -246,6 +246,7 @@ export default function SkinCoachFlow() {
   };
 
   const handleOptionSelect = (option: Option) => {
+    if (!option.nextQuestionId) return;
     const newResponses = [...userResponses, { questionId: currentQuestionId, answer: option.label }];
     setUserResponses(newResponses);
     const userMsg: Message = { id: `msg-user-${Date.now()}`, sender: "user", text: option.label };
