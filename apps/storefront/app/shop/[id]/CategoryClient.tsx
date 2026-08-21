@@ -10,6 +10,7 @@ import {
   Check,
   CaretLeft,
   CircleNotch,
+  ShoppingBag,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { Footer } from "@/components/home/footer";
@@ -321,8 +322,22 @@ export default function CategoryClient({
                     </div>
                     <div className="flex items-center justify-between mt-auto pt-4 border-t border-[#F4EAEB]">
                       <p className="text-sm md:text-lg font-semibold text-[#2A2424]">
-                        {Number(product.price_fcfa).toLocaleString("fr-FR")} FCFA
+                        {Number(product.price_fcfa).toLocaleString("fr-FR")} <span className="text-[10px] md:text-sm">FCFA</span>
                       </p>
+                      <button 
+                        onClick={(e) => handleAddToCart(e, product)}
+                        disabled={addingId === product.id}
+                        className="bg-[#2A2424] text-white w-8 h-8 md:w-auto md:h-auto md:px-4 md:py-2 rounded-full flex items-center justify-center gap-1.5 md:gap-2 text-[10px] md:text-xs font-bold hover:bg-black transition-colors shrink-0 disabled:opacity-50"
+                      >
+                        {addingId === product.id ? (
+                          <CircleNotch className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" />
+                        ) : (
+                          <ShoppingBag className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                        )}
+                        <span className="hidden md:inline">
+                          {addingId === product.id ? "Ajout..." : "Ajouter"}
+                        </span>
+                      </button>
                     </div>
                   </div>
                 </motion.div>
