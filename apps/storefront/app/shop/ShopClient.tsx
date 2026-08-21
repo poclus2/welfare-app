@@ -26,10 +26,11 @@ import { AccordionHero } from "@/components/ui/accordion-hero";
 const CATEGORIES = [
   { slug: "toners",              label: "Toners",               sub: "100+ produits",  image: "/im_cat_toner.png",      bg: "#F2EDE8" },
   { slug: "serums",              label: "Sérums",               sub: "Anti-âge & Éclat",image: "/im_cat_serum.png",     bg: "#EAD4D5" },
-  { slug: "hydratants",          label: "Crèmes",               sub: "Viser l'éclat",  image: "/im_cat_hydratant.png",  bg: "#E5E9E1" },
+  { slug: "cremes",              label: "Crèmes",               sub: "Viser l'éclat",  image: "/im_cat_hydratant.png",  bg: "#E5E9E1" },
   { slug: "masques",             label: "Masques",              sub: "Soins hebdo",    image: "/im_cat_mask.png",       bg: "#DCE4E5" },
-  { slug: "protections-solaires",label: "Solaires",             sub: "SPF & protection",image: "/im_cat_sunscreen.png", bg: "#F5EFE0" },
+  { slug: "solaires",            label: "Solaires",             sub: "SPF & protection",image: "/im_cat_sunscreen.png", bg: "#F5EFE0" },
   { slug: "nettoyants",          label: "Nettoyants",           sub: "Double nettoyage",image: "/im_cat_nettoyant.png", bg: "#E5E9E1" },
+  { slug: "cheveux",             label: "Cheveux",              sub: "Head Spa coréen",image: "/im_cat_mask.png",       bg: "#D0ECEA" },
   { slug: "essences",            label: "Essences",             sub: "Hydratation pro",image: "/im_cat_toner.png",      bg: "#F2EDE8" },
   { slug: "exfoliants",          label: "Exfoliants",           sub: "Peau neuve",     image: "/im_cat_mask.png",       bg: "#DCE4E5" },
   { slug: "coffrets",            label: "Coffrets",             sub: "Idées cadeaux",  image: "/im_cat_serum.png",      bg: "#EAD4D5" },

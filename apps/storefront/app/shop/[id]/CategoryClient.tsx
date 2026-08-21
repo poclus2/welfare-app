@@ -31,6 +31,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   traitements: "Traitements",
   coffrets: "Coffrets",
   exfoliants: "Exfoliants",
+  cheveux: "Cheveux",
 };
 
 const CATEGORY_DESCRIPTIONS: Record<string, string> = {
@@ -45,6 +46,7 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   traitements: "Soins ciblés pour traiter intensément les imperfections.",
   coffrets: "Nos sélections et routines complètes prêtes à l'emploi.",
   exfoliants: "Éliminez les cellules mortes en douceur pour un teint lissé et lumineux.",
+  cheveux: "K-Haircare & Head Spa coréen pour des cheveux resplendissants.",
 };
 
 /* ─────────────────────────────────────────
