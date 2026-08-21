@@ -14,7 +14,7 @@ export default async function CategoryPage({
     const { regions } = await sdk.store.region.list().catch(() => ({ regions: [] }));
     const regionId = regions?.[0]?.id;
 
-    const queryParams: any = { limit: 100, fields: "+variants,*images,*categories,*collection" };
+    const queryParams: any = { limit: 1000, fields: "+variants,*images,*categories,*collection" };
     if (regionId) {
       queryParams.region_id = regionId;
       queryParams.fields += ",*variants.prices,*variants.calculated_price";
