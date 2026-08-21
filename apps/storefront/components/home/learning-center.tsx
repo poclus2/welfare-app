@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowUpRight, BookOpen, Clock, Sparkles } from "lucide-react";
+import { ArrowUpRight, BookOpen, Clock, Sparkle } from "@phosphor-icons/react";
 import Link from "next/link";
 
 const fadeUp = (delay = 0): any => ({
@@ -163,7 +163,7 @@ export function LearningCenter() {
 
             {/* Featured badge */}
             <div className="absolute top-6 left-6 flex items-center gap-1.5 bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-full">
-              <Sparkles className="w-3 h-3 text-[#E5B6B9]" />
+              <Sparkle className="w-3 h-3 text-[#E5B6B9]" />
               <span className="text-white text-xs font-medium">À la une</span>
             </div>
           </motion.div>
@@ -223,7 +223,7 @@ export function LearningCenter() {
             <img src={featured.image} alt={featured.title} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#2A2424]/90 via-[#2A2424]/30 to-transparent" />
             <div className="absolute top-5 left-5 flex items-center gap-1.5 bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-full">
-              <Sparkles className="w-3 h-3 text-[#E5B6B9]" />
+              <Sparkle className="w-3 h-3 text-[#E5B6B9]" />
               <span className="text-white text-xs font-medium">À la une</span>
             </div>
             <div className="absolute bottom-0 left-0 right-0 p-6">

@@ -2,8 +2,8 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowUpRight, Package, Sparkles, Clock, CheckCircle2, ArrowRight,
-} from "lucide-react";
+  ArrowUpRight, Package, Sparkle, Clock, CheckCircle, ArrowRight,
+} from "@phosphor-icons/react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 
@@ -145,7 +145,7 @@ function Toast({ visible, name }: { visible: boolean; name: string }) {
             className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
             style={{ background: S.redDim, border: `1px solid ${S.red}50` }}
           >
-            <CheckCircle2 className="w-5 h-5" style={{ color: S.red }} />
+            <CheckCircle className="w-5 h-5" style={{ color: S.red }} />
           </div>
           <div>
             <p className="text-sm font-bold leading-tight">Précommande confirmée !</p>

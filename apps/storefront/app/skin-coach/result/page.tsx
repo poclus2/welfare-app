@@ -4,7 +4,7 @@ import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
 import SkinAnalysisResultView from "@/components/ui/skin-analysis-result-view";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { CircleNotch } from "@phosphor-icons/react";
 
 export default function SkinCoachResultPage() {
   const result = useSkinCoachStore((state) => state.result);
@@ -26,7 +26,7 @@ export default function SkinCoachResultPage() {
   if (!result) {
     return (
       <div className="min-h-screen bg-[#F9F6F0] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
+        <CircleNotch className="w-8 h-8 animate-spin text-emerald-600" />
       </div>
     );
   }

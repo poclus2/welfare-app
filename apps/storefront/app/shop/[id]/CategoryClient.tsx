@@ -4,13 +4,13 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Heart,
-  Search,
-  SlidersHorizontal,
+  MagnifyingGlass,
+  Sliders,
   X,
   Check,
-  ChevronLeft,
-  Loader2,
-} from "lucide-react";
+  CaretLeft,
+  CircleNotch,
+} from "@phosphor-icons/react";
 import Link from "next/link";
 import { Footer } from "@/components/home/footer";
 import { FILTER_OPTIONS } from "@/lib/mock-data";
@@ -185,7 +185,7 @@ export default function CategoryClient({
         <div className="w-full max-w-[1600px] mx-auto relative z-10">
           <div className="flex items-center gap-2 text-sm text-[#2A2424]/50 mb-6">
             <Link href="/shop" className="flex items-center gap-1.5 hover:text-[#2A2424] transition-colors group">
-              <ChevronLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+              <CaretLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
               Boutique
             </Link>
             <span>/</span>
@@ -225,7 +225,7 @@ export default function CategoryClient({
             onClick={() => setIsMobileFiltersOpen(true)}
             className="lg:hidden shrink-0 w-10 h-10 rounded-full border border-[#F4EAEB] flex items-center justify-center text-[#2A2424]"
           >
-            <SlidersHorizontal className="w-4 h-4" />
+            <Sliders className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -236,7 +236,7 @@ export default function CategoryClient({
         <div className="hidden lg:block w-[280px] shrink-0 sticky top-[80px] h-fit">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-2 text-[#2A2424]">
-              <SlidersHorizontal className="w-5 h-5" />
+              <Sliders className="w-5 h-5" />
               <h2 className="text-lg font-medium">Filtres Avancés</h2>
             </div>
             {hasFilters && (
@@ -287,7 +287,7 @@ export default function CategoryClient({
                       >
                         {addingId === product.id ? (
                           <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <CircleNotch className="w-4 h-4 animate-spin" />
                             <span>Ajout en cours...</span>
                           </>
                         ) : (
@@ -331,7 +331,7 @@ export default function CategoryClient({
           {filteredProducts.length === 0 && (
             <div className="w-full py-20 flex flex-col items-center justify-center text-center">
               <div className="w-16 h-16 rounded-full bg-[#F4EAEB] flex items-center justify-center mb-6">
-                <Search className="w-6 h-6 text-[#2A2424]/50" />
+                <MagnifyingGlass className="w-6 h-6 text-[#2A2424]/50" />
               </div>
               <h3 className="text-xl font-medium text-[#2A2424] mb-2">Aucun produit trouvé</h3>
               <p className="text-[#2A2424]/60 max-w-md">Essayez de modifier vos filtres pour voir plus de résultats.</p>

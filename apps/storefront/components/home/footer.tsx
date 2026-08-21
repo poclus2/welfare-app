@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Leaf } from "lucide-react";
+import { ArrowRight, Leaf } from "@phosphor-icons/react";
 
 export function Footer() {
   return (

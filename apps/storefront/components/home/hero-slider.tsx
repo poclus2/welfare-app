@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight, CaretLeft, CaretRight } from "@phosphor-icons/react";
 
 /* ─────────────────────────────────────────
    SLIDES DATA
@@ -207,7 +207,7 @@ export function HeroSlider() {
                     onClick={prev}
                     className="w-8 h-8 rounded-full border border-[#2A2424]/20 flex items-center justify-center text-[#2A2424]/60 hover:text-[#2A2424] hover:border-[#2A2424]/40 transition-all active:scale-90"
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    <CaretLeft className="w-4 h-4" />
                   </button>
                   <span className="text-[11px] font-medium text-[#2A2424]/40 tabular-nums">
                     {String(current + 1).padStart(2, "0")} / {String(slides.length).padStart(2, "0")}
@@ -216,7 +216,7 @@ export function HeroSlider() {
                     onClick={next}
                     className="w-8 h-8 rounded-full border border-[#2A2424]/20 flex items-center justify-center text-[#2A2424]/60 hover:text-[#2A2424] hover:border-[#2A2424]/40 transition-all active:scale-90"
                   >
-                    <ChevronRight className="w-4 h-4" />
+                    <CaretRight className="w-4 h-4" />
                   </button>
                 </div>
               </motion.div>
@@ -283,13 +283,13 @@ export function HeroSlider() {
                     onClick={prev}
                     className="w-9 h-9 rounded-full border border-[#2A2424]/15 flex items-center justify-center text-[#2A2424]/50 hover:text-[#2A2424] hover:border-[#2A2424]/40 hover:bg-white/60 transition-all"
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    <CaretLeft className="w-4 h-4" />
                   </button>
                   <button
                     onClick={next}
                     className="w-9 h-9 rounded-full border border-[#2A2424]/15 flex items-center justify-center text-[#2A2424]/50 hover:text-[#2A2424] hover:border-[#2A2424]/40 hover:bg-white/60 transition-all"
                   >
-                    <ChevronRight className="w-4 h-4" />
+                    <CaretRight className="w-4 h-4" />
                   </button>
                 </div>
               </motion.div>

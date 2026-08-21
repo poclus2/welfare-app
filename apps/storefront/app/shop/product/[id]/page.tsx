@@ -1,6 +1,6 @@
 import { sdk } from "@/lib/medusa";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "@phosphor-icons/react";
 import { Footer } from "@/components/home/footer";
 import { ProductDetailClient } from "./ProductDetailClient";
 

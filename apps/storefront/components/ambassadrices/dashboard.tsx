@@ -1,10 +1,10 @@
-import { Sparkles, QrCode, Copy } from "lucide-react";
+import { Sparkle, QrCode, Copy } from "@phosphor-icons/react";
 
 export function DashboardInfluenceur() {
   return (
     <div className="w-full max-w-[1200px] mx-auto py-12 px-6">
       <div className="flex items-center gap-3 mb-2">
-        <Sparkles className="w-6 h-6 text-[#E5B6B9]" />
+        <Sparkle className="w-6 h-6 text-[#E5B6B9]" />
         <h1 className="text-3xl font-bold text-[#2A2424]">Mon Tableau de bord</h1>
       </div>
       <p className="text-[#2A2424]/60 mb-10 text-lg">Bienvenue dans votre espace influenceur exclusif.</p>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, ScanFace, ChevronRight, Camera, RefreshCw, Send, Zap } from "lucide-react";
+import { Sparkle, Scan, CaretRight, Camera, ArrowCounterClockwise, PaperPlaneTilt, Lightning } from "@phosphor-icons/react";
 import Webcam from "react-webcam";
 import { analyzeSkin, SkinAnalysisResult } from "@/app/actions/analyze-skin";
 import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
@@ -140,7 +140,7 @@ const DECISION_TREE: QuestionNode[] = [
 const AIAvatar = () => (
   <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 mr-2.5 mt-auto shadow-md"
     style={{ background: "linear-gradient(135deg, #E8C4C6 0%, #F0D4D6 100%)", border: "1.5px solid rgba(200,134,138,0.4)" }}>
-    <Sparkles className="w-4 h-4" style={{ color: "#B06068" }} />
+    <Sparkle className="w-4 h-4" style={{ color: "#B06068" }} />
   </div>
 );
 
@@ -351,7 +351,7 @@ export default function SkinCoachFlow() {
               onClick={handleRetake}
               className="absolute top-5 right-4 bg-white/70 hover:bg-white backdrop-blur-md border border-rose-100 text-rose-500 p-2.5 rounded-full transition-all z-50 shadow-md hover:scale-105 active:scale-95"
             >
-              <RefreshCw className="w-4 h-4" />
+              <ArrowCounterClockwise className="w-4 h-4" />
             </button>
           </div>
         )}
@@ -378,7 +378,7 @@ export default function SkinCoachFlow() {
                 />
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
-                <Zap className="w-3 h-3" style={{ color: "#C8868A" }} />
+                <Lightning className="w-3 h-3" style={{ color: "#C8868A" }} />
                 <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#C8868A" }}>
                   {progressPercent}%
                 </span>
@@ -545,7 +545,7 @@ export default function SkinCoachFlow() {
                             <span>{option.label}</span>
                             <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 ml-3"
                               style={{ background: "rgba(200,134,138,0.1)", border: "1px solid rgba(200,134,138,0.2)" }}>
-                              <ChevronRight className="w-3.5 h-3.5" style={{ color: "#C8868A" }} />
+                              <CaretRight className="w-3.5 h-3.5" style={{ color: "#C8868A" }} />
                             </div>
                           </motion.button>
                         ))}
@@ -632,7 +632,7 @@ export default function SkinCoachFlow() {
                     className="p-4 rounded-2xl transition-all disabled:opacity-30 shadow-md active:scale-95"
                     style={{ background: "linear-gradient(135deg, #C8868A, #E5B6B9)" }}
                   >
-                    <Send className="w-5 h-5 text-white" />
+                    <PaperPlaneTilt className="w-5 h-5 text-white" />
                   </button>
                 </div>
             </motion.div>
@@ -738,7 +738,7 @@ export default function SkinCoachFlow() {
                 animate={{ scale: [1, 1.06, 1] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
               >
-                <ScanFace className="w-9 h-9" style={{ color: "#8B4347" }} />
+                <Scan className="w-9 h-9" style={{ color: "#8B4347" }} />
               </motion.div>
             </div>
 

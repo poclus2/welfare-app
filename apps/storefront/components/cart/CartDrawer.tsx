@@ -3,7 +3,7 @@
 import { useCart } from "@/lib/cart-context";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { X, Minus, Plus, ShoppingBag, ArrowRight, Trash2, Package } from "lucide-react";
+import { X, Minus, Plus, ShoppingBag, ArrowRight, Trash, Package } from "@phosphor-icons/react";
 
 function formatPrice(amount: number) {
   return new Intl.NumberFormat("fr-FR").format(Math.round(amount));
@@ -137,7 +137,7 @@ export function CartDrawer() {
                             onClick={() => removeItem(item.id)}
                             className="w-7 h-7 flex items-center justify-center text-[#2A2424]/30 hover:text-red-400 transition-colors"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>

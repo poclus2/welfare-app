@@ -4,14 +4,14 @@ import { motion } from "framer-motion";
 import {
   ArrowUpRight,
   Play,
-  TrendingUp,
+  TrendUp,
   Users,
-  DollarSign,
-  Share2,
+  CurrencyDollar,
+  ShareNetwork,
   Star,
-  ChevronRight,
-  BadgeCheck,
-} from "lucide-react";
+  CaretRight,
+  Seal,
+} from "@phosphor-icons/react";
 import Link from "next/link";
 
 const fadeUp = (delay = 0) => ({
@@ -65,7 +65,7 @@ const tiktoks = [
 const steps = [
   {
     num: "01",
-    icon: <Share2 className="w-5 h-5" />,
+    icon: <ShareNetwork className="w-5 h-5" />,
     title: "Rejoins le programme",
     desc: "Crée ton compte et obtiens ton lien affilié unique en moins de 2 minutes.",
   },
@@ -77,7 +77,7 @@ const steps = [
   },
   {
     num: "03",
-    icon: <DollarSign className="w-5 h-5" />,
+    icon: <CurrencyDollar className="w-5 h-5" />,
     title: "Encaisse",
     desc: "Gagne jusqu'à 15% de commission sur chaque vente générée. Paiement chaque semaine par Mobile Money.",
   },
@@ -86,8 +86,8 @@ const steps = [
 /* ── Stats ── */
 const stats = [
   { value: "850+", label: "Influenceurs actifs", icon: <Users className="w-4 h-4" /> },
-  { value: "15%", label: "Commission par vente", icon: <TrendingUp className="w-4 h-4" /> },
-  { value: "7 jours", label: "Délai de paiement", icon: <DollarSign className="w-4 h-4" /> },
+  { value: "15%", label: "Commission par vente", icon: <TrendUp className="w-4 h-4" /> },
+  { value: "7 jours", label: "Délai de paiement", icon: <CurrencyDollar className="w-4 h-4" /> },
 ];
 
 function TikTokCard({ t, delay }: { t: typeof tiktoks[0]; delay: number }) {
@@ -115,7 +115,7 @@ function TikTokCard({ t, delay }: { t: typeof tiktoks[0]; delay: number }) {
 
         {/* Views badge */}
         <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full">
-          <TrendingUp className="w-3 h-3 text-[#E5B6B9]" />
+          <TrendUp className="w-3 h-3 text-[#E5B6B9]" />
           <span className="text-white text-xs font-medium">{t.views} vues</span>
         </div>
 
@@ -127,7 +127,7 @@ function TikTokCard({ t, delay }: { t: typeof tiktoks[0]; delay: number }) {
             <div>
               <div className="flex items-center gap-1">
                 <span className="text-white text-sm font-semibold">{t.creator}</span>
-                {t.verified && <BadgeCheck className="w-3.5 h-3.5 text-[#E5B6B9] fill-[#E5B6B9]" />}
+                {t.verified && <Seal className="w-3.5 h-3.5 text-[#E5B6B9] fill-[#E5B6B9]" />}
               </div>
               <span className="text-white/60 text-xs">{t.followers} abonnés</span>
             </div>
@@ -142,7 +142,7 @@ function TikTokCard({ t, delay }: { t: typeof tiktoks[0]; delay: number }) {
               <span className="text-xs text-white/60">{t.likes} likes</span>
             </div>
             <div className="flex items-center gap-1.5 bg-[#E5B6B9]/20 border border-[#E5B6B9]/40 px-2.5 py-1 rounded-full">
-              <DollarSign className="w-3 h-3 text-[#E5B6B9]" />
+              <CurrencyDollar className="w-3 h-3 text-[#E5B6B9]" />
               <span className="text-xs font-bold text-[#E5B6B9]">{t.earnings} gagnés</span>
             </div>
           </div>
@@ -195,7 +195,7 @@ export function LoyaltyProgram() {
 
             <div className="relative z-10">
               <div className="w-12 h-12 rounded-[0.75rem] bg-[#E5B6B9]/20 flex items-center justify-center mb-6">
-                <DollarSign className="w-6 h-6 text-[#E5B6B9]" />
+                <CurrencyDollar className="w-6 h-6 text-[#E5B6B9]" />
               </div>
               <h3 className="text-2xl font-medium text-white leading-tight mb-3">
                 Jusqu'à <span className="text-[#E5B6B9]">15%</span> de commission sur chaque vente
@@ -214,7 +214,7 @@ export function LoyaltyProgram() {
                 className="flex items-center justify-center gap-2 bg-white text-[#2A2424] hover:bg-[#F4EAEB] transition-colors font-semibold py-3 px-5 rounded-full text-sm w-full"
               >
                 Je commence maintenant
-                <ChevronRight className="w-4 h-4" />
+                <CaretRight className="w-4 h-4" />
               </Link>
             </div>
           </motion.div>
@@ -243,7 +243,7 @@ export function LoyaltyProgram() {
 
                 {/* Views */}
                 <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full">
-                  <TrendingUp className="w-3 h-3 text-[#E5B6B9]" />
+                  <TrendUp className="w-3 h-3 text-[#E5B6B9]" />
                   <span className="text-white text-xs font-medium">{t.views}</span>
                 </div>
 
@@ -254,7 +254,7 @@ export function LoyaltyProgram() {
                     <div>
                       <div className="flex items-center gap-1">
                         <span className="text-white text-sm font-semibold">{t.creator}</span>
-                        {t.verified && <BadgeCheck className="w-3.5 h-3.5 text-[#E5B6B9] fill-[#E5B6B9]" />}
+                        {t.verified && <Seal className="w-3.5 h-3.5 text-[#E5B6B9] fill-[#E5B6B9]" />}
                       </div>
                       <span className="text-white/55 text-xs">{t.followers} abonnés</span>
                     </div>
@@ -333,7 +333,7 @@ export function LoyaltyProgram() {
           <motion.div {...fadeUp(0)} className="rounded-[1.5rem] bg-[#2A2424] p-7 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white/5 -translate-y-1/3 translate-x-1/3 pointer-events-none" />
             <div className="w-10 h-10 rounded-[0.6rem] bg-[#E5B6B9]/20 flex items-center justify-center mb-5">
-              <DollarSign className="w-5 h-5 text-[#E5B6B9]" />
+              <CurrencyDollar className="w-5 h-5 text-[#E5B6B9]" />
             </div>
             <h3 className="text-2xl font-medium text-white leading-tight mb-2">
               Gagne jusqu'à <span className="text-[#E5B6B9]">15%</span> par vente
@@ -345,7 +345,7 @@ export function LoyaltyProgram() {
               href="/influenceurs"
               className="flex items-center justify-center gap-2 bg-white text-[#2A2424] font-semibold py-3.5 rounded-full text-sm"
             >
-              Rejoindre le programme <ChevronRight className="w-4 h-4" />
+              Rejoindre le programme <CaretRight className="w-4 h-4" />
             </Link>
           </motion.div>
 
@@ -378,7 +378,7 @@ export function LoyaltyProgram() {
                       </div>
                     </div>
                     <div className="absolute top-3 left-3 flex items-center gap-1 bg-black/40 backdrop-blur-md px-2 py-1 rounded-full">
-                      <TrendingUp className="w-2.5 h-2.5 text-[#E5B6B9]" />
+                      <TrendUp className="w-2.5 h-2.5 text-[#E5B6B9]" />
                       <span className="text-white text-[10px] font-medium">{t.views}</span>
                     </div>
                     <div className="absolute bottom-0 left-0 right-0 p-4">

@@ -2,7 +2,7 @@
 
 import { motion, Variants } from "framer-motion";
 import { SkinAnalysisResult, RoutineStep } from "@/app/actions/analyze-skin";
-import { Sparkles, Droplets, Eye, Zap, Sun, ShoppingBag, RotateCcw, ChevronRight, TrendingUp, Package, Plus, CheckCircle2 } from "lucide-react";
+import { Sparkle, Drop, Eye, Lightning, Sun, ShoppingBag, ArrowCounterClockwise, CaretRight, TrendUp, Package, Plus, CheckCircle } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useCart } from "@/lib/cart-context";
@@ -299,7 +299,7 @@ function RoutineStepCard({
                   }}
                 >
                   {isAdded ? (
-                    <><CheckCircle2 className="w-3.5 h-3.5" /> Ajouté</>
+                    <><CheckCircle className="w-3.5 h-3.5" /> Ajouté</>
                   ) : (
                     <><Plus className="w-3.5 h-3.5" /> Ajouter</>
                   )}
@@ -310,7 +310,7 @@ function RoutineStepCard({
                   className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-xl text-[11px] font-bold transition-all"
                   style={{ background: "rgba(200,134,138,0.06)", color: "rgba(61,43,45,0.5)" }}
                 >
-                  Voir la boutique <ChevronRight className="w-3 h-3" />
+                  Voir la boutique <CaretRight className="w-3 h-3" />
                 </button>
               ) : null}
               {productInfo?.handle && (
@@ -319,7 +319,7 @@ function RoutineStepCard({
                   className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
                   style={{ background: "rgba(61,43,45,0.04)", color: "rgba(61,43,45,0.6)" }}
                 >
-                  <ChevronRight className="w-4 h-4" />
+                  <CaretRight className="w-4 h-4" />
                 </button>
               )}
             </div>
@@ -334,7 +334,7 @@ function RoutineStepCard({
             onClick={() => router.push("/shop")}
             style={{ color: colors.num }}
           >
-            Voir la sélection <ChevronRight className="w-3 h-3" />
+            Voir la sélection <CaretRight className="w-3 h-3" />
           </button>
         </div>
       )}
@@ -366,11 +366,11 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
   const metrics = result.metrics;
   const iconStyle = { color: "#C8868A" };
   const metricDefs = metrics ? [
-    { label: "Acné & Imperfections", value: metrics.acne_severity_percentage, type: "bad" as const, icon: <Zap className="w-3.5 h-3.5" style={iconStyle} /> },
-    { label: "Niveau de Sébum", value: metrics.sebum_level_percentage, type: "bad" as const, icon: <Droplets className="w-3.5 h-3.5" style={iconStyle} /> },
+    { label: "Acné & Imperfections", value: metrics.acne_severity_percentage, type: "bad" as const, icon: <Lightning className="w-3.5 h-3.5" style={iconStyle} /> },
+    { label: "Niveau de Sébum", value: metrics.sebum_level_percentage, type: "bad" as const, icon: <Drop className="w-3.5 h-3.5" style={iconStyle} /> },
     { label: "Dilatation des Pores", value: metrics.pore_visibility_percentage, type: "bad" as const, icon: <Sun className="w-3.5 h-3.5" style={iconStyle} /> },
     { label: "Contour des Yeux", value: metrics.eye_contour_fatigue_percentage, type: "bad" as const, icon: <Eye className="w-3.5 h-3.5" style={iconStyle} /> },
-    { label: "Barrière d'Hydratation", value: metrics.hydration_barrier_percentage, type: "good" as const, icon: <TrendingUp className="w-3.5 h-3.5" style={iconStyle} /> },
+    { label: "Barrière d'Hydratation", value: metrics.hydration_barrier_percentage, type: "good" as const, icon: <TrendUp className="w-3.5 h-3.5" style={iconStyle} /> },
   ] : [];
 
   const handleAddToCart = async (variantId: string) => {
@@ -443,7 +443,7 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
           {/* Badge */}
           <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-6 text-[11px] font-bold uppercase tracking-widest"
             style={{ background: "rgba(200,134,138,0.1)", border: "1px solid rgba(200,134,138,0.25)", color: "#B06068" }}>
-            <Sparkles className="w-3 h-3" />
+            <Sparkle className="w-3 h-3" />
             Diagnostic IA Finalisé
           </motion.div>
 
@@ -556,7 +556,7 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
             <div className="flex gap-3 mb-4">
               <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
                 style={{ background: "rgba(200,134,138,0.1)", border: "1px solid rgba(200,134,138,0.18)" }}>
-                <Sparkles className="w-4 h-4" style={{ color: "#C8868A" }} />
+                <Sparkle className="w-4 h-4" style={{ color: "#C8868A" }} />
               </div>
               <p className="text-sm leading-relaxed font-medium" style={{ color: "rgba(61,43,45,0.7)" }}>
                 &ldquo;{result.empathetic_message}&rdquo;
@@ -630,7 +630,7 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
             }}
           >
             {allAdded ? (
-              <><CheckCircle2 className="w-5 h-5" /> Routine ajoutée au panier !</>
+              <><CheckCircle className="w-5 h-5" /> Routine ajoutée au panier !</>
             ) : addingAll ? (
               <><span className="animate-spin">⏳</span> Ajout en cours...</>
             ) : (
@@ -652,7 +652,7 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
           className="w-full flex items-center justify-center gap-2 text-[13px] font-semibold transition-colors"
           style={{ color: "rgba(61,43,45,0.4)" }}
         >
-          <RotateCcw className="w-3.5 h-3.5" />
+          <ArrowCounterClockwise className="w-3.5 h-3.5" />
           Refaire le diagnostic
         </button>
       </motion.div>

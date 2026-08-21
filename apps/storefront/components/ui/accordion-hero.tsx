@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight, CaretLeft, CaretRight } from "@phosphor-icons/react";
 import Link from "next/link";
 
 /* ═══════════════════════════════════════════════════════
@@ -111,7 +111,7 @@ export function AccordionHero() {
           onClick={handlePrev} 
           className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white hover:text-[#2A2424] transition-colors shadow-lg"
         >
-          <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+          <CaretLeft className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
         </button>
       )}
 
@@ -233,7 +233,7 @@ export function AccordionHero() {
           onClick={handleNext} 
           className="absolute right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-12 md:h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white hover:text-[#2A2424] transition-colors shadow-lg"
         >
-          <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
+          <CaretRight className="w-5 h-5 md:w-6 md:h-6" />
         </button>
       )}
 

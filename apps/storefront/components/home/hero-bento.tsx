@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Leaf, Droplets, Sparkles, Lock, ShieldCheck, Sun, Search, ShoppingBag } from "lucide-react";
+import { ArrowRight, Leaf, Drop, Sparkle, Lock, ShieldCheck, Sun, MagnifyingGlass, ShoppingBag } from "@phosphor-icons/react";
 import Link from "next/link";
 import { Navbar } from "@/components/ui/navbar";
 import { SearchModal } from "@/components/ui/search-modal";

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ShoppingBag, Search, Menu, User, X, Sparkles, ChevronDown } from "lucide-react";
+import { ShoppingBag, MagnifyingGlass, List, User, X, Sparkle, CaretDown } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "@/store/auth";
 import { SearchModal } from "@/components/ui/search-modal";
@@ -61,7 +61,7 @@ export function Navbar() {
             className="w-full max-w-xl bg-[#F8F5F2] hover:bg-[#F1EFEA] transition-colors border border-[#2A2424]/10 rounded-full py-2.5 px-5 flex items-center justify-between text-[#2A2424]/70 shadow-sm"
           >
             <div className="flex items-center gap-3">
-              <Search className="w-5 h-5 text-[#2A2424]/50" />
+              <MagnifyingGlass className="w-5 h-5 text-[#2A2424]/50" />
               <span className="text-sm font-medium">Rechercher un soin, un ingrédient...</span>
             </div>
             <div className="hidden lg:flex items-center gap-1">
@@ -75,7 +75,7 @@ export function Navbar() {
         <div className="flex items-center gap-6 text-sm font-medium">
           <Link href="/shop" className="text-[#2A2424] hover:opacity-70 transition-opacity">Boutique</Link>
           <Link href="/skin-coach" className="flex items-center gap-1.5 text-[#2A2424] hover:opacity-70 transition-opacity">
-            <Sparkles className="w-4 h-4" /> My Skin Coach
+            <Sparkle className="w-4 h-4" /> My Skin Coach
           </Link>
           <Link href="/ambassadrices" className="text-[#2A2424] hover:opacity-70 transition-opacity">Ambassadrices</Link>
           
@@ -112,7 +112,7 @@ export function Navbar() {
         {/* Right Actions */}
         <div className="flex items-center gap-1">
           <button onClick={() => setIsSearchOpen(true)} className="p-2 text-[#2A2424] hover:bg-[#F1EFEA] rounded-full transition-colors">
-            <Search className="w-5 h-5" />
+            <MagnifyingGlass className="w-5 h-5" />
           </button>
           
           <button onClick={openCart} className="relative p-2 text-[#2A2424] hover:bg-[#F1EFEA] rounded-full transition-colors">
@@ -128,7 +128,7 @@ export function Navbar() {
             className="p-2 text-[#2A2424] hover:bg-[#F1EFEA] rounded-full transition-colors ml-1"
             onClick={() => setIsMobileMenuOpen(true)}
           >
-            <Menu className="w-6 h-6" />
+            <List className="w-6 h-6" />
           </button>
         </div>
       </motion.nav>
@@ -167,7 +167,7 @@ export function Navbar() {
                 </Link>
                 
                 <Link href="/skin-coach" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 text-xl font-medium text-[#2A2424] bg-[#F1EFEA] p-4 rounded-2xl">
-                  <Sparkles className="w-5 h-5 text-[#E5B6B9]" /> My Skin Coach
+                  <Sparkle className="w-5 h-5 text-[#E5B6B9]" /> My Skin Coach
                 </Link>
 
                 <div className="flex flex-col">
@@ -183,7 +183,7 @@ export function Navbar() {
                       onClick={() => setIsMobileShopOpen(!isMobileShopOpen)}
                       className="p-2"
                     >
-                      <ChevronDown className={`w-6 h-6 transition-transform ${isMobileShopOpen ? "rotate-180" : ""}`} />
+                      <CaretDown className={`w-6 h-6 transition-transform ${isMobileShopOpen ? "rotate-180" : ""}`} />
                     </button>
                   </div>
                   

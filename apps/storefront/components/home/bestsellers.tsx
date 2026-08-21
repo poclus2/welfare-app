@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, ShoppingBag, Star, Heart } from "lucide-react";
+import { ArrowRight, ShoppingBag, Star, Heart } from "@phosphor-icons/react";
 import Link from "next/link";
 
 const products = [

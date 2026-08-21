@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Bot, Sparkles, ScanFace } from "lucide-react";
+import { ArrowRight, Robot, Sparkle, Scan } from "@phosphor-icons/react";
 import Link from "next/link";
 
 export function SkinCoach() {
@@ -31,7 +31,7 @@ export function SkinCoach() {
               href="/coach" 
               className="w-full sm:w-auto bg-[#2A2424] text-white px-8 py-4 rounded-full text-[15px] font-medium hover:bg-black/80 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 shadow-xl"
             >
-              <ScanFace className="w-5 h-5" />
+              <Scan className="w-5 h-5" />
               Démarrer l'analyse gratuite
             </Link>
           </div>
@@ -89,7 +89,7 @@ export function SkinCoach() {
                   {/* AI Message */}
                   <div className="flex gap-3">
                     <div className="w-8 h-8 rounded-full bg-[#F4EAEB] flex items-center justify-center shrink-0">
-                      <Bot className="w-4 h-4 text-[#2A2424]" />
+                      <Robot className="w-4 h-4 text-[#2A2424]" />
                     </div>
                     <div className="bg-[#FAF8F6] p-3.5 rounded-2xl rounded-tl-sm text-sm text-[#2A2424] shadow-sm">
                       Analyse terminée ! J'ai détecté une légère déshydratation sur vos joues.
@@ -120,7 +120,7 @@ export function SkinCoach() {
               className="absolute top-[40%] -left-12 lg:-left-24 bg-white/60 backdrop-blur-xl p-3.5 rounded-2xl border border-white shadow-xl flex items-center gap-3"
             >
               <div className="w-8 h-8 rounded-full bg-[#E5B6B9] flex items-center justify-center text-white">
-                <Sparkles className="w-4 h-4" />
+                <Sparkle className="w-4 h-4" />
               </div>
               <div>
                 <p className="text-xs font-bold text-[#2A2424]">Barrière intacte</p>

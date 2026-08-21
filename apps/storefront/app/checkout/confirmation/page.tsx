@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { CheckCircle, Phone, ShoppingBag, Copy, Check, Loader2 } from "lucide-react";
+import { CheckCircle, Phone, ShoppingBag, Copy, Check, CircleNotch } from "@phosphor-icons/react";
 
 function formatPrice(amount: number) {
   return new Intl.NumberFormat("fr-FR").format(Math.round(amount));
@@ -201,7 +201,7 @@ export default function ConfirmationPage() {
   return (
     <Suspense fallback={
       <main className="min-h-screen bg-[#F8F5F2] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#C08A8E] animate-spin" />
+        <CircleNotch className="w-8 h-8 text-[#C08A8E] animate-spin" />
       </main>
     }>
       <ConfirmationContent />

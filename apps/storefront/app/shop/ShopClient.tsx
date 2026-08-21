@@ -4,16 +4,16 @@ import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
-  Search,
+  MagnifyingGlass,
   ShoppingBag,
-  Menu,
+  List,
   Star,
   Heart,
-  Zap,
+  Lightning,
   Tag,
-  Sparkles,
+  Sparkle,
   Plus,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 import Link from "next/link";
 import { Footer } from "@/components/home/footer";
 import { ShowcaseCarousel } from "@/components/ui/showcase-carousel";
@@ -201,7 +201,7 @@ export default function ShopClient({ flashProducts, bestProducts }: { flashProdu
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 pt-6 pb-5 border-b border-[#F4EAEB]">
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-full bg-[#E5B6B9]/20 flex items-center justify-center">
-                <Zap className="w-3.5 h-3.5 text-[#E5B6B9]" />
+                <Lightning className="w-3.5 h-3.5 text-[#E5B6B9]" />
               </div>
               <h2 className="text-base font-bold text-[#2A2424]">Vente Flash</h2>
             </div>
@@ -283,7 +283,7 @@ export default function ShopClient({ flashProducts, bestProducts }: { flashProdu
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 pt-6 pb-5 border-b border-[#F4EAEB]">
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-full bg-[#E5B6B9]/20 flex items-center justify-center">
-                <Sparkles className="w-3.5 h-3.5 text-[#E5B6B9]" />
+                <Sparkle className="w-3.5 h-3.5 text-[#E5B6B9]" />
               </div>
               <h2 className="text-base font-bold text-[#2A2424]">Meilleures ventes</h2>
             </div>

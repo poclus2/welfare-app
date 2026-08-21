@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { instantMeiliSearch } from "@meilisearch/instant-meilisearch";
 import { InstantSearch, SearchBox, Highlight, Configure, useHits } from "react-instantsearch";
-import { X, Search } from "lucide-react";
+import { X, MagnifyingGlass } from "@phosphor-icons/react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -36,7 +36,7 @@ function Hit({ hit, onClose }: { hit: any; onClose: () => void }) {
         )}
       </div>
       <div className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-[#F8F5F2] group-hover:bg-[#E5B6B9] group-hover:text-white transition-colors">
-        <Search className="w-3.5 h-3.5" />
+        <MagnifyingGlass className="w-3.5 h-3.5" />
       </div>
     </Link>
   );
@@ -81,7 +81,7 @@ export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 <Configure hitsPerPage={5} />
                 
                 <div className="flex items-center gap-3 p-4 border-b border-[#F4EAEB]">
-                  <Search className="w-5 h-5 text-[#2A2424]/40 shrink-0 ml-2" />
+                  <MagnifyingGlass className="w-5 h-5 text-[#2A2424]/40 shrink-0 ml-2" />
                   <SearchBox
                     placeholder="Rechercher un produit, une marque, un besoin..."
                     classNames={{

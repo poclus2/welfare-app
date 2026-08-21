@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowUpRight, Search, PackageSearch } from "lucide-react";
+import { ArrowUpRight, MagnifyingGlass } from "@phosphor-icons/react";
 import Link from "next/link";
 
 /* ─────────────────────────────────────────
@@ -235,7 +235,7 @@ export function CategoriesBento() {
 
             <div className="relative z-10">
               <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#E5B6B9]/30 backdrop-blur-sm flex items-center justify-center mb-4">
-                <PackageSearch className="w-5 h-5 md:w-6 md:h-6 text-[#2A2424]" />
+                <MagnifyingGlass className="w-5 h-5 md:w-6 md:h-6 text-[#2A2424]" />
               </div>
               <h3 className="text-2xl md:text-4xl font-medium text-[#2A2424] mb-2">
                 2 500+ Produits
@@ -249,7 +249,7 @@ export function CategoriesBento() {
               href="/shop"
               className="relative z-10 w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#2A2424] text-white px-6 py-3.5 rounded-full text-sm md:text-base font-medium hover:bg-black/80 transition-all duration-300 ease-in-out"
             >
-              <Search className="w-4 h-4" />
+              <MagnifyingGlass className="w-4 h-4" />
               Parcourir le catalogue
             </Link>
           </motion.div>

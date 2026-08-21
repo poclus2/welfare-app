@@ -3,10 +3,10 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import {
-  ShieldCheck, Truck, Sparkles, ChevronDown,
-  ArrowLeft, Star, Heart, Share2, Check, Package, Leaf, Zap,
-  ShoppingBag, Plus, Minus, Droplets, Wind, Sun, Moon,
-} from "lucide-react";
+  ShieldCheck, Truck, Sparkle, CaretDown,
+  ArrowLeft, Star, Heart, ShareNetwork, Check, Package, Leaf, Lightning,
+  ShoppingBag, Plus, Minus, Drop, Wind, Sun, Moon,
+} from "@phosphor-icons/react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { Footer } from "@/components/home/footer";
@@ -29,9 +29,9 @@ const mockProduct = {
   commercial_description:
     "Une essence légère et apaisante qui pénètre instantanément pour offrir un Glow naturel durable. Sa texture signature répare la barrière cutanée en profondeur et laisse la peau rebondie.",
   benefits: [
-    { label: "Hydratation intense", icon: <Sparkles className="w-3.5 h-3.5" /> },
+    { label: "Hydratation intense", icon: <Sparkle className="w-3.5 h-3.5" /> },
     { label: "Réparation", icon: <Leaf className="w-3.5 h-3.5" /> },
-    { label: "Effet Glow", icon: <Zap className="w-3.5 h-3.5" /> },
+    { label: "Effet Glow", icon: <Lightning className="w-3.5 h-3.5" /> },
     { label: "Barrière cutanée", icon: <ShieldCheck className="w-3.5 h-3.5" /> },
   ],
   layering_steps: [
@@ -127,7 +127,7 @@ function Accordion({
           {title}
         </span>
         <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.25 }}>
-          <ChevronDown className="w-4 h-4 text-[#2A2424]/40" />
+          <CaretDown className="w-4 h-4 text-[#2A2424]/40" />
         </motion.div>
       </button>
       <AnimatePresence initial={false}>
@@ -173,7 +173,7 @@ function Gallery({ images, title }: { images: string[]; title: string }) {
             whileTap={{ scale: 0.9 }}
             className="w-9 h-9 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-[#2A2424] shadow-md"
           >
-            <Share2 className="w-4 h-4" />
+            <ShareNetwork className="w-4 h-4" />
           </motion.button>
         </div>
 
@@ -589,9 +589,9 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
                 <div className="pt-2 pb-1">
                   {data.layering_steps.map((step: any, i: number) => {
                     const iconMap: Record<string, React.ReactNode> = {
-                      droplets: <Droplets className="w-4 h-4" />,
+                      droplets: <Drop className="w-4 h-4" />,
                       wind: <Wind className="w-4 h-4" />,
-                      star: <Sparkles className="w-4 h-4" />,
+                      star: <Sparkle className="w-4 h-4" />,
                       sun: <Sun className="w-4 h-4" />,
                       moon: <Moon className="w-4 h-4" />,
                     };

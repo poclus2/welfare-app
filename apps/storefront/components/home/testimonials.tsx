@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Star, Quote } from "lucide-react";
+import { ArrowLeft, ArrowRight, Star, Quotes } from "@phosphor-icons/react";
 import { useState } from "react";
 
 const testimonials = [
@@ -162,7 +162,7 @@ export function Testimonials() {
             <>
               <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/5 -translate-y-1/3 translate-x-1/3 pointer-events-none" />
 
-              <Quote className="w-10 h-10 text-[#E5B6B9] relative z-10" strokeWidth={1} />
+              <Quotes className="w-10 h-10 text-[#E5B6B9] relative z-10" weight="light" />
 
               <div className="relative z-10">
                 <p className="text-xl lg:text-2xl text-white leading-relaxed font-light mb-8">
@@ -190,7 +190,7 @@ export function Testimonials() {
             className="md:col-span-1 md:row-span-1 rounded-[1.5rem] bg-white border border-[#F4EAEB] p-6 flex flex-col justify-between"
           >
             <>
-              <Quote className="w-6 h-6 text-[#E5B6B9] mb-3" strokeWidth={1.5} />
+              <Quotes className="w-6 h-6 text-[#E5B6B9] mb-3" weight="light" />
               <p className="text-sm text-[#2A2424]/80 leading-relaxed line-clamp-3 flex-1">
                 "{testimonials[1]!.quote}"
               </p>
@@ -214,7 +214,7 @@ export function Testimonials() {
             className="md:col-span-1 md:row-span-1 rounded-[1.5rem] bg-[#F4EAEB] p-6 flex flex-col justify-between"
           >
             <>
-              <Quote className="w-6 h-6 text-[#E5B6B9] mb-3" strokeWidth={1.5} />
+              <Quotes className="w-6 h-6 text-[#E5B6B9] mb-3" weight="light" />
               <p className="text-sm text-[#2A2424]/80 leading-relaxed line-clamp-3 flex-1">
                 "{testimonials[2]!.quote}"
               </p>
@@ -274,7 +274,7 @@ export function Testimonials() {
             <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-white/5 -translate-y-1/3 translate-x-1/3 pointer-events-none" />
 
             <div>
-              <Quote className={`w-7 h-7 ${testimonials[activeIndex]!.quoteColor} mb-4`} strokeWidth={1} />
+              <Quotes className={`w-7 h-7 ${testimonials[activeIndex]!.quoteColor} mb-4`} weight="light" />
               <p className={`text-base ${testimonials[activeIndex]!.textColor} leading-relaxed font-light`}>
                 "{testimonials[activeIndex]!.quote}"
               </p>

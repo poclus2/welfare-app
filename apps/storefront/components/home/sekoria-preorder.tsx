@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Clock } from "lucide-react";
+import { ArrowRight, Clock } from "@phosphor-icons/react";
 import Link from "next/link";
 
 export function SekoriaPreorder() {

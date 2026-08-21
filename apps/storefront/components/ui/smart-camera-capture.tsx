@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import Webcam from "react-webcam";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
-import { Camera, ArrowLeft, ArrowRight, Sun, Glasses, X } from "lucide-react";
+import { Camera, ArrowLeft, ArrowRight, Sun, Eyeglasses, X } from "@phosphor-icons/react";
 
 export type CaptureResult = {
   front: string;
@@ -290,7 +290,7 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
 
                 <div className="flex items-start gap-4 rounded-2xl p-4 border border-[rgba(200,134,138,0.15)]" style={{ backgroundColor: "#FAF7F2" }}>
                   <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-xl shrink-0 mt-0.5">
-                    <Glasses className="w-5 h-5 text-blue-500" />
+                    <Eyeglasses className="w-5 h-5 text-blue-500" />
                   </div>
                   <div>
                     <p className="font-semibold text-sm" style={{ color: "#3D2B2D" }}>Retirez vos lunettes</p>
