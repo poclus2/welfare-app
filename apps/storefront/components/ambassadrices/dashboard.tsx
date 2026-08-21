@@ -1,5 +1,6 @@
-import { Sparkle, QrCode, Copy } from "@phosphor-icons/react";
+"use client";
 
+import { Sparkle, QrCode, Copy } from "@phosphor-icons/react";
 export function DashboardInfluenceur() {
   return (
     <div className="w-full max-w-[1200px] mx-auto py-12 px-6">

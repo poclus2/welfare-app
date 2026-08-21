@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Leaf } from "@phosphor-icons/react";
+import { ArrowRight, Leaf } from "@phosphor-icons/react/dist/ssr";
 
 export function Footer() {
   return (
