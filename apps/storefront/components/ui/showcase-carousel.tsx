@@ -2,11 +2,13 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
 
 const CAROUSEL_ITEMS = [
   {
     id: "01",
     title: "NETTOYANTS",
+    slug: "nettoyants",
     desc: "Le rituel du double cleansing. Une peau purifiée, prête à recevoir ses soins.",
     bgImage: "/carroussel/nettoyants.png",
     color: "#cae3fe",
@@ -15,6 +17,7 @@ const CAROUSEL_ITEMS = [
   {
     id: "02",
     title: "TONERS",
+    slug: "toners",
     desc: "Hydratation immédiate. La première couche essentielle du soin coréen.",
     bgImage: "/carroussel/toners.png",
     color: "#ffd3dc",
@@ -23,6 +26,7 @@ const CAROUSEL_ITEMS = [
   {
     id: "03",
     title: "SÉRUMS",
+    slug: "serums",
     desc: "Des actifs concentrés pour cibler éclat, fermeté et pureté.",
     bgImage: "/carroussel/serums.png",
     color: "#f1e7d4",
@@ -31,6 +35,7 @@ const CAROUSEL_ITEMS = [
   {
     id: "04",
     title: "CRÈMES",
+    slug: "cremes",
     desc: "Nutrition & barrière cutanée. Des textures onctueuses pour sceller le soin.",
     bgImage: "/carroussel/cremes.png",
     color: "#e7cffb",
@@ -39,6 +44,7 @@ const CAROUSEL_ITEMS = [
   {
     id: "05",
     title: "MASQUES",
+    slug: "masques",
     desc: "Sheet masks & sleeping masks pour une peau repulpée du jour au lendemain.",
     bgImage: "/carroussel/masques.png",
     color: "#d4e7cf",
@@ -47,6 +53,7 @@ const CAROUSEL_ITEMS = [
   {
     id: "06",
     title: "SOLAIRES",
+    slug: "solaires",
     desc: "Protection SPF légère et invisible. L'étape finale incontournable.",
     bgImage: "/carroussel/solaires.png",
     color: "#f5cfaa",
@@ -55,6 +62,7 @@ const CAROUSEL_ITEMS = [
   {
     id: "07",
     title: "CHEVEUX",
+    slug: "cheveux",
     desc: "K-Haircare & Head Spa coréen pour un cuir chevelu sain.",
     bgImage: "/carroussel/cheveux.png",
     color: "#d0ecea",
@@ -63,6 +71,7 @@ const CAROUSEL_ITEMS = [
   {
     id: "08",
     title: "YEUX & LÈVRES",
+    slug: "yeux-levres",
     desc: "Patchs yeux et soins lèvres pour les zones les plus délicates.",
     bgImage: "/carroussel/yeux-levres.png",
     color: "#fcbec8",
@@ -71,6 +80,7 @@ const CAROUSEL_ITEMS = [
   {
     id: "09",
     title: "MAQUILLAGE",
+    slug: "maquillage",
     desc: "Cushions, BB creams & lip tints pour le Glass Skin coréen.",
     bgImage: "/carroussel/maquillage.png",
     color: "#f8c5c1",
@@ -79,6 +89,7 @@ const CAROUSEL_ITEMS = [
 ];
 
 export function ShowcaseCarousel() {
+  const router = useRouter();
   const [activeIdx, setActiveIdx] = useState(2);
   const [dragStart, setDragStart] = useState(0);
 
@@ -133,7 +144,13 @@ export function ShowcaseCarousel() {
             return (
               <motion.div
                 key={item.id}
-                onClick={() => setActiveIdx(idx)}
+                onClick={() => {
+                  if (isActive) {
+                    router.push(`/shop/${item.slug}`);
+                  } else {
+                    setActiveIdx(idx);
+                  }
+                }}
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.15}
