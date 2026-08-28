@@ -20,6 +20,9 @@ module.exports = defineConfig({
   },
   modules: [
     {
+      resolve: './src/modules/welfare_delivery',
+    },
+    {
       resolve: "./src/modules/welfare-catalog",
     },
     {
@@ -35,6 +38,21 @@ module.exports = defineConfig({
       },
     },
     {
+      resolve: "@medusajs/fulfillment",
+      options: {
+        providers: [
+          {
+            resolve: "@medusajs/fulfillment-manual",
+            id: "manual",
+          },
+          {
+            resolve: "./src/modules/welfare_delivery_provider",
+            id: "welfare-delivery-provider",
+          }
+        ],
+      },
+    },
+    {
       resolve: "@rokmohar/medusa-plugin-meilisearch",
       options: {
         config: {
@@ -44,8 +62,8 @@ module.exports = defineConfig({
         settings: {
           products: {
             indexSettings: {
-              searchableAttributes: ["title", "description", "variant_sku"],
-              displayedAttributes: ["id", "title", "description", "variant_sku", "thumbnail", "handle", "price"],
+              searchableAttributes: ["title", "description", "variant_sku", "subtitle"],
+              displayedAttributes: ["id", "title", "description", "subtitle", "variant_sku", "thumbnail", "handle", "price"],
             },
             primaryKey: "id",
             transformer: (product) => {
@@ -54,6 +72,7 @@ module.exports = defineConfig({
               return {
                 id: product.id,
                 title: formattedTitle,
+                subtitle: product.subtitle,
                 description: product.description,
                 thumbnail: product.thumbnail,
                 handle: product.handle,
