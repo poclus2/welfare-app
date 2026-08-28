@@ -20,7 +20,7 @@ function formatPrice(amount: number) {
 type DeliveryMode = "domicile" | "retrait";
 type StoreLocation = "hippodrome" | "playce" | null;
 
-interface IdentityForm {
+interface IdentitéyForm {
   firstName: string;
   lastName: string;
   email: string;
@@ -65,7 +65,7 @@ const CAMEROON_CITIES = [
 // ─── Step indicator ────────────────────────────────────────────────────────────
 function StepIndicator({ step }: { step: 1 | 2 }) {
   const steps = [
-    { num: 1, label: "Identité" },
+    { num: 1, label: "Identitéé" },
     { num: 2, label: "Livraison" },
   ];
   return (
@@ -113,20 +113,75 @@ export default function CheckoutPage() {
   const [shippingOptions, setShippingOptions] = useState<any[]>([]);
   const [selectedShippingOptionId, setSelectedShippingOptionId] = useState<string | null>(null);
 
-  const [identity, setIdentity] = useState<IdentityForm>({
+  const [identity, setIdentitéy] = useState<IdentitéyForm>({
     firstName: "", lastName: "", email: "", phone: "",
   });
   const [delivery, setDelivery] = useState<DeliveryForm>({
     mode: "domicile", store: null, address: "", city: "Douala", country: "Cameroun", notes: "",
   });
 
-  const [identityErrors, setIdentityErrors] = useState<Partial<IdentityForm>>({});
+  const [identityErrors, setIdentitéyErrors] = useState<Partial<IdentitéyForm>>({});
   const [deliveryErrors, setDeliveryErrors] = useState<Partial<Record<keyof DeliveryForm, string>>>({});
+
+  // Dynamic Delivery Data
+  const [citiesData, setCitiesData] = useState<any[]>([]);
+  const [pickupPointsData, setPickupPointsData] = useState<any[]>([]);
+  const [settingsData, setSettingsData] = useState<any>(null);
+  const [deliveryNeighborhood, setDeliveryNeighborhood] = useState("");
+
+  useEffect(() => {
+    const loadDeliveryData = async () => {
+      try {
+        const [citiesRes, pointsRes, settingsRes] = await Promise.all([
+          sdk.client.fetch<any>("/store/delivery/cities", { method: "GET" }),
+          sdk.client.fetch<any>("/store/delivery/pickup-points", { method: "GET" }),
+          sdk.client.fetch<any>("/store/delivery/settings", { method: "GET" })
+        ]);
+        if (citiesRes.cities) setCitiesData(citiesRes.cities);
+        if (pointsRes.points) setPickupPointsData(pointsRes.points);
+        if (settingsRes.setting) setSettingsData(settingsRes.setting);
+      } catch (err) {
+        console.error("Failed to load delivery data", err);
+      }
+    };
+    loadDeliveryData();
+  }, []);
+
+  // Compute selected options ETA and COD Fee
+  let eta = "";
+  if (delivery.mode === "domicile") {
+    const selectedCity = citiesData.find(c => c.name === delivery.city);
+    if (selectedCity) {
+      eta = selectedCity.estimated_time || "";
+      if (selectedCity.has_neighborhoods && deliveryNeighborhood) {
+        const hood = selectedCity.neighborhoods?.find((h: any) => h.id === deliveryNeighborhood);
+        if (hood && hood.estimated_time) eta = hood.estimated_time;
+      }
+    }
+  }
+
+  const codFee = (paymentMode === "cash" && settingsData?.cod_fee) ? settingsData.cod_fee : 0;
 
   // Get current shipping option price
   const currentShippingOption = shippingOptions.find(o => o.id === selectedShippingOptionId);
-  const livraisonFee = currentShippingOption ? currentShippingOption.amount : (delivery.mode === "retrait" ? 0 : LIVRAISON_FEE);
-  const total = totalAmount + livraisonFee;
+  
+  let livraisonFee = 0;
+  if (currentShippingOption) {
+    livraisonFee = currentShippingOption.amount;
+  } else if (delivery.mode === "retrait") {
+    const store = pickupPointsData.find(p => p.id === delivery.store);
+    livraisonFee = store ? store.price : 0;
+  } else {
+    // Fallback logic if shipping options didn't load
+    const selectedCity = citiesData.find(c => c.name === delivery.city);
+    livraisonFee = selectedCity?.fixed_price || LIVRAISON_FEE;
+    if (selectedCity?.has_neighborhoods && deliveryNeighborhood) {
+      const hood = selectedCity.neighborhoods?.find((h: any) => h.id === deliveryNeighborhood);
+      if (hood) livraisonFee = hood.price;
+    }
+  }
+
+  const total = totalAmount + livraisonFee + codFee;
 
   // Fetch shipping options for the cart
   const fetchOptions = async () => {
@@ -152,18 +207,18 @@ export default function CheckoutPage() {
   }, [items, router, isLoading]);
 
   // ── Validation ──────────────────────────────────────────────────────────────
-  const validateIdentity = () => {
-    const e: Partial<IdentityForm> = {};
+  const validateIdentitéy = () => {
+    const e: Partial<IdentitéyForm> = {};
     if (!identity.firstName.trim()) e.firstName = "Requis";
     if (!identity.lastName.trim()) e.lastName = "Requis";
     if (!identity.email.trim() || !/\S+@\S+\.\S+/.test(identity.email)) e.email = "Email invalide";
     if (!identity.phone.trim()) e.phone = "Requis";
-    setIdentityErrors(e);
+    setIdentitéyErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const validateDelivery = () => {
-    const e: Partial<Record<keyof DeliveryForm, string> & { shipping: string }> = {};
+    const e: Partial<Record<keyof DeliveryForm, string> & { shipping: string, neighborhood: string }> = {};
     if (delivery.mode === "retrait" && !delivery.store) e.store = "Choisissez un magasin";
     if (delivery.mode === "domicile") {
       if (!delivery.address.trim()) e.address = "Requis";
@@ -178,7 +233,7 @@ export default function CheckoutPage() {
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleStep1Next = async () => {
-    if (!validateIdentity()) {
+    if (!validateIdentitéy()) {
       alert("Veuillez remplir correctement tous les champs d'identité.");
       return;
     }
@@ -301,7 +356,7 @@ export default function CheckoutPage() {
   const inputOk = "border-[#EDE0E0] focus:border-[#C08A8E] focus:ring-2 focus:ring-[#F4EAEB]";
   const inputErr = "border-red-400 focus:ring-2 focus:ring-red-200";
 
-  const iClass = (field: keyof IdentityForm) => `${inputBase} ${identityErrors[field] ? inputErr : inputOk}`;
+  const iClass = (field: keyof IdentitéyForm) => `${inputBase} ${identityErrors[field] ? inputErr : inputOk}`;
   const dClass = (field: keyof DeliveryForm) => `${inputBase} ${deliveryErrors[field] ? inputErr : inputOk}`;
 
   if (items.length === 0) return null;
@@ -350,7 +405,7 @@ export default function CheckoutPage() {
                 <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 space-y-5">
                   <div className="flex items-center gap-2 mb-1">
                     <User className="w-4 h-4 text-[#C08A8E]" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-[#2A2424]/50">Identité</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-[#2A2424]/50">Identitéé</span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -360,7 +415,7 @@ export default function CheckoutPage() {
                         type="text"
                         placeholder="Fatou"
                         value={identity.firstName}
-                        onChange={(e) => setIdentity({ ...identity, firstName: e.target.value })}
+                        onChange={(e) => setIdentitéy({ ...identity, firstName: e.target.value })}
                         className={iClass("firstName")}
                       />
                       {identityErrors.firstName && <p className="text-[10px] text-red-500 mt-1">{identityErrors.firstName}</p>}
@@ -371,7 +426,7 @@ export default function CheckoutPage() {
                         type="text"
                         placeholder="Diallo"
                         value={identity.lastName}
-                        onChange={(e) => setIdentity({ ...identity, lastName: e.target.value })}
+                        onChange={(e) => setIdentitéy({ ...identity, lastName: e.target.value })}
                         className={iClass("lastName")}
                       />
                       {identityErrors.lastName && <p className="text-[10px] text-red-500 mt-1">{identityErrors.lastName}</p>}
@@ -386,7 +441,7 @@ export default function CheckoutPage() {
                       type="email"
                       placeholder="fatou@exemple.com"
                       value={identity.email}
-                      onChange={(e) => setIdentity({ ...identity, email: e.target.value })}
+                      onChange={(e) => setIdentitéy({ ...identity, email: e.target.value })}
                       className={iClass("email")}
                     />
                     {identityErrors.email && <p className="text-[10px] text-red-500 mt-1">{identityErrors.email}</p>}
@@ -400,7 +455,7 @@ export default function CheckoutPage() {
                       type="tel"
                       placeholder="+221 77 000 00 00"
                       value={identity.phone}
-                      onChange={(e) => setIdentity({ ...identity, phone: e.target.value })}
+                      onChange={(e) => setIdentitéy({ ...identity, phone: e.target.value })}
                       className={iClass("phone")}
                     />
                     {identityErrors.phone && <p className="text-[10px] text-red-500 mt-1">{identityErrors.phone}</p>}
@@ -455,7 +510,7 @@ export default function CheckoutPage() {
                       <div>
                         <p className="text-xs font-bold text-[#2A2424]">Livraison</p>
                         <p className="text-xs font-bold text-[#2A2424]">à domicile</p>
-                        <p className="text-[10px] text-[#C08A8E] font-semibold mt-1">+{formatPrice(LIVRAISON_FEE)} FCFA</p>
+                        <p className="text-[10px] text-[#C08A8E] font-semibold mt-1">+{livraisonFee > 0 ? `+${formatPrice(livraisonFee)} FCFA` : "Gratuit"}</p>
                       </div>
                     </button>
 
@@ -537,6 +592,36 @@ export default function CheckoutPage() {
                             </select>
                           </div>
                         </div>
+
+                        {/* Quartier (Dynamic) */}
+                        {citiesData.find(c => c.name === delivery.city)?.has_neighborhoods && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            className="mt-3"
+                          >
+                            <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">Quartier</label>
+                            <select
+                              value={deliveryNeighborhood}
+                              onChange={(e) => setDeliveryNeighborhood(e.target.value)}
+                              className="w-full px-4 py-3 rounded-xl border border-[#EDE0E0] focus:border-[#C08A8E] focus:ring-2 focus:ring-[#F4EAEB] text-sm text-[#2A2424] bg-white outline-none transition-all"
+                            >
+                              <option value="">Sélectionnez un quartier</option>
+                              {citiesData.find(c => c.name === delivery.city)?.neighborhoods?.map((h: any) => (
+                                <option key={h.id} value={h.id}>{h.name}</option>
+                              ))}
+                            </select>
+                            {deliveryErrors.neighborhood && <p className="text-[10px] text-red-500 mt-1">{deliveryErrors.neighborhood}</p>}
+                          </motion.div>
+                        )}
+                        
+                        {/* ETA display */}
+                        {eta && (
+                          <div className="mt-2 flex items-center gap-2 text-[11px] text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg font-medium">
+                            <Clock className="w-3.5 h-3.5" />
+                            Délai estimé : {eta}
+                          </div>
+                        )}
                         <div>
                           <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">
                             Instructions <span className="text-[#2A2424]/30">(optionnel)</span>
@@ -749,7 +834,7 @@ export default function CheckoutPage() {
                   {delivery.mode === "retrait" ? "Retrait magasin" : "Livraison"}
                 </span>
                 <span className={delivery.mode === "retrait" ? "text-emerald-600 font-semibold" : ""}>
-                  {delivery.mode === "retrait" ? "Gratuit" : `${formatPrice(LIVRAISON_FEE)} FCFA`}
+                  {delivery.mode === "retrait" ? "Gratuit" : `${livraisonFee > 0 ? `+${formatPrice(livraisonFee)} FCFA` : "Gratuit"}`}
                 </span>
               </div>
               <div className="w-full h-px bg-[#F4EAEB]" />
