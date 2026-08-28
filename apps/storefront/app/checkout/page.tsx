@@ -20,7 +20,7 @@ function formatPrice(amount: number) {
 type DeliveryMode = "domicile" | "retrait";
 type StoreLocation = "hippodrome" | "playce" | null;
 
-interface IdentitéyForm {
+interface IdentityForm {
   firstName: string;
   lastName: string;
   email: string;
@@ -113,7 +113,7 @@ export default function CheckoutPage() {
   const [shippingOptions, setShippingOptions] = useState<any[]>([]);
   const [selectedShippingOptionId, setSelectedShippingOptionId] = useState<string | null>(null);
 
-  const [identity, setIdentitéy] = useState<IdentitéyForm>({
+  const [identity, setIdentity] = useState<IdentityForm>({
     firstName: "", lastName: "", email: "", phone: "",
   });
   const [delivery, setDelivery] = useState<DeliveryForm>({
@@ -207,13 +207,13 @@ export default function CheckoutPage() {
   }, [items, router, isLoading]);
 
   // ── Validation ──────────────────────────────────────────────────────────────
-  const validateIdentitéy = () => {
-    const e: Partial<IdentitéyForm> = {};
+  const validateIdentity = () => {
+    const e: Partial<IdentityForm> = {};
     if (!identity.firstName.trim()) e.firstName = "Requis";
     if (!identity.lastName.trim()) e.lastName = "Requis";
     if (!identity.email.trim() || !/\S+@\S+\.\S+/.test(identity.email)) e.email = "Email invalide";
     if (!identity.phone.trim()) e.phone = "Requis";
-    setIdentitéyErrors(e);
+    setIdentityErrors(e);
     return Object.keys(e).length === 0;
   };
 
@@ -233,7 +233,7 @@ export default function CheckoutPage() {
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleStep1Next = async () => {
-    if (!validateIdentitéy()) {
+    if (!validateIdentity()) {
       alert("Veuillez remplir correctement tous les champs d'identité.");
       return;
     }
@@ -356,7 +356,7 @@ export default function CheckoutPage() {
   const inputOk = "border-[#EDE0E0] focus:border-[#C08A8E] focus:ring-2 focus:ring-[#F4EAEB]";
   const inputErr = "border-red-400 focus:ring-2 focus:ring-red-200";
 
-  const iClass = (field: keyof IdentitéyForm) => `${inputBase} ${identityErrors[field] ? inputErr : inputOk}`;
+  const iClass = (field: keyof IdentityForm) => `${inputBase} ${identityErrors[field] ? inputErr : inputOk}`;
   const dClass = (field: keyof DeliveryForm) => `${inputBase} ${deliveryErrors[field] ? inputErr : inputOk}`;
 
   if (items.length === 0) return null;
@@ -415,7 +415,7 @@ export default function CheckoutPage() {
                         type="text"
                         placeholder="Fatou"
                         value={identity.firstName}
-                        onChange={(e) => setIdentitéy({ ...identity, firstName: e.target.value })}
+                        onChange={(e) => setIdentity({ ...identity, firstName: e.target.value })}
                         className={iClass("firstName")}
                       />
                       {identityErrors.firstName && <p className="text-[10px] text-red-500 mt-1">{identityErrors.firstName}</p>}
@@ -426,7 +426,7 @@ export default function CheckoutPage() {
                         type="text"
                         placeholder="Diallo"
                         value={identity.lastName}
-                        onChange={(e) => setIdentitéy({ ...identity, lastName: e.target.value })}
+                        onChange={(e) => setIdentity({ ...identity, lastName: e.target.value })}
                         className={iClass("lastName")}
                       />
                       {identityErrors.lastName && <p className="text-[10px] text-red-500 mt-1">{identityErrors.lastName}</p>}
@@ -441,7 +441,7 @@ export default function CheckoutPage() {
                       type="email"
                       placeholder="fatou@exemple.com"
                       value={identity.email}
-                      onChange={(e) => setIdentitéy({ ...identity, email: e.target.value })}
+                      onChange={(e) => setIdentity({ ...identity, email: e.target.value })}
                       className={iClass("email")}
                     />
                     {identityErrors.email && <p className="text-[10px] text-red-500 mt-1">{identityErrors.email}</p>}
@@ -455,7 +455,7 @@ export default function CheckoutPage() {
                       type="tel"
                       placeholder="+221 77 000 00 00"
                       value={identity.phone}
-                      onChange={(e) => setIdentitéy({ ...identity, phone: e.target.value })}
+                      onChange={(e) => setIdentity({ ...identity, phone: e.target.value })}
                       className={iClass("phone")}
                     />
                     {identityErrors.phone && <p className="text-[10px] text-red-500 mt-1">{identityErrors.phone}</p>}
