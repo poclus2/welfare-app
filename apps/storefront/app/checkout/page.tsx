@@ -120,8 +120,8 @@ export default function CheckoutPage() {
     mode: "domicile", store: null, address: "", city: "Douala", country: "Cameroun", notes: "",
   });
 
-  const [identityErrors, setIdentitéyErrors] = useState<Partial<IdentitéyForm>>({});
-  const [deliveryErrors, setDeliveryErrors] = useState<Partial<Record<keyof DeliveryForm, string>>>({});
+  const [identityErrors, setIdentityErrors] = useState<Partial<IdentityForm>>({});
+  const [deliveryErrors, setDeliveryErrors] = useState<Partial<Record<keyof DeliveryForm, string> & { shipping: string, neighborhood: string }>>({});
 
   // Dynamic Delivery Data
   const [citiesData, setCitiesData] = useState<any[]>([]);
