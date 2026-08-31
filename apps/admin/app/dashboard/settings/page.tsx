@@ -1,6 +1,4 @@
 import { cookies } from "next/headers";
-import { fetchAdmin } from "@/lib/medusa-admin";
-import { ShippingSettings } from "./ShippingSettings";
 
 export const dynamic = "force-dynamic";
 
@@ -9,14 +7,6 @@ export default async function SettingsPage() {
   const token = cookieStore.get("admin_token")?.value;
 
   if (!token) return null;
-
-  let shippingOptions = [];
-  try {
-    const data = await fetchAdmin<{ shipping_options: any[] }>("/welfare-shipping", token);
-    shippingOptions = data.shipping_options || [];
-  } catch (err) {
-    console.error("Error fetching shipping options:", err);
-  }
 
   return (
     <div className="p-5 lg:p-8 space-y-6">
@@ -27,9 +17,6 @@ export default async function SettingsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          {/* Shipping Settings */}
-          <ShippingSettings initialOptions={shippingOptions} token={token} />
-          
           <div className="bg-white rounded-2xl border border-[#EDE0E0] p-12 flex flex-col items-center justify-center text-center shadow-sm">
             <div className="w-16 h-16 rounded-2xl bg-[#F5F0EB] flex items-center justify-center mb-4 text-3xl">⚙️</div>
             <h2 className="text-base font-bold text-[#2A2424] mb-1">Autres Paramètres</h2>
@@ -49,10 +36,6 @@ export default async function SettingsPage() {
               <div className="flex justify-between text-xs">
                 <span className="text-white/40">Pays de livraison</span>
                 <span className="font-bold">Cameroun 🇨🇲</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-white/40">Villes couvertes</span>
-                <span className="font-bold">Yaoundé, Douala</span>
               </div>
             </div>
           </div>

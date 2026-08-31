@@ -368,9 +368,22 @@ export function ProductForm({ initialData, collections, categories = [] }: { ini
                         <p className="text-xs font-bold text-[#2A2424]">
                           {vPrice ? new Intl.NumberFormat("fr-FR").format(vPrice.amount) + " " + vPrice.currency_code.toUpperCase() : "—"}
                         </p>
-                        <p className={`text-[10px] font-semibold ${v.inventory_quantity === 0 ? "text-red-400" : "text-[#2A2424]/40"}`}>
-                          {v.inventory_quantity ?? "?"} en stock
-                        </p>
+                        <div className="flex flex-col items-end mt-0.5">
+                          {v.metadata?.stock_total !== undefined ? (
+                            <div className="flex flex-col items-end">
+                              <span className={`text-[10px] font-bold ${(v.metadata.stock_b1 || 0) <= 0 ? "text-red-400" : "text-green-600"}`}>
+                                Hyppodrome : {v.metadata.stock_b1 || 0}
+                              </span>
+                              <span className={`text-[10px] font-bold ${(v.metadata.stock_b2 || 0) <= 0 ? "text-red-400" : "text-green-600"}`}>
+                                Playce : {v.metadata.stock_b2 || 0}
+                              </span>
+                            </div>
+                          ) : (
+                            <p className={`text-[10px] font-semibold ${v.inventory_quantity === 0 ? "text-red-400" : "text-[#2A2424]/40"}`}>
+                              {v.inventory_quantity ?? "?"} en stock
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );

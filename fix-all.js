@@ -1,0 +1,56 @@
+const fs = require('fs');
+let c = fs.readFileSync('apps/admin/app/dashboard/delivery/DeliverySettingsClient.tsx', 'utf8');
+
+c = c.replace(/Param(Ã¨|\xc3\xa8|..|.)tres/g, 'Paramètres')
+     .replace(/Avanc(Ã©|\xc3\xa9|..|.)s/g, 'Avancés')
+     .replace(/G(Ã©|\xc3\xa9|..|.)rez/g, 'Gérez')
+     .replace(/G(Ã©|\xc3\xa9|..|.)n(Ã©|\xc3\xa9|..|.)ral/g, 'Général')
+     .replace(/G(Ã©|\xc3\xa9|..|.)n(Ã©|\xc3\xa9|..|.)raux/g, 'Généraux')
+     .replace(/r(Ã¨|\xc3\xa8|..|.)gles/g, 'règles')
+     .replace(/R(Ã¨|\xc3\xa8|..|.)gles/g, 'Règles')
+     .replace(/D(Ã©|\xc3\xa9|..|.)sactiver/g, 'Désactiver')
+     .replace(/configur(Ã©|\xc3\xa9|..|.)/g, 'configuré')
+     .replace(/compl(Ã¨|\xc3\xa8|..|.)te/g, 'complète')
+     .replace(/T(Ã©|\xc3\xa9|..|.)l(Ã©|\xc3\xa9|..|.)phone/g, 'Téléphone')
+     .replace(/donn(Ã©|\xc3\xa9|..|.)es/g, 'données')
+     .replace(/g(Ã©|\xc3\xa9|..|.)n(Ã©|\xc3\xa9|..|.)rer/g, 'générer')
+     .replace(/mis (Ã |\xc3\xa0|..|.) jour/g, 'mis à jour')
+     .replace(/appliqu(Ã©|\xc3\xa9|..|.)e/g, 'appliquée')
+     .replace(/D(Ã©|\xc3\xa9|..|.)lai estim(Ã©|\xc3\xa9|..|.)/g, 'Délai estimé')
+     .replace(/Paiement (Ã |\xc3\xa0|..|.) la livraison/g, 'Paiement à la livraison')
+     .replace(/cr(Ã©|\xc3\xa9|..|.)er/g, 'créer')
+     .replace(/T(Ã©|\xc3\xa9|..|.)l(Ã©|\xc3\xa9|..|.)charger/g, 'Télécharger')
+     .replace(/R(Ã©|\xc3\xa9|..|.)f(Ã©|\xc3\xa9|..|.)rence/g, 'Référence')
+     .replace(/Ã©/g, 'é')
+     .replace(/Ã¨/g, 'è')
+     .replace(/Ã /g, 'à')
+     .replace(/Ã /g, 'à')
+     .replace(/\xc3\x83\xc2\xa9/g, 'é')
+     .replace(/\xc3\x83\xc2\xa8/g, 'è')
+     .replace(/\xc3\x83\xc2\xa0/g, 'à');
+
+// Special cases
+c = c.replace(/Param.tres G.n.raux/g, 'Paramètres Généraux')
+     .replace(/Param.tres mis . jour/g, 'Paramètres mis à jour')
+     .replace(/La r.gle a .t. ajout.e/g, 'La règle a été ajoutée')
+     .replace(/Voulez-vous vraiment cr.er/g, 'Voulez-vous vraiment créer')
+     .replace(/Param.tres de Livraison Avanc.s/g, 'Paramètres de Livraison Avancés')
+     .replace(/G.rez vos/g, 'Gérez vos')
+     .replace(/G.n.ral & COD/g, 'Général & COD')
+     .replace(/R.gles de Poids/g, 'Règles de Poids')
+     .replace(/r.gles de poids/g, 'règles de poids')
+     .replace(/D.sactiver la livraison/g, 'Désactiver la livraison')
+     .replace(/Montant configur./g, 'Montant configuré')
+     .replace(/D.lai estim./g, 'Délai estimé')
+     .replace(/Paiement . la livraison/g, 'Paiement à la livraison')
+     .replace(/mis . jour/g, 'mis à jour')
+     .replace(/appliqu.e/g, 'appliquée')
+     .replace(/T.l.charger/g, 'Télécharger')
+     .replace(/cr.er/g, 'créer')
+     .replace(/donn.es/g, 'données')
+     .replace(/g.n.rer/g, 'générer')
+     .replace(/compl.te/g, 'complète')
+     .replace(/T.l.phone/g, 'Téléphone');
+
+fs.writeFileSync('apps/admin/app/dashboard/delivery/DeliverySettingsClient.tsx', c, 'utf8');
+

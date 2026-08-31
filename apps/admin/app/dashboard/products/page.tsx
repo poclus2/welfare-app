@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Package, Plus, ChevronRight, ChevronLeft, Pencil } from "lucide-react";
 import { fetchAdmin } from "@/lib/medusa-admin";
 import { ProductSearch } from "@/components/products/ProductSearch";
+import { ProductFilters } from "@/components/products/ProductFilters";
 
 export const dynamic = "force-dynamic";
 
@@ -19,20 +20,46 @@ export default async function ProductsPage({
   if (!token) return null;
 
   const q = typeof resolvedParams.q === "string" ? resolvedParams.q : "";
+  const order = typeof resolvedParams.order === "string" ? resolvedParams.order : "-created_at";
+  const status = typeof resolvedParams.status === "string" ? resolvedParams.status : "";
   const offset = typeof resolvedParams.offset === "string" ? parseInt(resolvedParams.offset, 10) : 0;
   const limit = 24;
 
+  const isCustomStockFilter = status === "negative_stock" || status === "low_stock";
+
   const query = new URLSearchParams({
-    offset: offset.toString(),
-    limit: limit.toString(),
+    offset: isCustomStockFilter ? "0" : offset.toString(),
+    limit: isCustomStockFilter ? "2000" : limit.toString(),
     expand: "variants,collection,options",
+    order: order,
   });
   if (q) query.set("q", q);
+  if (status && status !== "all" && !isCustomStockFilter) {
+    query.set("status", status);
+  }
 
-  const data = await fetchAdmin<{ products: any[]; count: number; offset: number; limit: number }>(
+  let data = await fetchAdmin<{ products: any[]; count: number; offset: number; limit: number }>(
     `/products?${query.toString()}`,
     token
   ).catch(() => ({ products: [], count: 0, offset: 0, limit: 24 }));
+
+  if (isCustomStockFilter) {
+    // Manually filter products based on stock
+    const filteredProducts = data.products.filter(p => {
+      const inv = p.variants?.reduce((acc: number, v: any) => acc + (v.inventory_quantity || v.metadata?.stock_total || 0), 0) || 0;
+      if (status === "negative_stock") return inv < 0;
+      if (status === "low_stock") return inv >= 0 && inv < 10;
+      return true;
+    });
+
+    data = {
+      ...data,
+      count: filteredProducts.length,
+      products: filteredProducts.slice(offset, offset + limit),
+      offset,
+      limit,
+    };
+  }
 
   const allProductsData = await fetchAdmin<{ count: number }>(`/products?limit=1`, token).catch(() => ({ count: 0 }));
   const activeProductsData = await fetchAdmin<{ count: number }>(`/products?status=published&limit=1`, token).catch(() => ({ count: 0 }));
@@ -40,7 +67,7 @@ export default async function ProductsPage({
 
   // Compute low stock from fetched products (inventory < 10 but > 0)
   const lowStockCount = data.products.filter(p => {
-    const inv = p.variants?.reduce((acc: number, v: any) => acc + (v.inventory_quantity || 0), 0) || 0;
+    const inv = p.variants?.reduce((acc: number, v: any) => acc + (v.inventory_quantity || v.metadata?.stock_total || 0), 0) || 0;
     return inv > 0 && inv < 10;
   }).length;
 
@@ -111,9 +138,12 @@ export default async function ProductsPage({
       </div>
 
       {/* Toolbar */}
-      <div className="bg-white rounded-2xl border border-[#EDE0E0] p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
-        <ProductSearch initialQuery={q} />
-        <p className="text-xs text-[#2A2424]/40 whitespace-nowrap">
+      <div className="bg-white rounded-2xl border border-[#EDE0E0] p-4 flex flex-col xl:flex-row items-center justify-between gap-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
+          <ProductSearch initialQuery={q} />
+          <ProductFilters />
+        </div>
+        <p className="text-xs text-[#2A2424]/40 whitespace-nowrap font-medium">
           {data.count} produit{data.count > 1 ? "s" : ""}
         </p>
       </div>
@@ -132,7 +162,7 @@ export default async function ProductsPage({
               const amt = p ? p.amount : 0;
               return amt > 0 && (amt < min || min === 0) ? amt : min;
             }, 0);
-            const totalInventory = product.variants?.reduce((acc: number, v: any) => acc + (v.inventory_quantity || 0), 0) || 0;
+            const totalInventory = product.variants?.reduce((acc: number, v: any) => acc + (v.inventory_quantity || v.metadata?.stock_total || 0), 0) || 0;
             const isPublished = product.status === "published";
 
             return (
@@ -231,7 +261,7 @@ export default async function ProductsPage({
           </p>
           <div className="flex items-center gap-2">
             <Link
-              href={`/dashboard/products?offset=${Math.max(0, offset - limit)}${q ? `&q=${q}` : ''}`}
+              href={`/dashboard/products?offset=${Math.max(0, offset - limit)}${q ? `&q=${q}` : ''}${order ? `&order=${order}` : ''}${status && status !== 'all' ? `&status=${status}` : ''}`}
               className={`p-1.5 rounded-lg border border-[#EDE0E0] transition-colors ${currentPage === 1 ? "opacity-40 pointer-events-none" : "hover:bg-[#F5F0EB]"}`}
             >
               <ChevronLeft className="w-4 h-4 text-[#2A2424]" />
@@ -242,7 +272,7 @@ export default async function ProductsPage({
               return (
                 <Link
                   key={page}
-                  href={`/dashboard/products?offset=${(page - 1) * limit}${q ? `&q=${q}` : ''}`}
+                  href={`/dashboard/products?offset=${(page - 1) * limit}${q ? `&q=${q}` : ''}${order ? `&order=${order}` : ''}${status && status !== 'all' ? `&status=${status}` : ''}`}
                   className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-colors ${
                     page === currentPage
                       ? "bg-[#2A2424] text-white"
@@ -254,7 +284,7 @@ export default async function ProductsPage({
               );
             })}
             <Link
-              href={`/dashboard/products?offset=${offset + limit}${q ? `&q=${q}` : ''}`}
+              href={`/dashboard/products?offset=${offset + limit}${q ? `&q=${q}` : ''}${order ? `&order=${order}` : ''}${status && status !== 'all' ? `&status=${status}` : ''}`}
               className={`p-1.5 rounded-lg border border-[#EDE0E0] transition-colors ${currentPage >= totalPages ? "opacity-40 pointer-events-none" : "hover:bg-[#F5F0EB]"}`}
             >
               <ChevronRight className="w-4 h-4 text-[#2A2424]" />

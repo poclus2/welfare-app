@@ -327,7 +327,7 @@ export default function CategoryClient({
                       <button 
                         onClick={(e) => handleAddToCart(e, product)}
                         disabled={addingId === product.id}
-                        className="bg-[#2A2424] text-white w-8 h-8 md:w-auto md:h-auto md:px-4 md:py-2 rounded-full flex items-center justify-center gap-1.5 md:gap-2 text-[10px] md:text-xs font-bold hover:bg-black transition-colors shrink-0 disabled:opacity-50"
+                        className="bg-[#E51D5A] text-white w-8 h-8 md:w-auto md:h-auto md:px-4 md:py-2 rounded-full flex items-center justify-center gap-1.5 md:gap-2 text-[10px] md:text-xs font-bold hover:bg-[#C2164A] transition-colors shrink-0 disabled:opacity-50 shadow-md shadow-[#E51D5A]/20"
                       >
                         {addingId === product.id ? (
                           <CircleNotch className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" />

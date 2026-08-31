@@ -151,36 +151,50 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
     const pitch = Math.atan2(-matrix[9]!, matrix[10]!) * (180 / Math.PI);
     const yaw = Math.asin(Math.max(-1, Math.min(1, matrix[8]!))) * (180 / Math.PI);
 
+    // Calculate face width ratio (bounding box relative to screen)
+    const landmarks = results.faceLandmarks[0];
+    if (!landmarks) return;
+    const xs = landmarks.map(l => l.x);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const faceWidthRatio = maxX - minX;
+
     let newFeedback = "";
     let newIsPerfect = false;
 
-    if (step === "FRONT") {
-      const isAligned = Math.abs(yaw) < 8 && Math.abs(pitch) < 10;
-      if (isAligned) {
-        newFeedback = "✓ Parfait ! Ne bougez plus...";
-        newIsPerfect = true;
-      } else if (Math.abs(yaw) >= 8) {
-        newFeedback = yaw > 0 ? "Tournez légèrement vers la gauche" : "Tournez légèrement vers la droite";
-      } else {
-        newFeedback = pitch > 0 ? "Baissez légèrement la tête" : "Relevez légèrement la tête";
-      }
-    } else if (step === "LEFT") {
-      // Mirrored webcam: user turning left = positive yaw in image
-      const isAligned = yaw > 20 && yaw < 45 && Math.abs(pitch) < 15;
-      if (isAligned) {
-        newFeedback = "✓ Parfait ! Ne bougez plus...";
-        newIsPerfect = true;
-      } else {
-        newFeedback = "Tournez votre visage vers la gauche (profil ¾)";
-      }
-    } else if (step === "RIGHT") {
-      // Mirrored webcam: user turning right = negative yaw in image
-      const isAligned = yaw < -20 && yaw > -45 && Math.abs(pitch) < 15;
-      if (isAligned) {
-        newFeedback = "✓ Parfait ! Ne bougez plus...";
-        newIsPerfect = true;
-      } else {
-        newFeedback = "Tournez votre visage vers la droite (profil ¾)";
+    if (faceWidthRatio < 0.35) {
+      newFeedback = "Rapprochez-vous de la caméra";
+    } else if (faceWidthRatio > 0.65) {
+      newFeedback = "Reculez légèrement";
+    } else {
+      if (step === "FRONT") {
+        const isAligned = Math.abs(yaw) < 8 && Math.abs(pitch) < 10;
+        if (isAligned) {
+          newFeedback = "✓ Parfait ! Ne bougez plus...";
+          newIsPerfect = true;
+        } else if (Math.abs(yaw) >= 8) {
+          newFeedback = yaw > 0 ? "Tournez légèrement vers la gauche" : "Tournez légèrement vers la droite";
+        } else {
+          newFeedback = pitch > 0 ? "Baissez légèrement la tête" : "Relevez légèrement la tête";
+        }
+      } else if (step === "LEFT") {
+        // Mirrored webcam: user turning left = positive yaw in image
+        const isAligned = yaw > 20 && yaw < 45 && Math.abs(pitch) < 15;
+        if (isAligned) {
+          newFeedback = "✓ Parfait ! Ne bougez plus...";
+          newIsPerfect = true;
+        } else {
+          newFeedback = "Tournez votre visage vers la gauche (profil ¾)";
+        }
+      } else if (step === "RIGHT") {
+        // Mirrored webcam: user turning right = negative yaw in image
+        const isAligned = yaw < -20 && yaw > -45 && Math.abs(pitch) < 15;
+        if (isAligned) {
+          newFeedback = "✓ Parfait ! Ne bougez plus...";
+          newIsPerfect = true;
+        } else {
+          newFeedback = "Tournez votre visage vers la droite (profil ¾)";
+        }
       }
     }
 

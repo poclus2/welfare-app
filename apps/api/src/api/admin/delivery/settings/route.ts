@@ -2,7 +2,7 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
-  const welfareDeliveryModuleService = req.scope.resolve("welfare_delivery")
+  const welfareDeliveryModuleService = req.scope.resolve<any>("welfare_delivery")
   const settings = await welfareDeliveryModuleService.listDeliverySettings()
   let setting = settings.length ? settings[0] : null
   if (!setting) {
@@ -14,7 +14,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 }
 
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
-  const welfareDeliveryModuleService = req.scope.resolve("welfare_delivery")
+  const welfareDeliveryModuleService = req.scope.resolve<any>("welfare_delivery")
   const settings = await welfareDeliveryModuleService.listDeliverySettings()
   let setting
   if (settings.length) {
@@ -27,3 +27,4 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   }
   res.json({ setting })
 }
+

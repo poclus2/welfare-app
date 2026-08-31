@@ -160,7 +160,6 @@ export function BestSellers({ products: customProducts }: { products?: any[] }) 
                 <div className="px-3 pt-3 pb-3 md:px-5 md:pt-5 md:pb-5 flex flex-col flex-1 bg-white">
                   {/* Tag */}
                   <div className="flex items-center gap-1 md:gap-1.5 bg-[#F8F5F2] text-[#2A2424] w-fit px-2 py-1 md:px-3 md:py-1.5 rounded-full mb-2 md:mb-3">
-                    <span className="text-[#E5B6B9] text-[8px] md:text-[10px]">✦</span>
                     <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider line-clamp-1">{product.category || "Soin Visage"}</span>
                   </div>
                   
@@ -181,7 +180,7 @@ export function BestSellers({ products: customProducts }: { products?: any[] }) 
                     </div>
                     <button 
                       onClick={(e) => e.preventDefault()}
-                      className="bg-[#2A2424] text-white w-8 h-8 md:w-auto md:h-auto md:px-5 md:py-3 rounded-full flex items-center justify-center gap-1.5 md:gap-2 text-[10px] md:text-xs font-bold hover:bg-black transition-colors shrink-0"
+                      className="bg-[#E51D5A] text-white w-8 h-8 md:w-auto md:h-auto md:px-5 md:py-3 rounded-full flex items-center justify-center gap-1.5 md:gap-2 text-[10px] md:text-xs font-bold hover:bg-[#C2164A] transition-colors shrink-0 shadow-md shadow-[#E51D5A]/20"
                     >
                       <ShoppingBag className="w-3.5 h-3.5 md:w-4 md:h-4" />
                       <span className="hidden md:inline">Ajouter</span>

@@ -60,7 +60,7 @@ export function DeliverySettingsClient({ token }: { token: string }) {
         free_shipping_threshold: Number(settings.free_shipping_threshold),
         cod_fee: Number(settings.cod_fee)
       });
-      alert("Param�tres mis � jour");
+      alert("Paramètres mis à jour");
     } catch (err) {
       console.error(err);
     }
@@ -133,22 +133,22 @@ export function DeliverySettingsClient({ token }: { token: string }) {
       <div className="mb-8">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Truck className="w-6 h-6" />
-          Param�tres de Livraison Avanc�s
+          Paramètres de Livraison Avancés
         </h1>
-        <p className="text-gray-500 mt-2">G�rez vos villes, quartiers, points relais, r�gles de poids et analysez vos livraisons.</p>
+        <p className="text-gray-500 mt-2">Gérez vos villes, quartiers, points relais, règles de poids et analysez vos livraisons.</p>
       </div>
 
       <div className="flex border-b mb-8 overflow-x-auto">
         <button onClick={() => setActiveTab("cities")} className={`px-4 py-2 font-medium ${activeTab === "cities" ? "border-b-2 border-black text-black" : "text-gray-500"}`}>Villes & Quartiers</button>
-        <button onClick={() => setActiveTab("settings")} className={`px-4 py-2 font-medium ${activeTab === "settings" ? "border-b-2 border-black text-black" : "text-gray-500"}`}>G�n�ral & COD</button>
+        <button onClick={() => setActiveTab("settings")} className={`px-4 py-2 font-medium ${activeTab === "settings" ? "border-b-2 border-black text-black" : "text-gray-500"}`}>Général & COD</button>
         <button onClick={() => setActiveTab("pickup")} className={`px-4 py-2 font-medium ${activeTab === "pickup" ? "border-b-2 border-black text-black" : "text-gray-500"}`}>Points de Retrait</button>
-        <button onClick={() => setActiveTab("weight")} className={`px-4 py-2 font-medium ${activeTab === "weight" ? "border-b-2 border-black text-black" : "text-gray-500"}`}>R�gles de Poids</button>
+        <button onClick={() => setActiveTab("weight")} className={`px-4 py-2 font-medium ${activeTab === "weight" ? "border-b-2 border-black text-black" : "text-gray-500"}`}>Règles de Poids</button>
         <button onClick={() => setActiveTab("analytics")} className={`px-4 py-2 font-medium ${activeTab === "analytics" ? "border-b-2 border-black text-black" : "text-gray-500"}`}>Analytique</button>
       </div>
 
       {activeTab === "settings" && (
         <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm mb-8 space-y-6">
-          <h2 className="text-lg font-bold">Param�tres GÃ©nÃ©raux</h2>
+          <h2 className="text-lg font-bold">Paramètres Généraux</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm text-gray-600 mb-1">Seuil de Livraison Gratuite (FCFA)</label>
@@ -167,14 +167,14 @@ export function DeliverySettingsClient({ token }: { token: string }) {
                 value={settings.cod_fee}
                 onChange={(e) => setSettings({ ...settings, cod_fee: e.target.value })}
               />
-              <p className="text-xs text-gray-400 mt-1">Surcharge appliqu�er Ã  la livraison.</p>
+              <p className="text-xs text-gray-400 mt-1">Surcharge appliquéer Ã  la livraison.</p>
             </div>
           </div>
           <button 
             onClick={handleUpdateSetting}
             className="px-4 py-2 bg-black text-white rounded-lg flex items-center gap-2"
           >
-            <Save className="w-4 h-4" /> Enregistrer les paramÃ¨tres
+            <Save className="w-4 h-4" /> Enregistrer les paramètres
           </button>
         </div>
       )}
@@ -188,7 +188,7 @@ export function DeliverySettingsClient({ token }: { token: string }) {
                   <button 
                     onClick={() => handleUpdateCity(city.id, { is_active: !city.is_active })}
                     className={`p-2 rounded-full ${city.is_active ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-500'}`}
-                    title={city.is_active ? "D�sactiver la ville" : "Activer la ville"}
+                    title={city.is_active ? "Désactiver la ville" : "Activer la ville"}
                   >
                     {city.is_active ? <Power className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
                   </button>
@@ -260,7 +260,7 @@ export function DeliverySettingsClient({ token }: { token: string }) {
                       </div>
                     ))}
                     {(!city.neighborhoods || city.neighborhoods.length === 0) && (
-                      <p className="text-sm text-gray-400 italic">Aucun quartier configurÃ©.</p>
+                      <p className="text-sm text-gray-400 italic">Aucun quartier configuré.</p>
                     )}
                   </div>
                 </div>
@@ -295,8 +295,8 @@ export function DeliverySettingsClient({ token }: { token: string }) {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <input className="text-sm border rounded px-3 py-2" defaultValue={point.city} onBlur={e => handleUpdatePickupPoint(point.id, { city: e.target.value })} placeholder="Ville" />
-                  <input className="text-sm border rounded px-3 py-2 md:col-span-2" defaultValue={point.address} onBlur={e => handleUpdatePickupPoint(point.id, { address: e.target.value })} placeholder="Adresse compl�te" />
-                  <input className="text-sm border rounded px-3 py-2" defaultValue={point.phone} onBlur={e => handleUpdatePickupPoint(point.id, { phone: e.target.value })} placeholder="T�l�phone" />
+                  <input className="text-sm border rounded px-3 py-2 md:col-span-2" defaultValue={point.address} onBlur={e => handleUpdatePickupPoint(point.id, { address: e.target.value })} placeholder="Adresse complète" />
+                  <input className="text-sm border rounded px-3 py-2" defaultValue={point.phone} onBlur={e => handleUpdatePickupPoint(point.id, { phone: e.target.value })} placeholder="Téléphone" />
                   <input className="text-sm border rounded px-3 py-2" defaultValue={point.opening_hours} onBlur={e => handleUpdatePickupPoint(point.id, { opening_hours: e.target.value })} placeholder="Horaires (ex: 8h - 18h)" />
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-500">Tarif :</span>
@@ -306,7 +306,7 @@ export function DeliverySettingsClient({ token }: { token: string }) {
                 </div>
               </div>
             ))}
-            {pickupPoints.length === 0 && <p className="text-gray-500 italic">Aucun point de retrait configurÃ©.</p>}
+            {pickupPoints.length === 0 && <p className="text-gray-500 italic">Aucun point de retrait configuré.</p>}
           </div>
         </div>
       )}
@@ -314,7 +314,7 @@ export function DeliverySettingsClient({ token }: { token: string }) {
       {activeTab === "weight" && (
         <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-bold flex items-center gap-2"><Scale className="w-5 h-5"/> R�gles de Poids (Surcharges)</h2>
+            <h2 className="text-lg font-bold flex items-center gap-2"><Scale className="w-5 h-5"/> Règles de Poids (Surcharges)</h2>
             <button onClick={handleAddWeightRule} className="flex items-center gap-1 text-sm bg-black text-white px-3 py-1.5 rounded-lg">
               <Plus className="w-4 h-4"/> Ajouter
             </button>
@@ -340,7 +340,7 @@ export function DeliverySettingsClient({ token }: { token: string }) {
                 </div>
               </div>
             ))}
-            {weightRules.length === 0 && <p className="text-gray-500 italic">Aucune rÃ¨gle de poids configurÃ©e.</p>}
+            {weightRules.length === 0 && <p className="text-gray-500 italic">Aucune règle de poids configurée.</p>}
           </div>
         </div>
       )}

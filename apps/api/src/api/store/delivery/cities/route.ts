@@ -1,7 +1,7 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
-  const welfareDeliveryModuleService = req.scope.resolve("welfare_delivery")
+  const welfareDeliveryModuleService = req.scope.resolve<any>("welfare_delivery")
 
   const cities = await welfareDeliveryModuleService.listDeliveryCities(
     { is_active: true },
@@ -10,3 +10,4 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
   res.json({ cities })
 }
+

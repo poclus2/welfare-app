@@ -91,7 +91,6 @@ const CAROUSEL_ITEMS = [
 export function ShowcaseCarousel() {
   const router = useRouter();
   const [activeIdx, setActiveIdx] = useState(2);
-  const [dragStart, setDragStart] = useState(0);
 
   // Responsive state pour ajuster l'effet coverflow sur mobile
   const [windowWidth, setWindowWidth] = useState(1200);
@@ -102,28 +101,47 @@ export function ShowcaseCarousel() {
     setWindowWidth(window.innerWidth);
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener("resize", handleResize);
+    
+    // Prefetch all routes for instant navigation on click
+    CAROUSEL_ITEMS.forEach(item => {
+      router.prefetch(`/shop/${item.slug}`);
+    });
+
     return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  }, [router]);
 
   const getSpacing = () => {
     if (!mounted) return 285;
-    if (windowWidth < 640) return 160; // Espacement très réduit sur mobile
-    if (windowWidth < 768) return 220; // Espacement moyen sur tablette
-    return 285; // Espacement normal sur desktop
+    if (windowWidth < 640) return 160;
+    if (windowWidth < 768) return 220;
+    return 285;
   };
 
-  const handleDragStart = (_e: any, info: any) => {
-    setDragStart(info.point.x);
+  const handleDragEnd = (idx: number, isActive: boolean, slug: string) => {
+    return (_e: any, info: any) => {
+      const delta = info.offset.x;
+      const SWIPE_THRESHOLD = 20; // Lower threshold, simpler logic
+
+      if (Math.abs(delta) > SWIPE_THRESHOLD) {
+        // Swipe intent
+        if (delta < 0 && activeIdx < CAROUSEL_ITEMS.length - 1) {
+          setActiveIdx((p) => p + 1);
+        } else if (delta > 0 && activeIdx > 0) {
+          setActiveIdx((p) => p - 1);
+        }
+      } else {
+        // Click intent
+        if (isActive) {
+          router.push(`/shop/${slug}`);
+        } else {
+          setActiveIdx(idx);
+        }
+      }
+    };
   };
 
-  const handleDragEnd = (_e: any, info: any) => {
-    const diff = dragStart - info.point.x;
-    if (diff > 50 && activeIdx < CAROUSEL_ITEMS.length - 1) {
-      setActiveIdx((p) => p + 1);
-    } else if (diff < -50 && activeIdx > 0) {
-      setActiveIdx((p) => p - 1);
-    }
-  };
+  const goPrev = () => setActiveIdx((p) => Math.max(0, p - 1));
+  const goNext = () => setActiveIdx((p) => Math.min(CAROUSEL_ITEMS.length - 1, p + 1));
 
   const spacing = getSpacing();
 
@@ -144,18 +162,10 @@ export function ShowcaseCarousel() {
             return (
               <motion.div
                 key={item.id}
-                onClick={() => {
-                  if (isActive) {
-                    router.push(`/shop/${item.slug}`);
-                  } else {
-                    setActiveIdx(idx);
-                  }
-                }}
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.15}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
+                onDragEnd={handleDragEnd(idx, isActive, item.slug)}
                 initial={{ opacity: 0 }}
                 animate={{
                   x: xOffset,
@@ -187,18 +197,42 @@ export function ShowcaseCarousel() {
                   style={{ background: `linear-gradient(to bottom, transparent, ${item.color} 80%)` }}
                 />
 
-                {/* Texte — par-dessus le gradient */}
+                {/* Texte */}
                 <motion.div
-                  className="absolute bottom-0 left-0 right-0 px-6 pb-8 pt-4 text-center z-20"
+                  className="absolute bottom-0 left-0 right-0 px-5 pb-6 pt-4 text-center z-20 flex flex-col items-center gap-2.5"
                   animate={{ opacity: isActive ? 1 : 0.5, y: isActive ? 0 : 8 }}
                   transition={{ duration: 0.35, delay: isActive ? 0.08 : 0 }}
                 >
-                  <h2 className="text-2xl font-bold tracking-widest mb-1.5" style={{ color: item.textColor }}>
+                  <h2 className="text-2xl font-bold tracking-widest" style={{ color: item.textColor }}>
                     {item.title}
                   </h2>
-                  <p className="text-xs leading-relaxed font-medium" style={{ color: item.textColor, opacity: 0.75 }}>
+                  <p className="text-[11px] leading-snug font-medium" style={{ color: item.textColor, opacity: 0.72 }}>
                     {item.desc}
                   </p>
+                  <motion.div
+                    animate={{ opacity: isActive ? 1 : 0, y: isActive ? 0 : 6 }}
+                    transition={{ duration: 0.25, delay: isActive ? 0.15 : 0 }}
+                  >
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        router.push(`/shop/${item.slug}`);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-[11px] font-bold tracking-wide border border-white/30 backdrop-blur-md hover:scale-105 active:scale-95 transition-transform"
+                      style={{
+                        background: `${item.color}80`,
+                        color: item.textColor,
+                        boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
+                        pointerEvents: "auto",
+                      }}
+                    >
+                      Découvrir
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <path d="M2.5 6h7M6.5 3l3 3-3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                  </motion.div>
                 </motion.div>
               </motion.div>
             );
@@ -206,19 +240,45 @@ export function ShowcaseCarousel() {
         </AnimatePresence>
       </div>
 
-      {/* Pagination */}
-      <div className="flex items-center gap-3 mt-4">
-        {CAROUSEL_ITEMS.map((_, i) => (
-          <button
-            key={i}
-            onClick={() => setActiveIdx(i)}
-            className={`transition-all duration-300 rounded-full ${
-              activeIdx === i
-                ? "w-8 h-2 bg-[#2A2424]"
-                : "w-2 h-2 bg-[#2A2424]/20 hover:bg-[#2A2424]/40"
-            }`}
-          />
-        ))}
+      {/* Contrôles : flèches + dots */}
+      <div className="flex items-center gap-4 mt-6">
+        <button
+          onClick={goPrev}
+          disabled={activeIdx === 0}
+          className="w-9 h-9 rounded-full border border-[#2A2424]/25 flex items-center justify-center text-[#2A2424]/50 hover:text-[#2A2424] hover:border-[#2A2424]/60 hover:bg-white transition-all disabled:opacity-20 disabled:pointer-events-none shadow-sm"
+          aria-label="Précédent"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M9 2L4 7L9 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+
+        {/* Dots */}
+        <div className="flex items-center gap-2">
+          {CAROUSEL_ITEMS.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setActiveIdx(i)}
+              className={`transition-all duration-300 rounded-full ${
+                activeIdx === i
+                  ? "w-8 h-2 bg-[#2A2424]"
+                  : "w-2 h-2 bg-[#2A2424]/20 hover:bg-[#2A2424]/40"
+              }`}
+              aria-label={`Slide ${i + 1}`}
+            />
+          ))}
+        </div>
+
+        <button
+          onClick={goNext}
+          disabled={activeIdx === CAROUSEL_ITEMS.length - 1}
+          className="w-9 h-9 rounded-full border border-[#2A2424]/25 flex items-center justify-center text-[#2A2424]/50 hover:text-[#2A2424] hover:border-[#2A2424]/60 hover:bg-white transition-all disabled:opacity-20 disabled:pointer-events-none shadow-sm"
+          aria-label="Suivant"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M5 2L10 7L5 12" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
       </div>
     </div>
   );

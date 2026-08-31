@@ -23,8 +23,10 @@ import type { IEventBusModuleService } from '@medusajs/framework/types'
 import type { IWorkflowEngineService } from '@medusajs/framework/types'
 import type { ILockingModule } from '@medusajs/framework/types'
 import type { IFileModuleService } from '@medusajs/framework/types'
+import type WelfareDelivery from '../../src/modules/welfare_delivery'
 import type WelfareCatalog from '../../src/modules/welfare-catalog'
 import type Meilisearch from '@rokmohar/medusa-plugin-meilisearch'
+import type SkinScan from '../../src/modules/skin_scan'
 
 declare module '@medusajs/framework/types' {
   interface ModuleImplementations {
@@ -53,7 +55,9 @@ declare module '@medusajs/framework/types' {
     'workflows': IWorkflowEngineService,
     'locking': ILockingModule,
     'file': IFileModuleService,
+    'welfare_delivery': InstanceType<(typeof WelfareDelivery)['service']>,
     'welfareCatalog': InstanceType<(typeof WelfareCatalog)['service']>,
-    'meilisearch': InstanceType<(typeof Meilisearch)['service']>
+    'meilisearch': InstanceType<(typeof Meilisearch)['service']>,
+    'skin_scan': InstanceType<(typeof SkinScan)['service']>
   }
 }

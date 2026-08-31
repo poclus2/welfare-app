@@ -17,6 +17,88 @@ export type Scalars = {
   JSON: { input: Record<string, unknown>; output: Record<string, unknown>; }
 };
 
+export type DeliveryCity = {
+  __typename?: 'DeliveryCity';
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  has_neighborhoods: Scalars['Boolean']['output'];
+  fixed_price: Maybe<Scalars['Int']['output']>;
+  is_active: Scalars['Boolean']['output'];
+  estimated_time: Maybe<Scalars['String']['output']>;
+  neighborhoods: Array<Maybe<DeliveryNeighborhood>>;
+  created_at: Scalars['DateTime']['output'];
+  updated_at: Scalars['DateTime']['output'];
+  deleted_at: Maybe<Scalars['DateTime']['output']>;
+};
+
+export type DeliveryNeighborhood = {
+  __typename?: 'DeliveryNeighborhood';
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  price: Scalars['Int']['output'];
+  is_active: Scalars['Boolean']['output'];
+  estimated_time: Maybe<Scalars['String']['output']>;
+  city_id: Scalars['String']['output'];
+  city: DeliveryCity;
+  created_at: Scalars['DateTime']['output'];
+  updated_at: Scalars['DateTime']['output'];
+  deleted_at: Maybe<Scalars['DateTime']['output']>;
+};
+
+export type DeliverySetting = {
+  __typename?: 'DeliverySetting';
+  id: Scalars['ID']['output'];
+  free_shipping_threshold: Scalars['Int']['output'];
+  cod_fee: Scalars['Int']['output'];
+  created_at: Scalars['DateTime']['output'];
+  updated_at: Scalars['DateTime']['output'];
+  deleted_at: Maybe<Scalars['DateTime']['output']>;
+};
+
+export type PickupPoint = {
+  __typename?: 'PickupPoint';
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  address: Scalars['String']['output'];
+  city: Scalars['String']['output'];
+  phone: Maybe<Scalars['String']['output']>;
+  opening_hours: Maybe<Scalars['String']['output']>;
+  price: Scalars['Int']['output'];
+  is_active: Scalars['Boolean']['output'];
+  created_at: Scalars['DateTime']['output'];
+  updated_at: Scalars['DateTime']['output'];
+  deleted_at: Maybe<Scalars['DateTime']['output']>;
+};
+
+export type WeightRule = {
+  __typename?: 'WeightRule';
+  id: Scalars['ID']['output'];
+  min_weight: Scalars['Int']['output'];
+  max_weight: Maybe<Scalars['Int']['output']>;
+  additional_fee: Scalars['Int']['output'];
+  created_at: Scalars['DateTime']['output'];
+  updated_at: Scalars['DateTime']['output'];
+  deleted_at: Maybe<Scalars['DateTime']['output']>;
+};
+
+export type SkinScan = {
+  __typename?: 'SkinScan';
+  id: Scalars['ID']['output'];
+  customer_id: Maybe<Scalars['String']['output']>;
+  final_skin_type: Scalars['String']['output'];
+  estimated_skin_age: Scalars['Int']['output'];
+  melanin_phototype: Maybe<Scalars['String']['output']>;
+  concerns: Maybe<Scalars['JSON']['output']>;
+  metrics: Maybe<Scalars['JSON']['output']>;
+  routine: Maybe<Scalars['JSON']['output']>;
+  images: Maybe<Scalars['JSON']['output']>;
+  qwen_raw_summary: Maybe<Scalars['String']['output']>;
+  claude_raw_summary: Maybe<Scalars['String']['output']>;
+  created_at: Scalars['DateTime']['output'];
+  updated_at: Scalars['DateTime']['output'];
+  deleted_at: Maybe<Scalars['DateTime']['output']>;
+};
+
 export type StockLocationAddress = {
   __typename?: 'StockLocationAddress';
   id: Maybe<Scalars['ID']['output']>;
@@ -2040,6 +2122,34 @@ export type ProviderIdentity = {
   deleted_at: Maybe<Scalars['DateTime']['output']>;
 };
 
+export type NotificationStatusEnum =
+  | 'pending'
+  | 'success'
+  | 'failure';
+
+export type Notification = {
+  __typename?: 'Notification';
+  id: Scalars['ID']['output'];
+  to: Scalars['String']['output'];
+  from: Maybe<Scalars['String']['output']>;
+  channel: Scalars['String']['output'];
+  template: Maybe<Scalars['String']['output']>;
+  data: Maybe<Scalars['JSON']['output']>;
+  provider_data: Maybe<Scalars['JSON']['output']>;
+  trigger_type: Maybe<Scalars['String']['output']>;
+  resource_id: Maybe<Scalars['String']['output']>;
+  resource_type: Maybe<Scalars['String']['output']>;
+  receiver_id: Maybe<Scalars['String']['output']>;
+  original_notification_id: Maybe<Scalars['String']['output']>;
+  idempotency_key: Maybe<Scalars['String']['output']>;
+  external_id: Maybe<Scalars['String']['output']>;
+  status: NotificationStatusEnum;
+  provider_id: Maybe<Scalars['String']['output']>;
+  created_at: Scalars['DateTime']['output'];
+  updated_at: Scalars['DateTime']['output'];
+  deleted_at: Maybe<Scalars['DateTime']['output']>;
+};
+
 export type GeoZoneType =
   | 'country'
   | 'province'
@@ -2240,34 +2350,6 @@ export type ShippingProfile = {
   updated_at: Scalars['DateTime']['output'];
   deleted_at: Maybe<Scalars['DateTime']['output']>;
   products_link: Maybe<Array<Maybe<LinkProductShippingProfile>>>;
-};
-
-export type NotificationStatusEnum =
-  | 'pending'
-  | 'success'
-  | 'failure';
-
-export type Notification = {
-  __typename?: 'Notification';
-  id: Scalars['ID']['output'];
-  to: Scalars['String']['output'];
-  from: Maybe<Scalars['String']['output']>;
-  channel: Scalars['String']['output'];
-  template: Maybe<Scalars['String']['output']>;
-  data: Maybe<Scalars['JSON']['output']>;
-  provider_data: Maybe<Scalars['JSON']['output']>;
-  trigger_type: Maybe<Scalars['String']['output']>;
-  resource_id: Maybe<Scalars['String']['output']>;
-  resource_type: Maybe<Scalars['String']['output']>;
-  receiver_id: Maybe<Scalars['String']['output']>;
-  original_notification_id: Maybe<Scalars['String']['output']>;
-  idempotency_key: Maybe<Scalars['String']['output']>;
-  external_id: Maybe<Scalars['String']['output']>;
-  status: NotificationStatusEnum;
-  provider_id: Maybe<Scalars['String']['output']>;
-  created_at: Scalars['DateTime']['output'];
-  updated_at: Scalars['DateTime']['output'];
-  deleted_at: Maybe<Scalars['DateTime']['output']>;
 };
 
 export type LinkCartPaymentCollection = {
@@ -2471,6 +2553,18 @@ export type LinkShippingOptionPriceSet = {
 
 declare module '@medusajs/framework/types' {
   interface RemoteQueryEntryPoints {
+    delivery_city: DeliveryCity
+    delivery_cities: DeliveryCity
+    delivery_neighborhood: DeliveryNeighborhood
+    delivery_neighborhoods: DeliveryNeighborhood
+    delivery_setting: DeliverySetting
+    delivery_settings: DeliverySetting
+    pickup_point: PickupPoint
+    pickup_points: PickupPoint
+    weight_rule: WeightRule
+    weight_rules: WeightRule
+    skin_scan: SkinScan
+    skin_scans: SkinScan
     stock_location_address: StockLocationAddress
     stock_location_addresses: StockLocationAddress
     stock_location: StockLocation
@@ -2634,6 +2728,10 @@ declare module '@medusajs/framework/types' {
     auth_identities: AuthIdentity
     provider_identity: ProviderIdentity
     provider_identities: ProviderIdentity
+    notification: Notification
+    notifications: Notification
+    file: any
+    files: any
     fulfillment_address: FulfillmentAddress
     fulfillment_addresses: FulfillmentAddress
     fulfillment_item: FulfillmentItem
@@ -2658,10 +2756,6 @@ declare module '@medusajs/framework/types' {
     shipping_options: ShippingOption
     shipping_profile: ShippingProfile
     shipping_profiles: ShippingProfile
-    notification: Notification
-    notifications: Notification
-    file: any
-    files: any
     cart_payment_collection: LinkCartPaymentCollection
     cart_payment_collections: LinkCartPaymentCollection
     cart_promotion: LinkCartPromotion

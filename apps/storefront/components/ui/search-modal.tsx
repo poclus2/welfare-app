@@ -27,7 +27,11 @@ function Hit({ hit, onClose }: { hit: any; onClose: () => void }) {
           <Highlight attribute="title" hit={hit} />
         </h4>
         <p className="text-xs text-[#2A2424]/60 line-clamp-1 mt-1">
-          <Highlight attribute="description" hit={hit} />
+          {hit.subtitle ? (
+            <Highlight attribute="subtitle" hit={hit} />
+          ) : hit.description ? (
+            <span className="truncate">{hit.description.replace(/[#*`]/g, "").slice(0, 100)}...</span>
+          ) : null}
         </p>
         {hit.price !== undefined && (
           <p className="text-sm font-bold text-[#E5B6B9] mt-1.5">

@@ -78,14 +78,23 @@ const DECISION_TREE: QuestionNode[] = [
     text: "C'est noté. Comment réagit généralement votre peau aux nouveaux produits ?",
     type: "choice",
     options: [
-      { label: "Très bien, elle supporte tout", nextQuestionId: "q_allergies" },
-      { label: "Sensible, parfois des rougeurs", nextQuestionId: "q_allergies" },
-      { label: "Très réactive et intolérante", nextQuestionId: "q_allergies" }
+      { label: "Très bien, elle supporte tout", nextQuestionId: "q_has_allergies" },
+      { label: "Sensible, parfois des rougeurs", nextQuestionId: "q_has_allergies" },
+      { label: "Très réactive et intolérante", nextQuestionId: "q_has_allergies" }
     ]
   },
   {
-    id: "q_allergies",
-    text: "Avez-vous des allergies, intolérances ou sensibilités connues à certains de ces ingrédients ?",
+    id: "q_has_allergies",
+    text: "Faites-vous des allergies à certains produits cosmétiques ?",
+    type: "choice",
+    options: [
+      { label: "Oui", nextQuestionId: "q_allergies_list" },
+      { label: "Non", nextQuestionId: "q_current_routine" }
+    ]
+  },
+  {
+    id: "q_allergies_list",
+    text: "À quels ingrédients êtes-vous allergique ou sensible ?",
     subtitle: "Vous pouvez en sélectionner plusieurs.",
     type: "multi_choice",
     options: [
@@ -103,7 +112,6 @@ const DECISION_TREE: QuestionNode[] = [
       { label: "Alcools asséchants (Alcohol Denat, Ethanol)" },
       { label: "Filtres Solaires Chimiques (Oxybenzone, Octocrylene...)" },
       { label: "Silicones (Dimethicone...)" },
-      { label: "Aucune allergie connue" },
       { label: "Autres (à préciser)" }
     ],
     nextQuestionId: "q_current_routine"
@@ -439,20 +447,13 @@ export default function SkinCoachFlow() {
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ delay: index * 0.04, type: "spring", bounce: 0.3 }}
                                 onClick={() => {
-                                  if (option.label === "Aucune allergie connue") {
-                                    setSelectedMultiChoice(["Aucune allergie connue"]);
+                                  let newSel = [...selectedMultiChoice];
+                                  if (newSel.includes(option.label)) {
+                                    newSel = newSel.filter(l => l !== option.label);
                                   } else {
-                                    let newSel = [...selectedMultiChoice];
-                                    if (newSel.includes("Aucune allergie connue")) {
-                                      newSel = [];
-                                    }
-                                    if (newSel.includes(option.label)) {
-                                      newSel = newSel.filter(l => l !== option.label);
-                                    } else {
-                                      newSel.push(option.label);
-                                    }
-                                    setSelectedMultiChoice(newSel);
+                                    newSel.push(option.label);
                                   }
+                                  setSelectedMultiChoice(newSel);
                                 }}
                                 className="px-3.5 py-2 rounded-full text-[12px] md:text-[13px] font-semibold transition-all duration-200"
                                 style={

@@ -12,6 +12,7 @@ COPY turbo.json ./
 
 # Copy the API package
 COPY apps/api ./apps/api
+COPY packages ./packages
 
 # Install dependencies (frozen lockfile for deterministic builds)
 RUN pnpm install --frozen-lockfile || pnpm install

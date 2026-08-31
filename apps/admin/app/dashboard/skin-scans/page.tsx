@@ -41,7 +41,7 @@ export default async function SkinScansPage() {
   if (!token) return null;
 
   const data = await fetchAdmin<{ skin_scans: any[] }>(
-    `/skin-scans`,
+    `/skin-scans?limit=500`,
     token
   ).catch((e) => {
     console.error("Failed to fetch skin scans", e);

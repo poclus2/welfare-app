@@ -13,7 +13,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     const { regions } = await sdk.store.region.list().catch(() => ({ regions: [] }));
     const regionId = regions?.[0]?.id;
 
-    const queryParams: any = { fields: "+metadata,+variants,*images,*categories,*collection" };
+    const queryParams: any = { fields: "+metadata,+variants,+variants.metadata,+variants.inventory_quantity,*images,*categories,*collection" };
     if (regionId) {
       queryParams.region_id = regionId;
       queryParams.fields += ",*variants.prices,*variants.calculated_price";

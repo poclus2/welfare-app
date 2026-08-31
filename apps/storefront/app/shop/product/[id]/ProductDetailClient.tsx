@@ -308,6 +308,16 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
     }
   }) : crossSellMock;
 
+  // Compute real inventory
+  const variant = _product?.variants?.[0];
+  const stock_b1 = Number(variant?.metadata?.stock_b1) || 0;
+  const stock_b2 = Number(variant?.metadata?.stock_b2) || 0;
+  let computedStock = variant?.inventory_quantity;
+  if (computedStock === undefined || computedStock === null) {
+    computedStock = stock_b1 + stock_b2;
+  }
+  const totalStock = Math.max(0, computedStock);
+
   const data = {
     ...mockProduct,
     brand: _product?.collection?.title || mockProduct.brand,
@@ -321,6 +331,7 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
     raw_inci: meta.raw_inci || "",
     skin_types: Array.isArray(meta.skin_types) ? meta.skin_types : [],
     skin_concerns: Array.isArray(meta.skin_concerns) ? meta.skin_concerns : [],
+    totalStock,
   };
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
@@ -428,8 +439,15 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
             >
               <span className="text-3xl font-bold text-[#2A2424] tracking-tight">{data.price}</span>
               <span className="text-sm font-semibold text-[#2A2424]/50">{data.currency}</span>
-              <span className="ml-auto text-[10px] font-semibold bg-emerald-50 text-emerald-600 px-2 py-1 rounded-full flex items-center gap-1">
-                <Check className="w-3 h-3" /> En stock
+              <span className={`ml-auto text-[10px] font-semibold px-2 py-1 rounded-full flex items-center gap-1 ${data.totalStock > 0 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>
+                {data.totalStock > 0 ? (
+                  <>
+                    <Check className="w-3 h-3" /> 
+                    {data.totalStock < 5 ? `Plus que ${data.totalStock} en stock` : "En stock"}
+                  </>
+                ) : (
+                  <>Rupture de stock</>
+                )}
               </span>
             </motion.div>
 
@@ -491,14 +509,19 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
               className="mb-6"
             >
               <motion.button
+                disabled={data.totalStock === 0}
                 onClick={handleAddToCart}
-                whileTap={{ scale: 0.97 }}
-                className="relative w-full overflow-hidden py-4 rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-2 shadow-lg"
+                whileTap={{ scale: data.totalStock > 0 ? 0.97 : 1 }}
+                className={`relative w-full overflow-hidden py-4 rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-2 shadow-lg ${
+                  data.totalStock === 0 ? "opacity-50 cursor-not-allowed" : ""
+                }`}
                 style={{
-                  background: added
+                  background: data.totalStock === 0 
+                    ? "#D1C0C0"
+                    : added
                     ? "linear-gradient(135deg, #4ade80, #22c55e)"
-                    : "linear-gradient(135deg, #2A2424 0%, #3D3030 100%)",
-                  boxShadow: "0 4px 24px rgba(42,36,36,0.25)",
+                    : "linear-gradient(135deg, #E51D5A 0%, #C2164A 100%)",
+                  boxShadow: data.totalStock === 0 ? "none" : "0 4px 24px rgba(229,29,90,0.25)",
                   transition: "background 0.4s ease",
                 }}
               >
@@ -521,7 +544,11 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
                       exit={{ opacity: 0, y: -6 }}
                       className="flex items-center gap-2"
                     >
-                      <ShoppingBag className="w-4 h-4" /> Ajouter au panier — {data.price} FCFA
+                      {data.totalStock === 0 ? (
+                        <>Épuisé</>
+                      ) : (
+                        <><ShoppingBag className="w-4 h-4" /> Ajouter au panier - {data.price} FCFA</>
+                      )}
                     </motion.span>
                   )}
                 </AnimatePresence>
