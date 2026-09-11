@@ -40,3 +40,24 @@ export async function POST(
   res.status(200).json({ scan })
 }
 
+
+export async function GET(
+  req: MedusaRequest,
+  res: MedusaResponse
+) {
+  const skinScanService: any = req.scope.resolve(SKIN_SCAN_MODULE)
+  const customerId = (req as any).auth_context?.actor_id
+
+  if (!customerId) {
+    return res.status(401).json({ message: "Unauthorized" })
+  }
+
+  // Assuming skinScanService uses DML and has listSkinScans
+  const scans = await skinScanService.listSkinScans({
+    customer_id: customerId
+  }, {
+    order: { created_at: "DESC" }
+  })
+
+  res.status(200).json({ scans })
+}

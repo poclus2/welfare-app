@@ -5,6 +5,7 @@ import { Package, Plus, ChevronRight, ChevronLeft, Pencil } from "lucide-react";
 import { fetchAdmin } from "@/lib/medusa-admin";
 import { ProductSearch } from "@/components/products/ProductSearch";
 import { ProductFilters } from "@/components/products/ProductFilters";
+import { ShopPageManager } from "@/components/products/ShopPageManager";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ export default async function ProductsPage({
   const status = typeof resolvedParams.status === "string" ? resolvedParams.status : "";
   const offset = typeof resolvedParams.offset === "string" ? parseInt(resolvedParams.offset, 10) : 0;
   const limit = 24;
+  const tab = typeof resolvedParams.tab === "string" ? resolvedParams.tab : "catalogue";
 
   const isCustomStockFilter = status === "negative_stock" || status === "low_stock";
 
@@ -78,6 +80,28 @@ export default async function ProductsPage({
     lowStock: lowStockCount,
   };
 
+  
+  if (tab === "shop") {
+    const allProducts = await fetchAdmin<{ products: any[] }>("/products?limit=2000&expand=variants,collection", token).catch(() => ({ products: [] }));
+    return (
+      <div className="p-5 lg:p-8 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-[#2A2424]" style={{ letterSpacing: "-0.02em" }}>Page Shop</h1>
+            <p className="text-sm text-[#2A2424]/40 mt-0.5">Configurez les sélections de la boutique</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex bg-[#F5F0EB] p-1 rounded-xl">
+              <Link href="/dashboard/products?tab=catalogue" className="px-4 py-2 text-sm font-bold rounded-lg text-[#2A2424]/60 hover:text-[#2A2424] transition-all">Catalogue</Link>
+              <Link href="/dashboard/products?tab=shop" className="px-4 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-[#2A2424] transition-all">Page Shop</Link>
+            </div>
+          </div>
+        </div>
+        <ShopPageManager products={allProducts.products} />
+      </div>
+    );
+  }
+
   const totalPages = Math.ceil(data.count / limit);
   const currentPage = Math.floor(offset / limit) + 1;
 
@@ -92,13 +116,21 @@ export default async function ProductsPage({
           <h1 className="text-2xl font-bold text-[#2A2424]" style={{ letterSpacing: "-0.02em" }}>Produits</h1>
           <p className="text-sm text-[#2A2424]/40 mt-0.5">Gérez votre catalogue de cosmétiques</p>
         </div>
-        <Link
-          href="/dashboard/products/new"
-          className="flex items-center gap-2 px-4 py-2.5 bg-[#2A2424] text-white rounded-xl text-sm font-bold hover:bg-black transition-colors shadow-sm"
-        >
-          <Plus className="w-4 h-4" />
-          Nouveau Produit
-        </Link>
+        
+        <div className="flex items-center gap-4">
+          <div className="flex bg-[#F5F0EB] p-1 rounded-xl">
+            <Link href="/dashboard/products?tab=catalogue" className="px-4 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-[#2A2424] transition-all">Catalogue</Link>
+            <Link href="/dashboard/products?tab=shop" className="px-4 py-2 text-sm font-bold rounded-lg text-[#2A2424]/60 hover:text-[#2A2424] transition-all">Page Shop</Link>
+          </div>
+          <Link
+            href="/dashboard/products/new"
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#2A2424] text-white rounded-xl text-sm font-bold hover:bg-black transition-colors shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            Nouveau Produit
+          </Link>
+        </div>
+
       </div>
 
       {/* KPIs */}

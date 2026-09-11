@@ -85,5 +85,8 @@ module.exports = defineConfig({
     {
       resolve: "./src/modules/skin_scan",
     },
+    {
+      resolve: "./src/modules/search_analytics",
+    },
   ],
 });

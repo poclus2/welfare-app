@@ -67,7 +67,7 @@ export function CategoriesBento() {
       {/* Cherry blossom background */}
       <div
         className="absolute inset-0 bg-cover bg-center opacity-40 pointer-events-none select-none"
-        style={{ backgroundImage: "url('/cherry_blossom_bg.png')" }}
+        style={{ backgroundImage: "url('/cherry_blossom_bg.webp')" }}
         aria-hidden="true"
       />
       <div className="w-full max-w-[1600px] mx-auto px-8 md:px-12 relative z-10">
@@ -98,7 +98,7 @@ export function CategoriesBento() {
 
           {/* [1] Wide — Hydratants */}
           <motion.a
-            href="/shop?category=Hydratants"
+            href="/shop/hydratants"
             custom={0}
             variants={cardVariants}
             initial="hidden"
@@ -107,7 +107,7 @@ export function CategoriesBento() {
             className="col-span-2 md:col-span-2 row-span-1 rounded-2xl overflow-hidden relative group block min-h-[200px] md:min-h-[0]"
           >
             <img
-              src="/im_cat_hydratant.png"
+              src="/im_cat_hydratant.webp"
               alt="Hydratants"
               className="w-full h-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-105"
             />
@@ -121,7 +121,7 @@ export function CategoriesBento() {
 
           {/* [2] Square — Nettoyants */}
           <motion.a
-            href="/shop?category=Nettoyants"
+            href="/shop/nettoyants"
             custom={0.08}
             variants={cardVariants}
             initial="hidden"
@@ -130,7 +130,7 @@ export function CategoriesBento() {
             className="col-span-1 row-span-1 rounded-2xl overflow-hidden relative group bg-[#E5E9E1] block min-h-[160px] md:min-h-[0]"
           >
             <img
-              src="/im_cat_nettoyant.png"
+              src="/im_cat_nettoyant.webp"
               alt="Nettoyants"
               className="w-full h-full object-cover mix-blend-multiply transition-transform duration-700 ease-in-out group-hover:scale-105"
             />
@@ -139,7 +139,7 @@ export function CategoriesBento() {
 
           {/* [3] Tall (row-span-2) — Masques en Tissu */}
           <motion.a
-            href="/shop?category=Masques en Tissu"
+            href="/shop/masques-en-tissu"
             custom={0.16}
             variants={cardVariants}
             initial="hidden"
@@ -148,7 +148,7 @@ export function CategoriesBento() {
             className="col-span-1 row-span-2 rounded-2xl overflow-hidden relative group block min-h-[340px] md:min-h-[0]"
           >
             <img
-              src="/im_cat_mask.png"
+              src="/im_cat_mask.webp"
               alt="Masques en Tissu"
               className="w-full h-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-105"
             />
@@ -165,7 +165,7 @@ export function CategoriesBento() {
 
           {/* [4] Square — Sérums & Ampoules */}
           <motion.a
-            href="/shop?category=Sérums & Ampoules"
+            href="/shop/serums"
             custom={0.1}
             variants={cardVariants}
             initial="hidden"
@@ -174,7 +174,7 @@ export function CategoriesBento() {
             className="col-span-1 row-span-1 rounded-2xl overflow-hidden relative group bg-[#EAD4D5] block min-h-[160px] md:min-h-[0]"
           >
             <img
-              src="/im_cat_serum.png"
+              src="/im_cat_serum.webp"
               alt="Sérums & Ampoules"
               className="w-full h-full object-cover mix-blend-multiply transition-transform duration-700 ease-in-out group-hover:scale-105"
             />
@@ -183,7 +183,7 @@ export function CategoriesBento() {
 
           {/* [5] Square — Protections Solaires */}
           <motion.a
-            href="/shop?category=Protections Solaires"
+            href="/shop/solaires"
             custom={0.18}
             variants={cardVariants}
             initial="hidden"
@@ -192,7 +192,7 @@ export function CategoriesBento() {
             className="col-span-1 row-span-1 rounded-2xl overflow-hidden relative group block min-h-[160px] md:min-h-[0]"
           >
             <img
-              src="/im_cat_sunscreen.png"
+              src="/im_cat_sunscreen.webp"
               alt="Protections Solaires"
               className="w-full h-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-105"
             />
@@ -202,7 +202,7 @@ export function CategoriesBento() {
 
           {/* [6] Square — Soins Contour des Yeux */}
           <motion.a
-            href="/shop?category=Soins Contour des Yeux"
+            href="/shop/soins-contour-des-yeux"
             custom={0.26}
             variants={cardVariants}
             initial="hidden"
@@ -211,7 +211,7 @@ export function CategoriesBento() {
             className="col-span-1 row-span-1 rounded-2xl overflow-hidden relative group bg-[#DCE4E5] block min-h-[160px] md:min-h-[0]"
           >
             <img
-              src="/im_cat_eyecare.png"
+              src="/im_cat_eyecare.webp"
               alt="Soins Contour des Yeux"
               className="w-full h-full object-cover mix-blend-multiply opacity-90 transition-transform duration-700 ease-in-out group-hover:scale-105"
             />
@@ -246,7 +246,7 @@ export function CategoriesBento() {
             </div>
 
             <Link
-              href="/shop"
+              href="/shop/all"
               className="relative z-10 w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#2A2424] text-white px-6 py-3.5 rounded-full text-sm md:text-base font-medium hover:bg-black/80 transition-all duration-300 ease-in-out"
             >
               <MagnifyingGlass className="w-4 h-4" />
@@ -256,7 +256,7 @@ export function CategoriesBento() {
 
           {/* [8] Wide — Toners */}
           <motion.a
-            href="/shop?category=Toners"
+            href="/shop/toners"
             custom={0.28}
             variants={cardVariants}
             initial="hidden"
@@ -265,7 +265,7 @@ export function CategoriesBento() {
             className="col-span-2 md:col-span-2 row-span-1 rounded-2xl overflow-hidden relative group block min-h-[200px] md:min-h-[0]"
           >
             <img
-              src="/im_cat_toner.png"
+              src="/im_cat_toner.webp"
               alt="Toners"
               className="w-full h-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-105"
             />

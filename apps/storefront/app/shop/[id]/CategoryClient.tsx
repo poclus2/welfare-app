@@ -102,6 +102,7 @@ export type CategoryProduct = {
     skin_concerns: string[];
   };
   active_ingredients: { name: string }[];
+  brand?: string;
 };
 
 export default function CategoryClient({
@@ -150,7 +151,7 @@ export default function CategoryClient({
       const catLabelNorm = normalize(catLabel);
       
       const pCatNorm = normalize(p.category || "");
-      const matchesCategory =
+      let matchesCategory =
         pCatNorm.includes(catSlugNorm) ||
         pCatNorm.includes(catLabelNorm) ||
         catSlugNorm.includes(pCatNorm) ||
@@ -158,6 +159,13 @@ export default function CategoryClient({
           const cNorm = normalize(c);
           return cNorm.includes(catSlugNorm) || cNorm.includes(catLabelNorm) || catSlugNorm.includes(cNorm);
         }));
+
+      // Fallback for special categories like 'cheveux' where we also search in titles/ingredients
+      if (!matchesCategory && category === "cheveux") {
+        const titleNorm = normalize(p.title);
+        const descNorm = normalize(p.active_ingredients.map(i => i.name).join(" "));
+        matchesCategory = titleNorm.includes("cheveux") || titleNorm.includes("hair") || titleNorm.includes("shamp") || titleNorm.includes("scalp") || descNorm.includes("cheveux");
+      }
 
       if (!matchesCategory) return false;
     }
@@ -183,7 +191,7 @@ export default function CategoryClient({
       {/* Category Header */}
       <div className="relative w-full bg-[#F4EAEB] px-5 lg:px-12 py-10 md:py-16 overflow-hidden">
         <div className="absolute inset-0 pointer-events-none z-0">
-          <img src="/cherry-blossom.png" alt="" className="absolute top-0 right-0 w-[200px] md:w-[300px] opacity-50 -rotate-[15deg] scale-x-[-1] blur-[1px]" />
+          <img src="/cherry-blossom.webp" alt="" className="absolute top-0 right-0 w-[200px] md:w-[300px] opacity-50 -rotate-[15deg] scale-x-[-1] blur-[1px]" />
         </div>
         <div className="w-full max-w-[1600px] mx-auto relative z-10">
           <div className="flex items-center gap-2 text-sm text-[#2A2424]/50 mb-6">
@@ -300,9 +308,16 @@ export default function CategoryClient({
                     </div>
                   </div>
                   <div className="p-3 md:p-6 flex-1 flex flex-col">
-                    <p className="text-[10px] md:text-xs font-bold text-[#2A2424]/50 mb-1.5 md:mb-2 tracking-wider uppercase truncate">
-                      {product.category}
-                    </p>
+                    <div className="flex flex-col items-start gap-1 md:gap-1.5 mb-1.5 md:mb-2 overflow-hidden">
+                      {product.brand && (
+                        <span className="text-[9px] md:text-[10px] font-bold text-[#2A2424] bg-[#f4eaeb] px-2 py-0.5 rounded-full uppercase tracking-wider truncate">
+                          {product.brand}
+                        </span>
+                      )}
+                      <p className="text-[10px] md:text-xs font-bold text-[#2A2424]/50 tracking-wider uppercase shrink-0">
+                        {product.category}
+                      </p>
+                    </div>
                     <h3 className="text-xs md:text-lg font-medium text-[#2A2424] leading-snug mb-2 md:mb-3 flex-1 line-clamp-2 md:line-clamp-none">
                       <Link href={`/shop/product/${product.id}`} className="hover:underline decoration-[#E5B6B9] underline-offset-4">
                         {product.title}

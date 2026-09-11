@@ -77,7 +77,7 @@ export function Hero() {
           {/* We will use the mask model image */}
           <div className="absolute inset-0 bg-[#E5B6B9]/10 mix-blend-multiply z-10 pointer-events-none group-hover:opacity-0 transition-opacity duration-500"></div>
           <img 
-            src="/hero_mask.png" 
+            src="/hero_mask.webp" 
             alt="Woman with face mask" 
             className="w-full h-full object-cover rounded-[2rem] group-hover:scale-105 transition-transform duration-700 ease-out"
           />
@@ -92,7 +92,7 @@ export function Hero() {
         >
           <div className="absolute inset-0 bg-[#E5B6B9]/10 mix-blend-multiply z-10 pointer-events-none group-hover:opacity-0 transition-opacity duration-500"></div>
           <img 
-            src="/hero_tube.png" 
+            src="/hero_tube.webp" 
             alt="Woman with skincare tube" 
             className="w-full h-full object-cover rounded-[2rem] group-hover:scale-105 transition-transform duration-700 ease-out"
           />
@@ -106,7 +106,7 @@ export function Hero() {
           >
             <div className="flex items-center gap-3">
               <div className="w-14 h-14 bg-white rounded-xl overflow-hidden relative shadow-sm border border-black/5">
-                <img src="/hero_tube.png" alt="Product" className="w-full h-full object-cover scale-110" />
+                <img src="/hero_tube.webp" alt="Product" className="w-full h-full object-cover scale-110" />
               </div>
               <div className="flex flex-col">
                 <span className="text-sm font-semibold text-foreground leading-snug">The Ordinary Squalane<br/>Cleanser 150ml</span>

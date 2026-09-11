@@ -88,7 +88,7 @@ const sekoriaProducts = [
     name: "Éclat Fondateur",
     subtitle: "Sérum Lumière Absolue",
     price: "28 500 FCFA",
-    image: "/sekoria_serum.png",
+    image: "/sekoria_serum.webp",
     bg: "#FFFFFF",
     note: "Révèle l'éclat naturel des peaux africaines.",
   },
@@ -97,7 +97,7 @@ const sekoriaProducts = [
     name: "Voile Protecteur",
     subtitle: "Fluide Solaire SPF 50+",
     price: "19 500 FCFA",
-    image: "/sekoria_sunscreen.png",
+    image: "/sekoria_sunscreen.webp",
     bg: S.sand,
     note: "Zéro trace blanche. Toutes carnations.",
   },
@@ -106,7 +106,7 @@ const sekoriaProducts = [
     name: "Essence Réparatrice",
     subtitle: "Toner Barrière Apaisant",
     price: "16 500 FCFA",
-    image: "/sekoria_toner.png",
+    image: "/sekoria_toner.webp",
     bg: "#FFFFFF",
     note: "Réhydrate & apaise les peaux sensibles.",
   },
@@ -115,7 +115,7 @@ const sekoriaProducts = [
     name: "Masque de Minuit",
     subtitle: "Soin Nuit Régénérant",
     price: "24 000 FCFA",
-    image: "/sekoria_night_cream.png",
+    image: "/sekoria_night_cream.webp",
     bg: S.dark,
     isDark: true,
     note: "Active la réparation cellulaire nocturne.",
@@ -329,7 +329,7 @@ export function PromotionsBento() {
             {/* Model image */}
             <div className="absolute inset-0">
               <img
-                src="/sekoria_hero_banner.png"
+                src="/sekoria_hero_banner.webp"
                 alt="Collection Sekoria"
                 className="w-full h-full object-cover opacity-60 group-hover:scale-[1.03] transition-transform duration-1000 ease-out"
               />
@@ -477,7 +477,7 @@ export function PromotionsBento() {
             />
             <div className="absolute inset-0">
               <img
-                src="/sekoria_hero_banner.png"
+                src="/sekoria_hero_banner.webp"
                 alt="Collection Sekoria"
                 className="w-full h-full object-cover opacity-50"
               />

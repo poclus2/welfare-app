@@ -24,16 +24,16 @@ import { AccordionHero } from "@/components/ui/accordion-hero";
 ═══════════════════════════════════════════════════════ */
 
 const CATEGORIES = [
-  { slug: "toners",              label: "Toners",               sub: "100+ produits",  image: "/im_cat_toner.png",      bg: "#F2EDE8" },
-  { slug: "serums",              label: "Sérums",               sub: "Anti-âge & Éclat",image: "/im_cat_serum.png",     bg: "#EAD4D5" },
-  { slug: "cremes",              label: "Crèmes",               sub: "Viser l'éclat",  image: "/im_cat_hydratant.png",  bg: "#E5E9E1" },
-  { slug: "masques",             label: "Masques",              sub: "Soins hebdo",    image: "/im_cat_mask.png",       bg: "#DCE4E5" },
-  { slug: "solaires",            label: "Solaires",             sub: "SPF & protection",image: "/im_cat_sunscreen.png", bg: "#F5EFE0" },
-  { slug: "nettoyants",          label: "Nettoyants",           sub: "Double nettoyage",image: "/im_cat_nettoyant.png", bg: "#E5E9E1" },
-  { slug: "cheveux",             label: "Cheveux",              sub: "Head Spa coréen",image: "/im_cat_mask.png",       bg: "#D0ECEA" },
-  { slug: "essences",            label: "Essences",             sub: "Hydratation pro",image: "/im_cat_toner.png",      bg: "#F2EDE8" },
-  { slug: "exfoliants",          label: "Exfoliants",           sub: "Peau neuve",     image: "/im_cat_mask.png",       bg: "#DCE4E5" },
-  { slug: "coffrets",            label: "Coffrets",             sub: "Idées cadeaux",  image: "/im_cat_serum.png",      bg: "#EAD4D5" },
+  { slug: "toners",              label: "Toners",               sub: "100+ produits",  image: "/im_cat_toner.webp",      bg: "#F2EDE8" },
+  { slug: "serums",              label: "Sérums",               sub: "Anti-âge & Éclat",image: "/im_cat_serum.webp",     bg: "#EAD4D5" },
+  { slug: "cremes",              label: "Crèmes",               sub: "Viser l'éclat",  image: "/im_cat_hydratant.webp",  bg: "#E5E9E1" },
+  { slug: "masques",             label: "Masques",              sub: "Soins hebdo",    image: "/im_cat_mask.webp",       bg: "#DCE4E5" },
+  { slug: "solaires",            label: "Solaires",             sub: "SPF & protection",image: "/im_cat_sunscreen.webp", bg: "#F5EFE0" },
+  { slug: "nettoyants",          label: "Nettoyants",           sub: "Double nettoyage",image: "/im_cat_nettoyant.webp", bg: "#E5E9E1" },
+  { slug: "cheveux",             label: "Cheveux",              sub: "Head Spa coréen",image: "/im_cat_mask.webp",       bg: "#D0ECEA" },
+  { slug: "essences",            label: "Essences",             sub: "Hydratation pro",image: "/im_cat_toner.webp",      bg: "#F2EDE8" },
+  { slug: "exfoliants",          label: "Exfoliants",           sub: "Peau neuve",     image: "/im_cat_mask.webp",       bg: "#DCE4E5" },
+  { slug: "coffrets",            label: "Coffrets",             sub: "Idées cadeaux",  image: "/im_cat_serum.webp",      bg: "#EAD4D5" },
 ];
 
 const LAYERING_STEPS = [
@@ -76,78 +76,62 @@ function TabBar({ tabs, active, onChange }: { tabs: string[]; active: string; on
 }
 
 function ProductCard({ product }: { product: any }) {
-  const discount = product.oldPrice ? Math.round((1 - product.price / product.oldPrice) * 100) : null;
-  
+  // We won't use useCart here directly if it's too complex to add, wait, ShopClient already has handleAddToCart?
+  // Let's check if ShopClient has an addingId state. It doesn't right now, but I can add it, or just use a simple form.
+  // Wait, I'll just keep the existing button but style it identically.
   return (
     <Link
       href={`/shop/product/${product.id}`}
-      className="group flex flex-col bg-white rounded-[20px] md:rounded-[32px] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-[#F4EAEB] hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition-all duration-300 h-full"
+      className="group relative flex flex-col h-full bg-[#FAFAFA] rounded-[1rem] md:rounded-[1.5rem] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
     >
-      {/* TOP HEADER */}
-      <div className="bg-[#F4EAEB] px-3 md:px-5 py-2.5 md:py-3.5 flex justify-between items-center shrink-0">
-        <div className="flex items-center gap-1 md:gap-1.5 text-[9px] md:text-[11px] font-bold text-[#2A2424] uppercase tracking-wider">
-          <Star className="w-2.5 h-2.5 md:w-3.5 md:h-3.5 fill-[#2A2424]" />
-          <span className="truncate">{discount ? `-${discount}% SALE` : "BEST"}</span>
-          <span className="hidden md:inline">{discount ? ` OFF` : ` SELLER`}</span>
-        </div>
-        <div className="hidden md:flex items-center gap-1 text-[10px] font-bold">
-          <span className="bg-[#2A2424] text-white px-1.5 py-0.5 rounded min-w-[20px] text-center">00</span>
-          <span className="text-[#2A2424]">:</span>
-          <span className="bg-[#2A2424] text-white px-1.5 py-0.5 rounded min-w-[20px] text-center">24</span>
-          <span className="text-[#2A2424]">:</span>
-          <span className="bg-[#2A2424] text-white px-1.5 py-0.5 rounded min-w-[20px] text-center">02</span>
-        </div>
-      </div>
-
-      {/* IMAGE SECTION */}
-      <div className="relative bg-[#F8F5F2] rounded-b-[20px] md:rounded-b-[32px] overflow-hidden aspect-[4/5] shrink-0">
+      <div className="relative aspect-[4/5] bg-[#F4EAEB] overflow-hidden flex items-center justify-center p-4 md:p-8">
         <button 
           onClick={(e) => e.preventDefault()}
-          className="absolute top-2 left-2 md:top-4 md:left-4 z-10 text-[#2A2424] hover:text-[#E5B6B9] transition-colors bg-white/50 md:bg-transparent rounded-full p-1.5 md:p-0 backdrop-blur-md md:backdrop-blur-none"
+          className="absolute top-2 right-2 md:top-4 md:right-4 z-10 w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/50 backdrop-blur-md flex items-center justify-center text-[#2A2424] hover:bg-[#2A2424] hover:text-white transition-colors"
         >
-          <Heart className="w-[14px] h-[14px] md:w-[22px] md:h-[22px]" />
+          <Heart className="w-3.5 h-3.5 md:w-4 md:h-4" />
         </button>
-        <div className="absolute top-2 right-2 md:top-4 md:right-4 z-10 text-[9px] md:text-[11px] font-bold text-[#2A2424] bg-white/50 backdrop-blur-md px-2 py-0.5 md:px-2.5 md:py-1 rounded-full">
-          1 / 3
+        <div className="w-full h-full flex items-center justify-center">
+          <img
+            src={product.image}
+            alt={product.name}
+            className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-700 ease-out"
+          />
         </div>
-        <img 
-          src={product.image} 
-          className="w-full h-full object-contain p-4 md:p-8 mix-blend-multiply transition-transform duration-700 group-hover:scale-105" 
-          alt={product.name} 
-        />
+        <div className="absolute inset-x-2 md:inset-x-4 bottom-2 md:bottom-4 translate-y-12 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+          <button
+            onClick={(e) => e.preventDefault()}
+            className="w-full py-2 md:py-3.5 bg-[#2A2424] text-white rounded-full text-[10px] md:text-sm font-semibold tracking-wide hover:bg-black transition-colors shadow-lg flex items-center justify-center gap-2"
+          >
+            <span>Ajouter au panier</span>
+          </button>
+        </div>
       </div>
-
-      {/* TEXT SECTION */}
-      <div className="px-3 pt-3 pb-3 md:px-5 md:pt-5 md:pb-5 flex flex-col flex-1 bg-white">
-        {/* Tag */}
-        <div className="flex items-center gap-1 md:gap-1.5 bg-[#F8F5F2] text-[#2A2424] w-fit px-2 py-1 md:px-3 md:py-1.5 rounded-full mb-2 md:mb-3">
-          <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider line-clamp-1">{product.category || product.brand || "Soin Visage"}</span>
-        </div>
-        
-        {/* Title */}
-        <h3 className="text-[13px] md:text-[19px] font-bold text-[#2A2424] leading-tight md:leading-snug line-clamp-2 mb-2 md:mb-4">
-          {product.name}
-        </h3>
-
-        <div className="w-full border-t border-dashed border-[#EDE0E0] mb-2 md:mb-4 mt-auto" />
-
-        {/* Price & Cart */}
-        <div className="flex items-end justify-between gap-1">
-          <div className="flex flex-col min-w-0">
-            {product.oldPrice ? (
-              <span className="text-[#2A2424]/40 text-[9px] md:text-[11px] font-bold line-through mb-0 md:mb-0.5 truncate">
-                {product.oldPrice.toLocaleString("fr-FR")}
-              </span>
-            ) : (
-               <span className="text-transparent text-[9px] md:text-[11px] font-bold mb-0 md:mb-0.5 hidden md:block">-</span>
-            )}
-            <span className="text-[14px] md:text-[22px] font-bold text-[#2A2424] leading-none truncate">
-              {product.price.toLocaleString("fr-FR")} <span className="text-[9px] md:text-[13px]">FCFA</span>
+      <div className="p-3 md:p-6 flex-1 flex flex-col">
+        <div className="flex flex-col items-start gap-1 md:gap-1.5 mb-1.5 md:mb-2 overflow-hidden">
+          {product.brand && (
+            <span className="text-[9px] md:text-[10px] font-bold text-[#2A2424] bg-[#f4eaeb] px-2 py-0.5 rounded-full uppercase tracking-wider truncate">
+              {product.brand}
             </span>
-          </div>
+          )}
+          <p className="text-[10px] md:text-xs font-bold text-[#2A2424]/50 tracking-wider uppercase shrink-0">
+            {product.label || "SOIN"}
+          </p>
+        </div>
+        <h3 className="text-xs md:text-lg font-medium text-[#2A2424] leading-snug mb-2 md:mb-3 flex-1 line-clamp-2 md:line-clamp-none">
+          <span className="hover:underline decoration-[#E5B6B9] underline-offset-4">
+            {product.name}
+          </span>
+        </h3>
+        
+        {/* We skip the skin concerns mapping because ShopClient's product doesn't have skin_profile, but we can add an empty div to maintain spacing or just skip */}
+        <div className="flex items-center justify-between mt-auto pt-4 border-t border-[#F4EAEB]">
+          <p className="text-sm md:text-lg font-semibold text-[#2A2424]">
+            {Number(product.price).toLocaleString("fr-FR")} <span className="text-[10px] md:text-sm">FCFA</span>
+          </p>
           <button 
             onClick={(e) => e.preventDefault()}
-            className="bg-[#E51D5A] text-white w-8 h-8 md:w-auto md:h-auto md:px-5 md:py-3 rounded-full flex items-center justify-center gap-1.5 md:gap-2 text-[10px] md:text-xs font-bold hover:bg-[#C2164A] transition-colors shrink-0 shadow-md shadow-[#E51D5A]/20"
+            className="bg-[#E51D5A] text-white w-8 h-8 md:w-auto md:h-auto md:px-4 md:py-2 rounded-full flex items-center justify-center gap-1.5 md:gap-2 text-[10px] md:text-xs font-bold hover:bg-[#C2164A] transition-colors shrink-0 shadow-md shadow-[#E51D5A]/20"
           >
             <ShoppingBag className="w-3.5 h-3.5 md:w-4 md:h-4" />
             <span className="hidden md:inline">Ajouter</span>
@@ -159,9 +143,132 @@ function ProductCard({ product }: { product: any }) {
 }
 
 /* ═══════════════════════════════════════════════════════
+   COLLECTION SPOTLIGHT — Style ANUA (split hero + produits)
+═══════════════════════════════════════════════════════ */
+function CollectionSpotlight({ products }: { products: any[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scroll = (dir: "left" | "right") => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollBy({ left: dir === "right" ? 280 : -280, behavior: "smooth" });
+  };
+
+  return (
+    <div className="bg-white rounded-3xl border border-[#F4EAEB] overflow-hidden">
+      {/* Desktop: split layout | Mobile: stacked */}
+      <div className="flex flex-col md:flex-row md:min-h-[380px]">
+
+        {/* LEFT — Hero campaign image */}
+        <div className="relative w-full md:w-[42%] shrink-0 overflow-hidden bg-[#F4EAEB] min-h-[200px] md:min-h-0">
+          <img
+            src="/im_cat_sunscreen.webp"
+            alt="Skin Collection"
+            className="absolute inset-0 w-full h-full object-cover scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-white/60 via-transparent to-transparent md:hidden" />
+        </div>
+
+        {/* RIGHT — Collection info + horizontal product carousel */}
+        <div className="flex flex-col flex-1 px-6 pt-6 pb-5 min-w-0">
+
+          {/* Header text */}
+          <div className="mb-5">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-[#C97C85] mb-1.5">
+              Solaire Collection
+            </p>
+            <h2 className="text-xl md:text-2xl font-bold text-[#2A2424] leading-tight mb-1">
+              Votre Protection,<br className="hidden md:block" /> Chaque Jour
+            </h2>
+            <p className="text-sm text-[#2A2424]/50">
+              Des formules coréennes ultra-légères pour protéger votre peau des UV sans fini gras.
+            </p>
+          </div>
+
+          {/* Scrollable product row */}
+          <div className="relative flex-1 min-w-0">
+            <button
+              onClick={() => scroll("left")}
+              className="absolute -left-3 top-[40%] -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white border border-[#F4EAEB] shadow-md flex items-center justify-center hover:bg-[#F4EAEB] transition-colors"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 11L5 7l4-4" stroke="#2A2424" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+            <button
+              onClick={() => scroll("right")}
+              className="absolute -right-3 top-[40%] -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white border border-[#F4EAEB] shadow-md flex items-center justify-center hover:bg-[#F4EAEB] transition-colors"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="#2A2424" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+
+            <div
+              ref={scrollRef}
+              className="flex gap-3 overflow-x-auto hide-scrollbar scroll-smooth px-1 pb-1"
+            >
+              {products.map((product, i) => (
+                <Link
+                  key={product.id || i}
+                  href={`/shop/product/${product.id}`}
+                  className="group shrink-0 w-[140px] md:w-[160px] flex flex-col rounded-2xl overflow-hidden border border-[#F4EAEB] bg-[#F8F5F2] hover:-translate-y-1 hover:shadow-lg transition-all duration-300"
+                >
+                  {/* Badge */}
+                  <div className="flex px-2 pt-2">
+                    {i === 0 ? (
+                      <span className="text-[9px] font-bold uppercase tracking-wider bg-[#2A2424] text-white px-2 py-0.5 rounded-sm">Best Seller</span>
+                    ) : (
+                      <span className="text-[9px] font-bold uppercase tracking-wider bg-[#E5B6B9]/30 text-[#C97C85] px-2 py-0.5 rounded-sm">Nouveau</span>
+                    )}
+                  </div>
+
+                  {/* Image */}
+                  <div className="w-full aspect-square bg-[#F8F5F2] flex items-center justify-center p-3 relative overflow-hidden">
+                    <img
+                      src={product.image || `/products/${(i % 4) + 1}.webp`}
+                      alt={product.name}
+                      className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <button
+                      onClick={(e) => e.preventDefault()}
+                      className="absolute bottom-2 right-2 w-7 h-7 bg-white border border-[#F4EAEB] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                    >
+                      <ShoppingBag className="w-3 h-3 text-[#2A2424]" />
+                    </button>
+                  </div>
+
+                  {/* Info */}
+                  <div className="px-3 pb-3 pt-2 bg-white flex-1 flex flex-col gap-1">
+                    <p className="text-[11px] font-semibold text-[#2A2424] line-clamp-2 leading-snug">
+                      {product.name}
+                    </p>
+                    <div className="flex items-center gap-0.5">
+                      {[1,2,3,4,5].map((s) => (
+                        <Star key={s} weight="fill" className={`w-2.5 h-2.5 ${s <= Math.round(product.rating || 4.8) ? "text-[#F4B942]" : "text-[#E0E0E0]"}`} />
+                      ))}
+                      <span className="text-[9px] text-[#2A2424]/40 ml-1">{product.reviews || 90} avis</span>
+                    </div>
+                    <p className="text-[13px] font-bold text-[#2A2424]">
+                      {(product.price || 15000).toLocaleString("fr-FR")} <span className="text-[9px] font-normal">FCFA</span>
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <Link
+            href="/shop/all"
+            className="mt-4 inline-flex items-center gap-1.5 text-[11px] font-bold text-[#2A2424]/50 hover:text-[#2A2424] transition-colors w-fit"
+          >
+            Voir toute la collection <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
    PAGE
 ═══════════════════════════════════════════════════════ */
-export default function ShopClient({ flashProducts, bestProducts }: { flashProducts: any[], bestProducts: any[] }) {
+export default function ShopClient({ flashProducts, bestProducts, sunProducts }: { flashProducts: any[], bestProducts: any[], sunProducts: any[] }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [flashTab, setFlashTab] = useState("Top Rated");
   const [bestTab, setBestTab] = useState("Top Rated");
@@ -212,14 +319,17 @@ export default function ShopClient({ flashProducts, bestProducts }: { flashProdu
               </Link>
             </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-0 pt-4 pb-6 px-4 md:p-0 md:divide-x md:divide-y md:divide-[#F4EAEB]">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 lg:gap-8 pt-4 pb-6 px-4 md:px-6">
             {flashProducts.map((product) => (
-              <div key={product.id} className="h-full md:p-5">
-                <ProductCard product={product as any} />
-              </div>
+              <ProductCard key={product.id} product={product as any} />
             ))}
           </div>
         </div>
+
+        {/* ════════════════════════════════════
+            [3.5] COLLECTION SPOTLIGHT (ANUA-style)
+        ════════════════════════════════════ */}
+        <CollectionSpotlight products={sunProducts} />
 
         {/* ════════════════════════════════════
             [4] TWO PROMO BLOCKS
@@ -289,11 +399,9 @@ export default function ShopClient({ flashProducts, bestProducts }: { flashProdu
             </div>
             <TabBar tabs={BEST_TABS} active={bestTab} onChange={setBestTab} />
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-0 pt-4 pb-6 px-4 md:p-0 md:divide-x md:divide-y md:divide-[#F4EAEB]">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 lg:gap-8 pt-4 pb-6 px-4 md:px-6">
             {bestProducts.map((product) => (
-              <div key={product.id} className="h-full md:p-5">
-                <ProductCard product={product as any} />
-              </div>
+              <ProductCard key={product.id} product={product as any} />
             ))}
           </div>
         </div>

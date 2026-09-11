@@ -158,7 +158,7 @@ export function LoyaltyProgram() {
       {/* Cherry blossom background */}
       <div
         className="absolute inset-0 bg-cover bg-center opacity-[0.12] pointer-events-none"
-        style={{ backgroundImage: "url('/cherry_blossom_bg.png')" }}
+        style={{ backgroundImage: "url('/cherry_blossom_bg.webp')" }}
       />
       <div className="w-full max-w-[1600px] mx-auto px-5 md:px-8 lg:px-12 relative z-10">
 

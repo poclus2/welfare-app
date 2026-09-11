@@ -91,6 +91,7 @@ type EnrichedProduct = {
   thumbnail?: string;
   stock_total: number;
   category: string; // assigned by RAG
+  price?: number;
 };
 
 async function fetchStoreProductsByIds(
@@ -106,7 +107,7 @@ async function fetchStoreProductsByIds(
     // Build query with comma-separated IDs — Medusa store supports id[]
     const query = ids.map((id) => `id[]=${id}`).join("&");
     const res = await fetch(
-      `${medusaUrl}/store/products?${query}&limit=${ids.length}`,
+      `${medusaUrl}/store/products?${query}&limit=${ids.length}&fields=*variants.prices,*variants.calculated_price`,
       {
         headers: {
           "x-publishable-api-key": publishableKey,
@@ -117,19 +118,26 @@ async function fetchStoreProductsByIds(
     );
     if (!res.ok) return [];
     const data = await res.json();
-    return (data.products || []).map((p: any) => ({
-      id: p.id,
-      title: p.title,
-      description: p.description,
-      handle: p.handle,
-      thumbnail: p.thumbnail,
-      stock_total: (p.variants || []).reduce(
-        (acc: number, v: any) =>
-          acc + (v.inventory_quantity || v.metadata?.stock_total || 0),
-        0
-      ),
-      category,
-    }));
+    return (data.products || []).map((p: any) => {
+      let price = 15000;
+      if (p.variants && p.variants.length > 0) {
+         price = p.variants[0].calculated_price?.calculated_amount || p.variants[0].prices?.[0]?.amount || 15000;
+      }
+      return {
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        handle: p.handle,
+        thumbnail: p.thumbnail,
+        stock_total: (p.variants || []).reduce(
+          (acc: number, v: any) =>
+            acc + (v.inventory_quantity || v.metadata?.stock_total || 0),
+          0
+        ),
+        category,
+        price
+      };
+    });
   } catch {
     return [];
   }
@@ -398,7 +406,7 @@ FORMAT JSON ATTENDU :
       ? productCatalog
           .map(
             (p) =>
-              `[${p.category}] ${p.title} (medusa_product_id: "${p.id}", stock: ${p.stock_total})\n  COMPOSITION ET FICHE IA: ${(p.description || "Aucune description").replace(/\n/g, "  ")}\n`
+              `[${p.category}] ${p.title} (medusa_product_id: "${p.id}", stock: ${p.stock_total}, PRIX: ${p.price || 15000} FCFA)\n  COMPOSITION ET FICHE IA: ${(p.description || "Aucune description").replace(/\n/g, "  ")}\n`
           )
           .join("\n")
       : "Aucun produit spécifique disponible pour le moment.";
@@ -432,11 +440,12 @@ Les produits suivants sont TOUS disponibles en stock. Tu DOIS choisir tes recomm
 
 ${miniCatalogText}
 
-RÈGLE DE PRIORISATION (The Welfare Strategy) :
-- En cas d'hésitation entre deux produits cutanément équivalents, donne TOUJOURS la priorité au produit avec le stock le plus élevé (indiqué entre parenthèses après "stock:").
-- Si le mode est "Sélection éditoriale manuelle", ces produits ont été choisis par notre équipe : leur recommandation est FORTEMENT encouragée si pertinente.
+RÈGLE DE PRIORISATION (The Welfare Strategy) & BUDGET :
+- BUDGET : Vérifie le budget souhaité par la cliente dans le questionnaire ci-dessous. Tu DOIS construire une routine dont la somme des prix en FCFA s'approche au mieux de ce budget sans l'exploser de manière disproportionnée. Privilégie une routine courte et abordable si le budget est restreint ("Découverte").
+- En cas d'hésitation entre deux produits cutanément équivalents et qui respectent le budget, donne TOUJOURS la priorité au produit avec le stock le plus élevé (indiqué entre parenthèses après "stock:").
+- Si le mode est "Sélection éditoriale manuelle", ces produits ont été choisis par notre équipe : leur recommandation est FORTEMENT encouragée si pertinente au budget.
 - Pour chaque étape, copie EXACTEMENT le medusa_product_id du produit choisi.
-- Si aucun produit de la liste ne convient pour une étape, N'AJOUTE PAS cette étape (skinimalisme).`
+- Si aucun produit de la liste ne convient ou ne rentre dans le budget pour une étape, N'AJOUTE PAS cette étape (skinimalisme).`
       : `Note: Le catalogue produit n'est pas disponible pour le moment. Génère une routine K-Beauty générique et minimaliste (3 à 5 étapes maximum). Laisse medusa_product_id à null pour chaque étape.`;
 
     const claudeSystemPrompt = `Tu es le 'Skin Coach VIP' de la marque K-Beauty premium 'The Welfare', basée en Afrique (Cameroun). Tu es l'expert bienveillant qui va concevoir la routine de soin idéale pour chaque cliente.

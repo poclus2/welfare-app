@@ -8,7 +8,7 @@ import Link from "next/link";
 /* ═══════════════════════════════════════════════════════
    DATA
 ═══════════════════════════════════════════════════════ */
-// The user can add more panels and use .mp4 or .gif here.
+// The user can add more panels and use .webm or .gif here.
 const PANELS = [
   {
     id: "01",
@@ -16,7 +16,7 @@ const PANELS = [
     title: "L'apaisement absolu au Heartleaf.",
     subtitle: "ANUA · SOIN APAISANT",
     desc: "La gamme culte pour apaiser instantanément les peaux sensibles.",
-    media: "/anua_hero.mp4",
+    media: "/anua_hero.webm",
     isVideo: true,
     isPhoto: false,
     link: "/shop/all",
@@ -28,7 +28,7 @@ const PANELS = [
     title: "L'innovation clinique, redéfinie.",
     subtitle: "MEDICUBE · DERMO-COSMÉTIQUE",
     desc: "La haute technologie dermo-cosmétique pour lisser le grain de peau et resserrer les pores. L'efficacité d'un soin clinique, à la maison.",
-    media: "/medicube_hero.mp4",
+    media: "/medicube_hero.webm",
     isVideo: true,
     isPhoto: false,
     link: "/shop/all",
@@ -40,7 +40,7 @@ const PANELS = [
     title: "Réparez. Repulpez. Rayonnez.",
     subtitle: "COSRX · SNAIL MUCIN",
     desc: "Le pouvoir réparateur de la mucine d'escargot pour restaurer votre barrière cutanée. Une hydratation continue pour un éclat \"Glass Skin\" naturel.",
-    media: "/cosrx_hero.jpg",
+    media: "/cosrx_hero.webp",
     isVideo: false,
     isPhoto: true,
     link: "/shop/all",
@@ -52,7 +52,7 @@ const PANELS = [
     title: "L'art du bain coréen.",
     subtitle: "HAPPY BATH · CORPS & SPA",
     desc: "Une mousse onctueuse aux extraits botaniques qui respecte et hydrate votre peau. Transformez votre douche quotidienne en une véritable parenthèse spa.",
-    media: "/happybath_hero.jpg",
+    media: "/happybath_hero.webp",
     isVideo: false,
     isPhoto: true,
     link: "/shop/all",
@@ -64,7 +64,7 @@ const PANELS = [
     title: "La protection solaire invisible.",
     subtitle: "BEAUTY OF JOSEON · SPF50+ ÉCLAT",
     desc: "Un SPF50+ infusé au riz qui fond sur les peaux mélanisées sans laisser aucun film blanc. Protège, nourrit et illumine le teint instantanément.",
-    media: "/beautyofjoseon_hero.jpg",
+    media: "/beautyofjoseon_hero.webp",
     isVideo: false,
     isPhoto: true,
     link: "/shop/all",

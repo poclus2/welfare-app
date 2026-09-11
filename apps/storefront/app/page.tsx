@@ -28,7 +28,7 @@ export default async function BentoPage() {
     );
     
     products = fetchedProducts.map((p: any) => {
-      const imageUrl = p.images && p.images.length > 0 ? p.images[0].url : p.thumbnail || "/products/1.png";
+      const imageUrl = p.images && p.images.length > 0 ? p.images[0].url : p.thumbnail || "/products/1.webp";
       const price = p.variants?.[0]?.calculated_price?.calculated_amount
         || p.variants?.[0]?.prices?.[0]?.amount
         || 15000;
@@ -36,8 +36,8 @@ export default async function BentoPage() {
       return {
         id: p.id,
         name: p.title,
-        category: p.collection?.title || p.categories?.[0]?.name || "Soin",
-        brand: p.collection?.title || "Welfare",
+        category: p.categories?.[0]?.name || "Soin",
+        brand: p.collection?.title || "",
         price: price,
         oldPrice: null,
         rating: 4.8,

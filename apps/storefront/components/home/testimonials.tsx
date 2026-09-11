@@ -94,7 +94,7 @@ export function Testimonials() {
       {/* Cherry blossom background illustration */}
       <div className="absolute inset-0 pointer-events-none">
         <img
-          src="/cherry-blossom-wide.png"
+          src="/cherry-blossom-wide.webp"
           alt=""
           className="w-full h-full object-cover opacity-20"
         />

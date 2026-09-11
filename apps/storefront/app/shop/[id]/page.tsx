@@ -14,21 +14,51 @@ export default async function CategoryPage({
     const { regions } = await sdk.store.region.list().catch(() => ({ regions: [] }));
     const regionId = regions?.[0]?.id;
 
-    const queryParams: any = { limit: 1000, fields: "+variants,*images,*categories,*collection" };
+    // Fetch products. If category is "cheveux", use text search since there is no Medusa category
+    const queryParams: any = {
+      limit: 100,
+      fields: "+variants,*images,*categories,*collection",
+    };
+    
+    if (category === "cheveux") {
+      queryParams.q = "cheveux";
+    } else {
+      queryParams.category_handle = [category];
+    }
+    
     if (regionId) {
       queryParams.region_id = regionId;
       queryParams.fields += ",*variants.prices,*variants.calculated_price";
     }
 
-    const { products: fetchedProducts } = await sdk.store.product.list(
-      queryParams,
-      { next: { revalidate: 60 } } as any
-    );
+    let fetchedProducts: any[] = [];
+    try {
+      const result = await sdk.store.product.list(
+        queryParams,
+        { next: { revalidate: 60 } } as any
+      );
+      fetchedProducts = result.products || [];
+    } catch {
+      // Fallback: if category_handle filter fails, fetch without it (limited)
+      const fallbackParams: any = {
+        limit: 100,
+        fields: "+variants,*images,*categories,*collection",
+      };
+      if (regionId) {
+        fallbackParams.region_id = regionId;
+        fallbackParams.fields += ",*variants.prices,*variants.calculated_price";
+      }
+      const fallback = await sdk.store.product.list(
+        fallbackParams,
+        { next: { revalidate: 60 } } as any
+      ).catch(() => ({ products: [] }));
+      fetchedProducts = fallback.products || [];
+    }
 
     // Map Medusa products to the format expected by CategoryClient
     products = (fetchedProducts || []).map((p: any) => {
       // Get image
-      const imageUrl = p.images && p.images.length > 0 ? p.images[0].url : p.thumbnail || "/products/1.png";
+      const imageUrl = p.images && p.images.length > 0 ? p.images[0].url : p.thumbnail || "/products/1.webp";
       
       // Get price
       const price = p.variants?.[0]?.calculated_price?.calculated_amount
@@ -67,6 +97,7 @@ export default async function CategoryPage({
           skin_concerns,
         },
         active_ingredients,
+        brand: p.collection?.title || "",
       };
     });
   } catch (error) {

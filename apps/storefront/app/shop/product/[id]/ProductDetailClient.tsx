@@ -5,12 +5,13 @@ import { motion, AnimatePresence, type Variants } from "framer-motion";
 import {
   ShieldCheck, Truck, Sparkle, CaretDown,
   ArrowLeft, Star, Heart, ShareNetwork, Check, Package, Leaf, Lightning,
-  ShoppingBag, Plus, Minus, Drop, Wind, Sun, Moon,
+  ShoppingBag, Plus, Minus, Drop, Wind, Sun, Moon, ChatTeardropText
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { Footer } from "@/components/home/footer";
 import { useCart } from "@/lib/cart-context";
+import { useChatStore } from "@/lib/store/use-chat-store";
 
 /* ─── MOCK DATA ───────────────────────────────────────────────── */
 const mockProduct = {
@@ -338,6 +339,7 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
   const [isStickyVisible, setIsStickyVisible] = useState(false);
   const ctaRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
+  const { openChat } = useChatStore();
   const { addItem } = useCart();
 
   // Sticky CTA logic
@@ -552,6 +554,24 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
                     </motion.span>
                   )}
                 </AnimatePresence>
+              </motion.button>
+              
+              {/* Ask AI Button */}
+              <motion.button
+                onClick={() => openChat({
+                  id: _product?.id || "product",
+                  title: data.title,
+                  description: data.commercial_description,
+                  price: data.price,
+                  benefits: data.skin_concerns,
+                  skin_types: data.skin_types
+                })}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full mt-3 py-3 rounded-2xl text-[13px] font-bold text-[#2A2424] flex items-center justify-center gap-2 bg-[#F8F5F2] border border-[#EDE0E0] hover:bg-[#F4EAEB] transition-colors"
+              >
+                <ChatTeardropText className="w-4 h-4 text-[#C2164A]" weight="fill" />
+                Poser une question sur ce produit
               </motion.button>
             </motion.div>
 

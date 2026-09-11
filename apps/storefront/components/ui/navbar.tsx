@@ -51,7 +51,7 @@ export function Navbar() {
       >
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 text-[#2A2424] font-bold text-lg tracking-wide hover:opacity-80 transition-opacity">
-          <img src="/logo.png" alt="The Welfare Shop" className="h-14 w-auto object-contain scale-[1.3] origin-left" />
+          <img src="/logo.webp" alt="The Welfare Shop" className="h-14 w-auto object-contain scale-[1.3] origin-left" />
         </Link>
 
         {/* Search Bar - Center */}
@@ -106,7 +106,7 @@ export function Navbar() {
       >
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 text-[#2A2424] font-bold text-lg tracking-wide hover:opacity-80 transition-opacity">
-          <img src="/logo.png" alt="The Welfare Shop" className="h-12 w-auto object-contain scale-[1.3] origin-left" />
+          <img src="/logo.webp" alt="The Welfare Shop" className="h-12 w-auto object-contain scale-[1.3] origin-left" />
         </Link>
 
         {/* Right Actions */}
@@ -152,7 +152,7 @@ export function Navbar() {
               className="fixed top-0 right-0 bottom-0 w-[85%] max-w-[360px] bg-[#FDFDFC] shadow-2xl z-[70] lg:hidden flex flex-col overflow-y-auto"
             >
               <div className="flex items-center justify-between p-6 border-b border-[#F4EAEB]">
-                <img src="/logo.png" alt="The Welfare Shop" className="h-14 w-auto object-contain scale-125 origin-left" />
+                <img src="/logo.webp" alt="The Welfare Shop" className="h-14 w-auto object-contain scale-125 origin-left" />
                 <button 
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="p-2 bg-[#F1EFEA] rounded-full text-[#2A2424]"

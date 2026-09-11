@@ -13,7 +13,7 @@ export function Footer() {
           <div className="max-w-xl">
             <Link href="/" className="flex items-center mb-8 group inline-flex bg-white/5 rounded-[2rem] p-4 hover:bg-white/10 transition-colors">
               <img 
-                src="/logo.png" 
+                src="/logo.webp" 
                 alt="The Welfare Shop" 
                 className="h-28 md:h-40 lg:h-[160px] w-auto object-contain group-hover:scale-105 transition-transform" 
                 style={{ filter: "brightness(0) invert(1)" }} 

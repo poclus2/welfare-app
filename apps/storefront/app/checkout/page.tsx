@@ -45,14 +45,14 @@ const STORES = [
     name: "The Welfare Hippodrome",
     address: "Route de l'Hippodrome, Douala",
     icon: <MapIcon className="w-6 h-6 text-[#8B5A2B]" />,
-    hours: "Lun–Sam, 9h–20h",
+    hours: "Lun - Sam, 9h - 20h",
   },
   {
     id: "playce" as StoreLocation,
     name: "The Welfare Playce",
     address: "Playce, Yaoundé",
     icon: <ShoppingBag className="w-6 h-6 text-[#1DAFEC]" />,
-    hours: "Lun–Dim, 10h–21h",
+    hours: "Lun - Dim, 10h - 21h",
   },
 ];
 
@@ -65,7 +65,7 @@ const CAMEROON_CITIES = [
 // ─── Step indicator ────────────────────────────────────────────────────────────
 function StepIndicator({ step }: { step: 1 | 2 }) {
   const steps = [
-    { num: 1, label: "Identitéé" },
+    { num: 1, label: "Identité" },
     { num: 2, label: "Livraison" },
   ];
   return (
@@ -108,8 +108,9 @@ export default function CheckoutPage() {
   const [step, setStep] = useState<1 | 2>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [mobileNetwork, setMobileNetwork] = useState("SEN-WAVE");
+  const [manualProvider, setManualProvider] = useState<"orange" | "mtn">("orange");
 
-  const [paymentMode, setPaymentMode] = useState<"pawapay" | "cash">("pawapay");
+  const [paymentMode, setPaymentMode] = useState<"pawapay" | "manuel">("pawapay");
   const [shippingOptions, setShippingOptions] = useState<any[]>([]);
   const [selectedShippingOptionId, setSelectedShippingOptionId] = useState<string | null>(null);
 
@@ -129,7 +130,24 @@ export default function CheckoutPage() {
   const [settingsData, setSettingsData] = useState<any>(null);
   const [deliveryNeighborhood, setDeliveryNeighborhood] = useState("");
 
+  
   useEffect(() => {
+    sdk.store.customer.retrieve()
+      .then(({ customer }) => {
+        if (customer) {
+          setIdentity(prev => ({
+            ...prev,
+            firstName: customer.first_name || prev.firstName,
+            lastName: customer.last_name || prev.lastName,
+            email: customer.email || prev.email,
+            phone: customer.phone || prev.phone,
+          }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+useEffect(() => {
     const loadDeliveryData = async () => {
       try {
         const [citiesRes, pointsRes, settingsRes] = await Promise.all([
@@ -160,28 +178,30 @@ export default function CheckoutPage() {
     }
   }
 
-  const codFee = (paymentMode === "cash" && settingsData?.cod_fee) ? settingsData.cod_fee : 0;
+  
 
   // Get current shipping option price
   const currentShippingOption = shippingOptions.find(o => o.id === selectedShippingOptionId);
   
   let livraisonFee = 0;
   if (currentShippingOption) {
-    livraisonFee = currentShippingOption.amount;
+    livraisonFee = Number(currentShippingOption.amount || 0);
   } else if (delivery.mode === "retrait") {
     const store = pickupPointsData.find(p => p.id === delivery.store);
-    livraisonFee = store ? store.price : 0;
+    livraisonFee = store ? Number(store.price || 0) : 0;
   } else {
     // Fallback logic if shipping options didn't load
     const selectedCity = citiesData.find(c => c.name === delivery.city);
-    livraisonFee = selectedCity?.fixed_price || LIVRAISON_FEE;
+    livraisonFee = selectedCity?.fixed_price ? Number(selectedCity.fixed_price) : LIVRAISON_FEE;
     if (selectedCity?.has_neighborhoods && deliveryNeighborhood) {
       const hood = selectedCity.neighborhoods?.find((h: any) => h.id === deliveryNeighborhood);
-      if (hood) livraisonFee = hood.price;
+      if (hood) livraisonFee = Number(hood.price);
     }
   }
 
-  const total = totalAmount + livraisonFee + codFee;
+  const activeLivraisonFee = step === 1 ? 0 : livraisonFee;
+  const paymentFee = (paymentMode === "pawapay" && step === 2) ? Math.round((totalAmount + activeLivraisonFee) * 0.03) : 0;
+  const total = Number(totalAmount || 0) + Number(activeLivraisonFee || 0) + Number(paymentFee || 0);
 
   // Fetch shipping options for the cart
   const fetchOptions = async () => {
@@ -405,7 +425,7 @@ export default function CheckoutPage() {
                 <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 space-y-5">
                   <div className="flex items-center gap-2 mb-1">
                     <User className="w-4 h-4 text-[#C08A8E]" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-[#2A2424]/50">Identitéé</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-[#2A2424]/50">Identité</span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -705,8 +725,8 @@ export default function CheckoutPage() {
                         <DeviceMobile className="w-5 h-5 text-[#1DAFEC]" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-bold text-[#2A2424]">Paiement en ligne</p>
-                        <p className="text-xs text-[#2A2424]/50">Mobile Money (Wave, Orange, MTN...)</p>
+                        <p className="text-sm font-bold text-[#2A2424]">Paiement automatisé (+3%)</p>
+                        <p className="text-xs text-[#2A2424]/50">Mobile Money direct (Wave, Orange, MTN...)</p>
                       </div>
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${paymentMode === "pawapay" ? "border-[#2A2424] bg-[#2A2424]" : "border-[#EDE0E0]"}`}>
                         {paymentMode === "pawapay" && <Check className="w-3 h-3 text-white" />}
@@ -744,24 +764,65 @@ export default function CheckoutPage() {
                     </AnimatePresence>
 
                     <button
-                      onClick={() => setPaymentMode("cash")}
+                      onClick={() => setPaymentMode("manuel")}
                       className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                        paymentMode === "cash" ? "border-[#2A2424] bg-white" : "border-transparent hover:border-[#EDE0E0] bg-white/60"
+                        paymentMode === "manuel" ? "border-[#2A2424] bg-white" : "border-transparent hover:border-[#EDE0E0] bg-white/60"
                       }`}
                     >
                       <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
                         <Money className="w-5 h-5 text-emerald-500" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-bold text-[#2A2424]">Paiement Cash</p>
-                        <p className="text-xs text-[#2A2424]/50">
-                          {delivery.mode === "retrait" ? "Au retrait en magasin" : "À la livraison"}
-                        </p>
+                        <p className="text-sm font-bold text-[#2A2424]">Paiement manuel (USSD)</p>
+                        <p className="text-xs text-[#2A2424]/50">Orange Money / MTN Mobile Money</p>
                       </div>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${paymentMode === "cash" ? "border-[#2A2424] bg-[#2A2424]" : "border-[#EDE0E0]"}`}>
-                        {paymentMode === "cash" && <Check className="w-3 h-3 text-white" />}
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${paymentMode === "manuel" ? "border-[#2A2424] bg-[#2A2424]" : "border-[#EDE0E0]"}`}>
+                        {paymentMode === "manuel" && <Check className="w-3 h-3 text-white" />}
                       </div>
                     </button>
+
+                    <AnimatePresence>
+                      {paymentMode === "manuel" && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="overflow-hidden px-1"
+                        >
+                          <div className="pt-2 pb-4 text-xs bg-emerald-50/50 px-4 rounded-xl border border-emerald-100 mt-2 space-y-4">
+                            <p className="text-[#2A2424] font-semibold text-sm">Instructions USSD :</p>
+                            
+                            <div className="flex gap-2">
+                              <button
+                                onClick={(e) => { e.preventDefault(); setManualProvider("orange"); }}
+                                className={`flex-1 py-2 rounded-lg font-bold transition-all border-2 ${manualProvider === "orange" ? "bg-orange-500 border-orange-500 text-white shadow-md" : "border-orange-200 text-orange-600 bg-white"}`}
+                              >
+                                Orange Money
+                              </button>
+                              <button
+                                onClick={(e) => { e.preventDefault(); setManualProvider("mtn"); }}
+                                className={`flex-1 py-2 rounded-lg font-bold transition-all border-2 ${manualProvider === "mtn" ? "bg-yellow-400 border-yellow-400 text-black shadow-md" : "border-yellow-200 text-yellow-700 bg-white"}`}
+                              >
+                                MTN MoMo
+                              </button>
+                            </div>
+
+                            <div className="space-y-2 text-[#2A2424]/80 leading-relaxed bg-white p-3 rounded-lg border border-emerald-100/50">
+                              <p><strong>1.</strong> Cliquez sur <strong>"Lancer le paiement"</strong> ci-dessous pour ouvrir votre tlphone avec le code (<strong className="text-[#2A2424]">{manualProvider === "orange" ? "#150*47*356456#" : "*126*14*673464553#"}</strong>).</p>
+                              <p><strong>2.</strong> Transfrez le montant exact de <strong className="text-[#2A2424]">{formatPrice(total)} FCFA</strong>.</p>
+                              <p><strong>3.</strong> Une fois terminé, cliquez sur "Confirmer ma commande" en bas de page pour valider votre achat.</p>
+                            </div>
+
+                            <a 
+                              href={`tel:${manualProvider === "orange" ? "%23150*47*356456%23" : "*126*14*673464553%23"}`} 
+                              className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-colors shadow-sm ${manualProvider === "orange" ? "bg-orange-500 hover:bg-orange-600 text-white" : "bg-yellow-400 hover:bg-yellow-500 text-black"}`}
+                            >
+                              Lancer le paiement (USSD) <Phone className="w-4 h-4" />
+                            </a>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 </div>
 
@@ -833,11 +894,20 @@ export default function CheckoutPage() {
                   {delivery.mode === "retrait" ? <Storefront className="w-3.5 h-3.5" /> : <Truck className="w-3.5 h-3.5" />}
                   {delivery.mode === "retrait" ? "Retrait magasin" : "Livraison"}
                 </span>
-                <span className={delivery.mode === "retrait" ? "text-emerald-600 font-semibold" : ""}>
-                  {delivery.mode === "retrait" ? "Gratuit" : `${livraisonFee > 0 ? `+${formatPrice(livraisonFee)} FCFA` : "Gratuit"}`}
+                <span className={delivery.mode === "retrait" && step === 2 ? "text-emerald-600 font-semibold" : ""}>
+                  {step === 1 ? "à calculer" : (delivery.mode === "retrait" ? "Gratuit" : `${livraisonFee > 0 ? `+${formatPrice(livraisonFee)} FCFA` : "Gratuit"}`)}
                 </span>
               </div>
-              <div className="w-full h-px bg-[#F4EAEB]" />
+              {paymentFee > 0 && step === 2 && (
+                <div className="flex justify-between text-sm text-[#2A2424]/60 mt-2.5">
+                  <span className="flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5" />
+                    Frais automatisé (3%)
+                  </span>
+                  <span>+{formatPrice(paymentFee)} FCFA</span>
+                </div>
+              )}
+              <div className="w-full h-px bg-[#F4EAEB] mt-2.5" />
               <div className="flex justify-between">
                 <span className="text-sm font-bold text-[#2A2424]">Total</span>
                 <span className="text-base font-bold text-[#2A2424]">{formatPrice(total)} FCFA</span>

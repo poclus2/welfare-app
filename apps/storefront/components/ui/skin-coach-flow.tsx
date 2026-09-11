@@ -133,12 +133,22 @@ const DECISION_TREE: QuestionNode[] = [
   },
   {
     id: "q_sun_exposure",
-    text: "Dernière question : à quelle fréquence êtes-vous exposée au soleil dans la journée ?",
+    text: "À quelle fréquence êtes-vous exposée au soleil dans la journée ?",
     type: "choice",
     options: [
-      { label: "Très peu (surtout en intérieur)", nextQuestionId: "q_finish" },
-      { label: "Modérément (trajets, balades)", nextQuestionId: "q_finish" },
-      { label: "Beaucoup (travail/sport en extérieur)", nextQuestionId: "q_finish" }
+      { label: "Très peu (surtout en intérieur)", nextQuestionId: "q_budget" },
+      { label: "Modérément (trajets, balades)", nextQuestionId: "q_budget" },
+      { label: "Beaucoup (travail/sport en extérieur)", nextQuestionId: "q_budget" }
+    ]
+  },
+  {
+    id: "q_budget",
+    text: "Dernière question ! Pour que je puisse adapter mes recommandations de produits à vos attentes, quel budget souhaitez-vous idéalement allouer à votre routine soin ?",
+    type: "choice",
+    options: [
+      { label: "Découverte (Abordable, essentiel) < 25 000F", nextQuestionId: "q_finish" },
+      { label: "Intermédiaire (Bon rapport qualité/prix) ~ 40 000F", nextQuestionId: "q_finish" },
+      { label: "Premium (Le meilleur, peu importe le prix)", nextQuestionId: "q_finish" }
     ]
   }
 ];
@@ -153,7 +163,7 @@ const AIAvatar = () => (
 );
 
 // ─── Progress steps ──────────────────────────────────────────────────────────
-const TOTAL_STEPS = 8;
+const TOTAL_STEPS = 9;
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
