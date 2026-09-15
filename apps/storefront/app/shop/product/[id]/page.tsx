@@ -22,11 +22,28 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     const response = await sdk.store.product.retrieve(id, queryParams);
     product = response.product;
 
-    const recommendedRes = await sdk.store.product.list({
-      limit: 4,
+    const categoryId = product?.categories?.[0]?.id;
+    const recommendedParams: any = {
+      limit: 6,
       fields: queryParams.fields,
       region_id: regionId
-    }, { next: { revalidate: 60 } } as any).catch(() => ({ products: [] }));
+    };
+    if (categoryId) {
+      recommendedParams.category_id = [categoryId];
+    }
+
+    let recommendedRes = await sdk.store.product.list(
+      recommendedParams,
+      { next: { revalidate: 60 } } as any
+    ).catch(() => ({ products: [] }));
+    
+    // Fallback if we didn't get enough products in the same category
+    if (!recommendedRes.products || recommendedRes.products.length < 2) {
+      recommendedRes = await sdk.store.product.list(
+        { limit: 6, fields: queryParams.fields, region_id: regionId },
+        { next: { revalidate: 60 } } as any
+      ).catch(() => ({ products: [] }));
+    }
     
     // Filtrer le produit actuel
     recommendedProducts = (recommendedRes.products || []).filter((p: any) => p.id !== id).slice(0, 4);

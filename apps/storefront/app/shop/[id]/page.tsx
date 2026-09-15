@@ -3,10 +3,14 @@ import CategoryClient, { CategoryProduct } from "./CategoryClient";
 
 export default async function CategoryPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { id: category } = await params;
+  const resolvedSearchParams = await searchParams;
+  const q = typeof resolvedSearchParams.q === "string" ? resolvedSearchParams.q : undefined;
 
   let products: CategoryProduct[] = [];
 
@@ -20,10 +24,25 @@ export default async function CategoryPage({
       fields: "+variants,*images,*categories,*collection",
     };
     
-    if (category === "cheveux") {
-      queryParams.q = "cheveux";
-    } else {
-      queryParams.category_handle = [category];
+    const categoryMap: Record<string, string> = {
+      "serums": "sérums",
+      "cremes": "crèmes",
+      "masques-en-tissu": "masques",
+    };
+    
+    const searchMap: Record<string, string> = {
+      "cheveux": "cheveux",
+      "hydratants": "hydratant",
+      "soins-contour-des-yeux": "yeux",
+      "yeux": "yeux"
+    };
+
+    if (q) {
+      queryParams.q = q;
+    } else if (searchMap[category]) {
+      queryParams.q = searchMap[category];
+    } else if (category !== "all") {
+      queryParams.category_handle = [categoryMap[category] || category];
     }
     
     if (regionId) {

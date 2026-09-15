@@ -27,6 +27,7 @@ import type WelfareDelivery from '../../src/modules/welfare_delivery'
 import type WelfareCatalog from '../../src/modules/welfare-catalog'
 import type Meilisearch from '@rokmohar/medusa-plugin-meilisearch'
 import type SkinScan from '../../src/modules/skin_scan'
+import type SearchAnalytics from '../../src/modules/search_analytics'
 
 declare module '@medusajs/framework/types' {
   interface ModuleImplementations {
@@ -58,6 +59,7 @@ declare module '@medusajs/framework/types' {
     'welfare_delivery': InstanceType<(typeof WelfareDelivery)['service']>,
     'welfareCatalog': InstanceType<(typeof WelfareCatalog)['service']>,
     'meilisearch': InstanceType<(typeof Meilisearch)['service']>,
-    'skin_scan': InstanceType<(typeof SkinScan)['service']>
+    'skin_scan': InstanceType<(typeof SkinScan)['service']>,
+    'search_analytics': InstanceType<(typeof SearchAnalytics)['service']>
   }
 }

@@ -178,9 +178,19 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Email</p>
                 <p className="text-sm font-medium text-[#2A2424]">{customer?.email}</p>
               </div>
-              <div>
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Téléphone</p>
-                <p className="text-sm font-medium text-[#2A2424]">{customer?.phone || "Non renseigné"}</p>
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Téléphone</p>
+                  <p className="text-sm font-medium text-[#2A2424]">{customer?.phone || "Non renseigné"}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Points Fidélité</p>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold text-[#C97C85] bg-[#C97C85]/10 px-2 py-0.5 rounded-md">
+                      {customer?.metadata?.loyalty_points || 0} pts
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           ) : (

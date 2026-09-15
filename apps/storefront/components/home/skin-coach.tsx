@@ -28,7 +28,7 @@ export function SkinCoach() {
           
           <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
             <Link 
-              href="/coach" 
+              href="/skin-coach" 
               className="w-full sm:w-auto bg-[#2A2424] text-white px-8 py-4 rounded-full text-[15px] font-medium hover:bg-black/80 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 shadow-xl"
             >
               <Scan className="w-5 h-5" />

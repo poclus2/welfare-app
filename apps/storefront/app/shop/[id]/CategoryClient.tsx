@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Heart,
@@ -112,8 +113,11 @@ export default function CategoryClient({
   category: string;
   products: CategoryProduct[];
 }) {
-  const categoryLabel = CATEGORY_LABELS[category] ?? (category ? category.charAt(0).toUpperCase() + category.slice(1) : "Boutique");
-  const categoryDesc = CATEGORY_DESCRIPTIONS[category] ?? "Découvrez notre sélection de soins d'exception.";
+  const searchParams = useSearchParams();
+  const query = searchParams.get("q") || "";
+
+  const categoryLabel = query ? `Résultats pour "${query}"` : (CATEGORY_LABELS[category] ?? (category ? category.charAt(0).toUpperCase() + category.slice(1) : "Boutique"));
+  const categoryDesc = query ? "Produits correspondants à votre recherche." : (CATEGORY_DESCRIPTIONS[category] ?? "Découvrez notre sélection de soins d'exception.");
 
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [selectedSkinTypes, setSelectedSkinTypes] = useState<string[]>([]);
@@ -145,6 +149,18 @@ export default function CategoryClient({
     str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
   const filteredProducts = products.filter((p) => {
+    if (query) {
+      const qNorm = normalize(query);
+      const titleMatch = normalize(p.title).includes(qNorm);
+      const brandMatch = p.brand ? normalize(p.brand).includes(qNorm) : false;
+      const ingredientMatch = p.active_ingredients?.some(i => normalize(i.name).includes(qNorm));
+      
+      const catNorm = normalize(p.category || "");
+      const catMatch = catNorm.includes(qNorm) || (p.categories && p.categories.some((c) => normalize(c).includes(qNorm)));
+
+      if (!titleMatch && !brandMatch && !ingredientMatch && !catMatch) return false;
+    }
+
     if (category !== "all") {
       const catSlugNorm = normalize(category);
       const catLabel = CATEGORY_LABELS[category] || "";
@@ -314,9 +330,6 @@ export default function CategoryClient({
                           {product.brand}
                         </span>
                       )}
-                      <p className="text-[10px] md:text-xs font-bold text-[#2A2424]/50 tracking-wider uppercase shrink-0">
-                        {product.category}
-                      </p>
                     </div>
                     <h3 className="text-xs md:text-lg font-medium text-[#2A2424] leading-snug mb-2 md:mb-3 flex-1 line-clamp-2 md:line-clamp-none">
                       <Link href={`/shop/product/${product.id}`} className="hover:underline decoration-[#E5B6B9] underline-offset-4">

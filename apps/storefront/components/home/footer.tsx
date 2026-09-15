@@ -11,11 +11,11 @@ export function Footer() {
           
           {/* Brand & Newsletter */}
           <div className="max-w-xl">
-            <Link href="/" className="flex items-center mb-8 group inline-flex bg-white/5 rounded-[2rem] p-4 hover:bg-white/10 transition-colors">
+            <Link href="/" className="flex items-center mb-8 group inline-flex hover:opacity-80 transition-opacity">
               <img 
                 src="/logo.webp" 
                 alt="The Welfare Shop" 
-                className="h-28 md:h-40 lg:h-[160px] w-auto object-contain group-hover:scale-105 transition-transform" 
+                className="h-16 md:h-20 lg:h-24 w-auto object-contain scale-[1.3] origin-left group-hover:scale-[1.35] transition-transform" 
                 style={{ filter: "brightness(0) invert(1)" }} 
               />
             </Link>

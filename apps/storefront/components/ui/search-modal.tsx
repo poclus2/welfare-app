@@ -1,11 +1,13 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { instantMeiliSearch } from "@meilisearch/instant-meilisearch";
 import { InstantSearch, SearchBox, Highlight, Configure, useHits, useSearchBox } from "react-instantsearch";
 import { X, MagnifyingGlass, Sparkle, ArrowRight, Scan, BookOpen } from "@phosphor-icons/react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { sdk } from "@/lib/medusa";
 
 const searchClient = instantMeiliSearch(
   process.env.NEXT_PUBLIC_MEILISEARCH_HOST || "http://localhost:7700",
@@ -47,6 +49,8 @@ function Hit({ hit, onClose }: { hit: any; onClose: () => void }) {
 }
 
 export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const router = useRouter();
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -60,6 +64,15 @@ export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
       document.body.style.overflow = "auto";
     };
   }, [isOpen, onClose]);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const input = e.currentTarget.querySelector('input');
+    if (input && input.value.trim()) {
+      onClose();
+      router.push(`/shop/all?q=${encodeURIComponent(input.value.trim())}`);
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -86,6 +99,7 @@ export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 <div className="flex items-center gap-3 p-4 border-b border-[#F4EAEB]">
                   <MagnifyingGlass className="w-5 h-5 text-[#2A2424]/40 shrink-0 ml-2" />
                   <SearchBox
+                    onSubmit={handleSubmit}
                     placeholder="Rechercher un produit, une marque, un besoin..."
                     classNames={{
                       root: "flex-1",
@@ -131,13 +145,12 @@ function CustomHits({ onClose }: { onClose: () => void }) {
     if (!query || query.length < 3) return;
 
     const timer = setTimeout(() => {
-      fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "https://api.thewelfare.store"}/store/search-analytics`, {
+      sdk.client.fetch(`/store/search-analytics`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: {
           term: query,
           results_count: hits.length,
-        }),
+        },
       }).catch(e => console.error("Search tracking error", e));
     }, 1500); // 1.5s debounce
 

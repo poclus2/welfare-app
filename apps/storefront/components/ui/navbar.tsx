@@ -102,11 +102,11 @@ export function Navbar() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="flex md:hidden items-center justify-between px-5 py-4 w-full bg-[#FDFDFC] relative z-50 border-b border-[#F4EAEB]"
+        className="flex md:hidden items-center justify-between px-5 py-2 w-full bg-[#FDFDFC] relative z-50 border-b border-[#F4EAEB]"
       >
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 text-[#2A2424] font-bold text-lg tracking-wide hover:opacity-80 transition-opacity">
-          <img src="/logo.webp" alt="The Welfare Shop" className="h-12 w-auto object-contain scale-[1.3] origin-left" />
+          <img src="/logo.webp" alt="The Welfare Shop" className="h-11 w-auto object-contain scale-[1.5] origin-left" />
         </Link>
 
         {/* Right Actions */}

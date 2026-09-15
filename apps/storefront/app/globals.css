@@ -52,4 +52,40 @@
   .hide-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
+  .input-field {
+    width: 100%;
+    background-color: white;
+    border: 1px solid #EDE0E0;
+    border-radius: 0.75rem;
+    padding: 0.875rem 1rem;
+    font-size: 0.875rem;
+    color: #2A2424;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .input-field:focus {
+    border-color: #E5B6B9;
+  }
+  .input-field::placeholder {
+    color: rgba(42, 36, 36, 0.3);
+  }
+
+  @keyframes shimmer {
+    100% { transform: translateX(200%); }
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #C2164A;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(194, 22, 74, 0.35);
+    transition: box-shadow 0.2s;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover {
+    box-shadow: 0 4px 16px rgba(194, 22, 74, 0.50);
+  }
 }

@@ -12,16 +12,40 @@ export default async function loyaltyRegistration({
     // Fetch the order with customer details
     const { data: orders } = await query.graph({
       entity: "order",
-      fields: ["id", "email", "customer_id", "first_name", "last_name"],
+      fields: ["id", "email", "customer_id", "first_name", "last_name", "total", "customer.*"],
       filters: { id: data.id }
     })
     
     if (!orders || orders.length === 0) return
     const order = orders[0]
 
+    // Calculate points: 1 point per 1000 Frs
+    const orderTotal = typeof order.total === 'number' ? order.total : 0
+    const earnedPoints = Math.floor(orderTotal / 1000)
+
+    // Attribution des points si le client a un compte
+    if (order.customer_id && earnedPoints > 0) {
+      try {
+        const customerModuleService = container.resolve(Modules.CUSTOMER)
+        const customer = order.customer
+        const currentPoints = (customer?.metadata?.loyalty_points as number) || 0
+        const newPoints = currentPoints + earnedPoints
+
+        await customerModuleService.updateCustomers(order.customer_id, {
+          metadata: {
+            ...(customer?.metadata || {}),
+            loyalty_points: newPoints
+          }
+        })
+        console.log(`Attributed ${earnedPoints} loyalty points to customer ${order.customer_id}. New total: ${newPoints}`)
+      } catch (err) {
+        console.error("Error updating customer loyalty points:", err)
+      }
+    }
+
     // If order already has a customer, they are already registered
     if (order.customer_id) {
-      console.log(`Order ${order.id} already linked to customer ${order.customer_id}. Skipping loyalty email.`)
+      console.log(`Order ${order.id} already linked to customer ${order.customer_id}. Skipping loyalty registration email.`)
       return
     }
 
@@ -40,17 +64,17 @@ export default async function loyaltyRegistration({
     const { error } = await resend.emails.send({
       from: "The Welfare Shop <hello@thewelfare.store>", // Resend requires a verified domain to send from
       to: [order.email],
-      subject: "?? Votre programme de fid�lit� The Welfare",
+      subject: "?? Votre programme de fidlit The Welfare",
       html: `
         <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; color: #2A2424;">
-          <h2 style="color: #2A2424; font-weight: 300;">F�licitations pour votre commande !</h2>
+          <h2 style="color: #2A2424; font-weight: 300;">Flicitations pour votre commande !</h2>
           <p>Bonjour ${order.first_name || ""},</p>
-          <p>Merci pour votre achat sur The Welfare Shop. Saviez-vous que vous venez de d�bloquer des points de fid�lit� ?</p>
+          <p>Merci pour votre achat sur The Welfare Shop. Saviez-vous que vous venez de débloquer <strong>${earnedPoints} points de fidélité</strong> ?</p>
           <p>Pour activer votre compte, cumuler vos points, et suivre vos commandes, il vous suffit de choisir un mot de passe en cliquant sur le lien ci-dessous :</p>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${registerUrl}" style="background-color: #2A2424; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Activer mon compte fid�lit�</a>
+            <a href="${registerUrl}" style="background-color: #2A2424; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Activer mon compte fidlit</a>
           </div>
-          <p style="font-size: 14px; color: #666;">Si vous avez d�j� un compte, vous pouvez ignorer cet e-mail.</p>
+          <p style="font-size: 14px; color: #666;">Si vous avez dj un compte, vous pouvez ignorer cet e-mail.</p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
           <p style="font-size: 12px; color: #999;">The Welfare Shop - R�v�lez la science d'une peau rayonnante.</p>
         </div>

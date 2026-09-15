@@ -15,15 +15,15 @@ services:
     container_name: welfare_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: welfare
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-welfare_dev_secret}
-      POSTGRES_DB: welfare_db
+      POSTGRES_USER: medusa
+      POSTGRES_PASSWORD: medusa_password
+      POSTGRES_DB: medusa_welfare
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U welfare -d welfare_db"]
+      test: ["CMD-SHELL", "pg_isready -U medusa -d medusa_welfare"]
       interval: 10s
       timeout: 5s
       retries: 5

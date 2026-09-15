@@ -66,11 +66,11 @@ export function ChatWidget() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={toggleChat}
-            className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-[#2A2424] text-white shadow-xl flex items-center justify-center overflow-hidden"
+            className="fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-[#2A2424] text-white shadow-xl flex items-center justify-center overflow-hidden"
           >
             {/* Soft pulse background */}
             <div className="absolute inset-0 bg-[#E5B6B9]/20 animate-pulse rounded-full" />
-            <Sparkle className="w-6 h-6 z-10" weight="fill" />
+            <Sparkle className="w-5 h-5 z-10" weight="fill" />
             
             {/* Tooltip hint on hover (desktop only) */}
             <div className="absolute -top-10 right-0 bg-white text-[#2A2424] text-xs font-bold px-3 py-1.5 rounded-lg shadow-md whitespace-nowrap opacity-0 md:hover:opacity-100 transition-opacity pointer-events-none">

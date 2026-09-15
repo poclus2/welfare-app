@@ -88,5 +88,8 @@ module.exports = defineConfig({
     {
       resolve: "./src/modules/search_analytics",
     },
+    {
+      resolve: "./src/modules/ambassador_application",
+    },
   ],
 });

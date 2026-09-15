@@ -114,9 +114,6 @@ function ProductCard({ product }: { product: any }) {
               {product.brand}
             </span>
           )}
-          <p className="text-[10px] md:text-xs font-bold text-[#2A2424]/50 tracking-wider uppercase shrink-0">
-            {product.label || "SOIN"}
-          </p>
         </div>
         <h3 className="text-xs md:text-lg font-medium text-[#2A2424] leading-snug mb-2 md:mb-3 flex-1 line-clamp-2 md:line-clamp-none">
           <span className="hover:underline decoration-[#E5B6B9] underline-offset-4">

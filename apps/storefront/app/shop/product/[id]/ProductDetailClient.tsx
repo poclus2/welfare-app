@@ -744,7 +744,7 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
         </div>
       </div>
 
-      {/* ══ ROUTINE SECTION — "Complétez votre routine" ══════════ */}
+      {/* ══ ROUTINE SECTION — "Produits similaires" ══════════ */}
       <section className="w-full bg-[#F4EAEB]/30 border-t border-[#EDE0E0] py-12 overflow-hidden">
         <div className="w-full max-w-[1160px] mx-auto">
           <motion.div
@@ -754,9 +754,9 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C08A8E] mb-1">Allez plus loin</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C08A8E] mb-1">Découvrez aussi</p>
             <h2 className="text-xl md:text-2xl font-bold text-[#2A2424] tracking-tight" style={{ letterSpacing: "-0.02em" }}>
-              Complétez votre routine
+              Produits similaires
             </h2>
           </motion.div>
         </div>
