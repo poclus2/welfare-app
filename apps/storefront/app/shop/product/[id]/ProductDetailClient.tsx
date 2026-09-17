@@ -453,18 +453,10 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
               </span>
             </motion.div>
 
-            {/* Description */}
-            <motion.p
-              variants={fadeUp} initial="hidden" animate="visible" custom={3}
-              className="text-sm text-[#2A2424]/65 leading-[1.75] mb-6 border-l-2 border-[#E5B6B9] pl-4"
-            >
-              {data.commercial_description}
-            </motion.p>
-
             {/* Préoccupations ciblées */}
             {data.skin_concerns.length > 0 && (
               <motion.div
-                variants={fadeUp} initial="hidden" animate="visible" custom={4}
+                variants={fadeUp} initial="hidden" animate="visible" custom={3}
                 className="mb-7"
               >
                 <span className="text-[10px] font-bold text-[#2A2424]/40 uppercase tracking-widest block mb-2">Préoccupations ciblées</span>
@@ -474,16 +466,60 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
                       key={`concern-top-${i}`}
                       className="inline-flex items-center gap-1 text-[11px] font-semibold px-3 py-1.5 rounded-full bg-white border border-[#EDE0E0] text-[#2A2424]"
                     >
-                      <span className="text-[#C08A8E]">✦</span> {concern}
+                      {concern}
                     </span>
                   ))}
                 </div>
               </motion.div>
             )}
 
+            {/* Pourquoi on l'aime */}
+            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={5} className="mb-7">
+              <Accordion title="✦ Pourquoi on l'aime" defaultOpen accent>
+                <div className="flex flex-col gap-3 pt-1">
+                  {data.skin_types.length > 0 && (
+                    <div>
+                      <span className="text-[10px] font-bold text-[#2A2424]/40 uppercase tracking-widest block mb-2">Types de peau</span>
+                      <div className="flex flex-wrap gap-2">
+                        {data.skin_types.map((type: string, i: number) => (
+                          <motion.span
+                            key={`type-${i}`}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: i * 0.05 }}
+                            className="inline-flex items-center text-[11px] font-semibold px-3 py-1.5 rounded-full bg-[#F4EAEB] text-[#2A2424]"
+                          >
+                            {type}
+                          </motion.span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Fallback si vide */}
+                  {data.skin_types.length === 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {data.benefits.map((b, i) => (
+                        <motion.span
+                          key={i}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: i * 0.05 }}
+                          className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-full bg-[#F4EAEB] text-[#2A2424]"
+                        >
+                          <span className="text-[#C08A8E]">{b.icon}</span>
+                          {b.label}
+                        </motion.span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </Accordion>
+            </motion.div>
+
             {/* Quantity */}
             <motion.div
-              variants={fadeUp} initial="hidden" animate="visible" custom={5}
+              variants={fadeUp} initial="hidden" animate="visible" custom={6}
               className="flex items-center gap-3 mb-4"
             >
               <span className="text-xs font-semibold text-[#2A2424]/50 uppercase tracking-wider w-20">Quantité</span>
@@ -507,7 +543,7 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
             {/* CTA */}
             <motion.div
               ref={ctaRef}
-              variants={fadeUp} initial="hidden" animate="visible" custom={6}
+              variants={fadeUp} initial="hidden" animate="visible" custom={7}
               className="mb-6"
             >
               <motion.button
@@ -577,7 +613,7 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
 
             {/* Trust badges */}
             <motion.div
-              variants={fadeUp} initial="hidden" animate="visible" custom={7}
+              variants={fadeUp} initial="hidden" animate="visible" custom={8}
               className="flex items-start justify-between gap-3 px-2 py-4 rounded-2xl bg-white border border-[#EDE0E0] mb-6"
             >
               <TrustBadge icon={<ShieldCheck className="w-5 h-5" />} label="Paiement" sub="100% Sécurisé" />
@@ -587,52 +623,18 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
               <TrustBadge icon={<Package className="w-5 h-5" />} label="Authentique" sub="Certifié K-Beauty" />
             </motion.div>
 
-            {/* ── ACCORDÉONS ─────────────────────────────────── */}
+            {/* ── DESCRIPTION & ACCORDÉONS RESTANTS ───────────────────────── */}
             <motion.div
-              variants={fadeUp} initial="hidden" animate="visible" custom={8}
+              variants={fadeUp} initial="hidden" animate="visible" custom={9}
             >
-              <Accordion title="✦ Pourquoi on l'aime" defaultOpen accent>
-                <div className="flex flex-col gap-3 pt-1">
-                  {data.skin_types.length > 0 && (
-                    <div>
-                      <span className="text-[10px] font-bold text-[#2A2424]/40 uppercase tracking-widest block mb-2">Types de peau</span>
-                      <div className="flex flex-wrap gap-2">
-                        {data.skin_types.map((type: string, i: number) => (
-                          <motion.span
-                            key={`type-${i}`}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: i * 0.05 }}
-                            className="inline-flex items-center text-[11px] font-semibold px-3 py-1.5 rounded-full bg-[#F4EAEB] text-[#2A2424]"
-                          >
-                            {type}
-                          </motion.span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+              {/* Description */}
+              <div className="mb-6 border-l-2 border-[#E5B6B9] pl-4">
+                <p className="text-sm text-[#2A2424]/65 leading-[1.75]">
+                  {data.commercial_description}
+                </p>
+              </div>
 
-                  {/* Fallback si vide */}
-                  {data.skin_types.length === 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {data.benefits.map((b, i) => (
-                        <motion.span
-                          key={i}
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: i * 0.05 }}
-                          className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-full bg-[#F4EAEB] text-[#2A2424]"
-                        >
-                          <span className="text-[#C08A8E]">{b.icon}</span>
-                          {b.label}
-                        </motion.span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </Accordion>
-
-              <Accordion title="Conseils d'utilisation">
+              <Accordion title="Conseils d'utilisation" defaultOpen>
                 <div className="pt-2 pb-1">
                   {data.layering_steps.map((step: any, i: number) => {
                     const iconMap: Record<string, React.ReactNode> = {
@@ -654,13 +656,13 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
                         {/* Left — connector line */}
                         <div className="flex flex-col items-center">
                           <div
-                            className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                            className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors text-xs font-bold ${
                               step.highlight
                                 ? "bg-[#2A2424] text-white shadow-md"
                                 : "bg-[#F4EAEB] text-[#C08A8E]"
                             }`}
                           >
-                            {iconMap[step.icon]}
+                            {step.step}
                           </div>
                           {!isLast && (
                             <div className="w-px flex-1 my-1.5 bg-gradient-to-b from-[#EDE0E0] to-transparent min-h-[20px]" />
@@ -714,7 +716,6 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
 
                           {/* Pro tip */}
                           <div className="inline-flex items-center gap-1.5 bg-[#FDFBF7] border border-[#EDE0E0] rounded-lg px-2.5 py-1.5">
-                            <span className="text-[#C08A8E] text-[10px]">✦</span>
                             <span className="text-[10px] text-[#2A2424]/50 italic">{step.tip}</span>
                           </div>
                         </div>
@@ -724,7 +725,7 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
                 </div>
               </Accordion>
 
-              <Accordion title="Transparence & Ingrédients INCI">
+              <Accordion title="Transparence & Ingrédients INCI" defaultOpen>
                 <div className="prose prose-sm prose-stone max-w-none text-[#2A2424]/60 pt-1
                   [&_h3]:text-[13px] [&_h3]:font-bold [&_h3]:text-[#2A2424] [&_h3]:mb-2
                   [&_strong]:text-[#2A2424] [&_ul]:pl-4 [&_li]:mb-1.5">
