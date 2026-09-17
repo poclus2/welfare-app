@@ -168,12 +168,12 @@ export default function CategoryClient({
       
       const pCatNorm = normalize(p.category || "");
       let matchesCategory =
-        pCatNorm.includes(catSlugNorm) ||
-        pCatNorm.includes(catLabelNorm) ||
-        catSlugNorm.includes(pCatNorm) ||
+        (catSlugNorm && pCatNorm.includes(catSlugNorm)) ||
+        (catLabelNorm && pCatNorm.includes(catLabelNorm)) ||
+        (pCatNorm && catSlugNorm.includes(pCatNorm)) ||
         (p.categories && p.categories.some((c) => {
           const cNorm = normalize(c);
-          return cNorm.includes(catSlugNorm) || cNorm.includes(catLabelNorm) || catSlugNorm.includes(cNorm);
+          return (catSlugNorm && cNorm.includes(catSlugNorm)) || (catLabelNorm && cNorm.includes(catLabelNorm)) || (cNorm && catSlugNorm.includes(cNorm));
         }));
 
       // Fallback for special categories like 'cheveux' where we also search in titles/ingredients

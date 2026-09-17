@@ -57,9 +57,21 @@ export default async function CategoryPage({
         { next: { revalidate: 60 } } as any
       );
       fetchedProducts = result.products || [];
-    } catch (err) {
-      console.warn(`Category '${category}' not found or error fetching. Returning empty list.`);
-      fetchedProducts = [];
+    } catch {
+      // Fallback: if category_handle filter fails, fetch without it (limited)
+      const fallbackParams: any = {
+        limit: 100,
+        fields: "+variants,*images,*categories,*collection",
+      };
+      if (regionId) {
+        fallbackParams.region_id = regionId;
+        fallbackParams.fields += ",*variants.prices,*variants.calculated_price";
+      }
+      const fallback = await sdk.store.product.list(
+        fallbackParams,
+        { next: { revalidate: 60 } } as any
+      ).catch(() => ({ products: [] }));
+      fetchedProducts = fallback.products || [];
     }
 
     // Map Medusa products to the format expected by CategoryClient
