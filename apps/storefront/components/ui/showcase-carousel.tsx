@@ -77,15 +77,6 @@ const CAROUSEL_ITEMS = [
     color: "#fcbec8",
     textColor: "#5c1a2e",
   },
-  {
-    id: "09",
-    title: "MAQUILLAGE",
-    slug: "maquillage",
-    desc: "Cushions, BB creams & lip tints pour le Glass Skin coréen.",
-    bgImage: "/carroussel/maquillage.webp",
-    color: "#f8c5c1",
-    textColor: "#5c1a18",
-  },
 ];
 
 export function ShowcaseCarousel() {
@@ -188,7 +179,7 @@ export function ShowcaseCarousel() {
 
                 {/* Numéro — par-dessus l'image */}
                 <div className="absolute top-5 left-0 right-0 text-center z-20 text-xs font-semibold tracking-[0.2em]" style={{ color: item.textColor, opacity: 0.85 }}>
-                  {item.id} — 09
+                  {item.id} — 08
                 </div>
 
                 {/* Gradient de fondu bas → couleur de fond */}
