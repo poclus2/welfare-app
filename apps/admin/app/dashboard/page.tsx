@@ -1,4 +1,4 @@
-﻿import { cookies } from "next/headers";
+import { cookies } from "next/headers";
 import { fetchAdmin } from "@/lib/medusa-admin";
 import DashboardClient from "./DashboardClient";
 import { redirect } from "next/navigation";
@@ -11,9 +11,9 @@ export default async function DashboardPage() {
   if (!token) return redirect("/login");
 
   const [ordersRes, customersRes, productsRes] = await Promise.all([
-    fetchAdmin<{ orders: any[], count: number }>("/orders?limit=1000&expand=customer,items,shipping_methods", token).catch(() => ({ orders: [], count: 0 })),
+    fetchAdmin<{ orders: any[], count: number }>("/orders?limit=200&expand=customer,items,shipping_methods", token).catch(() => ({ orders: [], count: 0 })),
     fetchAdmin<{ count: number }>("/customers?limit=1", token).catch(() => ({ count: 0 })),
-    fetchAdmin<{ products: any[] }>("/products?limit=500&expand=variants,collection", token).catch(() => ({ products: [] })),
+    fetchAdmin<{ products: any[] }>("/products?limit=100&expand=variants,collection", token).catch(() => ({ products: [] })),
   ]);
 
   const allOrders = ordersRes.orders || [];
