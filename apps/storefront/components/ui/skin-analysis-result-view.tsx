@@ -388,7 +388,8 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
       if (!element) return;
       
       const html2canvas = (await import("html2canvas")).default;
-      const { jsPDF } = await import("jspdf");
+      const jspdfModule = await import("jspdf");
+      const jsPDF = jspdfModule.default || jspdfModule.jsPDF;
 
       // Hide specific elements for clean PDF
       const paddingBottomOriginal = element.style.paddingBottom;

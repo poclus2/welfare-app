@@ -13,7 +13,8 @@ export function PrintButton() {
       if (!element) return;
       
       const html2canvas = (await import("html2canvas")).default;
-      const { jsPDF } = await import("jspdf");
+      const jspdfModule = await import("jspdf");
+      const jsPDF = jspdfModule.default || jspdfModule.jsPDF;
 
       const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
       const imgData = canvas.toDataURL("image/jpeg", 0.95);
