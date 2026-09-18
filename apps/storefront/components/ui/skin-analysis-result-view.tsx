@@ -385,17 +385,38 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
     try {
       setIsExportingPDF(true);
       const element = document.getElementById("pdf-report-content");
-      if (!element) return;
+      if (!element) {
+        alert("Élément introuvable");
+        return;
+      }
       
-      const html2canvas = (await import("html2canvas")).default;
+      const html2canvasModule = await import("html2canvas");
+      const html2canvas = html2canvasModule.default || html2canvasModule;
+      
       const jspdfModule = await import("jspdf");
       const jsPDF = jspdfModule.default || jspdfModule.jsPDF;
 
-      // Hide specific elements for clean PDF
+      // Ensure full height is captured
       const paddingBottomOriginal = element.style.paddingBottom;
-      element.style.paddingBottom = "40px"; // reduce padding at bottom for PDF
+      const originalHeight = element.style.height;
+      const originalOverflow = element.style.overflow;
       
-      const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: "#FDF8F7" });
+      element.style.paddingBottom = "40px"; // reduce padding at bottom for PDF
+      element.style.height = 'max-content';
+      element.style.overflow = 'visible';
+      
+      const canvas = await html2canvas(element, { 
+        scale: 2, 
+        useCORS: true, 
+        allowTaint: true,
+        backgroundColor: "#FDF8F7",
+        scrollY: 0
+      });
+      
+      element.style.paddingBottom = paddingBottomOriginal;
+      element.style.height = originalHeight;
+      element.style.overflow = originalOverflow;
+
       const imgData = canvas.toDataURL("image/jpeg", 0.95);
       
       const pdfWidth = 210; // A4 width in mm
@@ -405,9 +426,9 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
       pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
       pdf.save("rapport-diagnostic-thewelfare.pdf");
       
-      element.style.paddingBottom = paddingBottomOriginal;
-    } catch (e) {
+    } catch (e: any) {
       console.error("PDF generation error", e);
+      alert("Erreur lors de la génération: " + e.message);
     } finally {
       setIsExportingPDF(false);
     }
