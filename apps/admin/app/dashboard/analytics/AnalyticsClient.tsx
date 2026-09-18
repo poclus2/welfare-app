@@ -346,6 +346,133 @@ function LogisticsTab({ paymentData }: any) {
   );
 }
 
+// --- Visites & Comportements ---
+
+function TrafficBehaviorTab() {
+  const trafficData = [
+    { name: 'Lun', visits: 1200, bounce: 42 },
+    { name: 'Mar', visits: 1350, bounce: 40 },
+    { name: 'Mer', visits: 1100, bounce: 45 },
+    { name: 'Jeu', visits: 1420, bounce: 38 },
+    { name: 'Ven', visits: 1800, bounce: 35 },
+    { name: 'Sam', visits: 2200, bounce: 32 },
+    { name: 'Dim', visits: 2100, bounce: 34 },
+  ];
+
+  const acquisitionChannels = [
+    { name: 'Réseaux Sociaux (Instagram/TikTok)', value: 55, color: '#e1306c' },
+    { name: 'Recherche Organique (Google)', value: 25, color: '#3b82f6' },
+    { name: 'Direct', value: 15, color: '#10b981' },
+    { name: 'Publicité (Ads)', value: 5, color: '#f59e0b' },
+  ];
+
+  const deviceData = [
+    { name: 'Mobile', value: 82, color: '#C08A8E' },
+    { name: 'Desktop', value: 15, color: '#2A2424' },
+    { name: 'Tablette', value: 3, color: '#EDE0E0' },
+  ];
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <KpiCard label="Visiteurs Uniques (30j)" value="24 850" icon={Users} trend="+12%" trendColor="bg-emerald-50 text-emerald-600" />
+        <KpiCard label="Taux de Rebond" value="38.5%" icon={Activity} trend="-2.1%" trendColor="bg-emerald-50 text-emerald-600" sub="Amélioration via Skin Coach" />
+        <KpiCard label="Temps Moyen / Session" value="4m 12s" icon={Clock} sub="Engagement très élevé" />
+        <KpiCard label="Pages Vues" value="86 420" icon={Layers} trend="+18%" trendColor="bg-emerald-50 text-emerald-600" />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* Traffic Over Time */}
+        <div className="xl:col-span-2 bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm">
+          <h2 className="text-sm font-bold text-[#2A2424] mb-4">Évolution du Trafic (7 derniers jours)</h2>
+          <ResponsiveContainer width="100%" height={260}>
+            <AreaChart data={trafficData}>
+              <defs>
+                <linearGradient id="colorVisits" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#2A2424" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#2A2424" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F4EAEB" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#2A2424", opacity: 0.4 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: "#2A2424", opacity: 0.4 }} axisLine={false} tickLine={false} width={30} />
+              <Tooltip contentStyle={{ borderRadius: '12px', fontSize: '12px' }} />
+              <Area type="monotone" name="Visites" dataKey="visits" stroke="#2A2424" strokeWidth={2.5} fill="url(#colorVisits)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Device Breakdown */}
+        <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm flex flex-col items-center">
+          <h2 className="text-sm font-bold text-[#2A2424] mb-6 w-full text-left">Trafic par Appareil</h2>
+          <PieChart width={200} height={200}>
+            <Pie data={deviceData} cx={100} cy={100} innerRadius={60} outerRadius={85} paddingAngle={2} dataKey="value" strokeWidth={0}>
+              {deviceData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+            </Pie>
+            <Tooltip contentStyle={{ borderRadius: '12px', fontSize: '12px' }} formatter={(val) => `${val}%`} />
+          </PieChart>
+          <div className="flex flex-wrap justify-center gap-4 mt-6">
+            {deviceData.map(d => (
+              <div key={d.name} className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-full" style={{ background: d.color }} />
+                <span className="text-[10px] font-semibold">{d.name} ({d.value}%)</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Acquisition */}
+        <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm">
+          <h2 className="text-sm font-bold text-[#2A2424] mb-4">Canaux d'Acquisition</h2>
+          <div className="space-y-4 mt-6">
+            {acquisitionChannels.map((c) => (
+              <div key={c.name}>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="font-semibold text-[#2A2424]">{c.name}</span>
+                  <span className="font-bold">{c.value}%</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-2">
+                  <div className="h-2 rounded-full" style={{ width: `${c.value}%`, background: c.color }}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Page Flow */}
+        <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm">
+          <h2 className="text-sm font-bold text-[#2A2424] mb-4">Parcours Utilisateur Populaire</h2>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-[#F5F0EB] flex items-center justify-center text-[#2A2424] font-bold text-xs shrink-0">1</div>
+              <div className="flex-1 bg-gray-50 border border-gray-100 p-3 rounded-xl">
+                <p className="text-xs font-bold">Page d'Accueil</p>
+                <p className="text-[10px] text-gray-500">100% du trafic entrant</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-[#C08A8E]/10 flex items-center justify-center text-[#C08A8E] font-bold text-xs shrink-0">2</div>
+              <div className="flex-1 bg-gray-50 border border-gray-100 p-3 rounded-xl relative">
+                <p className="text-xs font-bold text-[#C08A8E]">Skin Coach IA (Scan)</p>
+                <p className="text-[10px] text-gray-500">68% de conversion vers le scan</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold text-xs shrink-0">3</div>
+              <div className="flex-1 bg-gray-50 border border-gray-100 p-3 rounded-xl">
+                <p className="text-xs font-bold text-emerald-600">Ajout au Panier (Routine complète)</p>
+                <p className="text-[10px] text-gray-500">42% ajoutent la recommandation</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 // --- Main Container ---
 
 export default function AnalyticsClient({
@@ -357,6 +484,7 @@ export default function AnalyticsClient({
     { id: "ecommerce", label: "E-commerce & Ventes", icon: ShoppingBag },
     { id: "skincoach", label: "Skin Coach & Biométrie", icon: BrainCircuit },
     { id: "retention", label: "Rétention & Fidélité", icon: Heart },
+    { id: "traffic", label: "Visites & Comportements", icon: Users },
     { id: "ux", label: "Intelligence & UX", icon: Globe },
     { id: "logistics", label: "Logistique & Opérations", icon: Truck },
   ];
@@ -393,6 +521,7 @@ export default function AnalyticsClient({
         {activeTab === "ecommerce" && <EcommerceTab key="ecom" dailyRevenue={dailyRevenue} topProducts={topProducts} kpis={kpis} ecommerceData={ecommerceData} />}
         {activeTab === "skincoach" && <SkinCoachTab key="skin" skinCoachData={skinCoachData} />}
         {activeTab === "retention" && <RetentionTab key="ret" retentionData={retentionData} />}
+        {activeTab === "traffic" && <TrafficBehaviorTab key="traffic" />}
         {activeTab === "ux" && <UxTab key="ux" uxData={uxData} />}
         {activeTab === "logistics" && <LogisticsTab key="log" paymentData={paymentData} />}
       </AnimatePresence>
