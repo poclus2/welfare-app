@@ -10,23 +10,30 @@ export default async function CustomersPage() {
 
   if (!token) return null;
 
-  const data = await fetchAdmin<{ customers: any[]; count: number }>(
-    `/customers?fields=*orders&limit=50`,
-    token
-  ).catch((e) => {
-    console.error("Failed to fetch customers", e);
-    return { customers: [], count: 0 };
+  // Fetch customers and orders in parallel
+  const [customersData, ordersData] = await Promise.all([
+    fetchAdmin<{ customers: any[]; count: number }>(`/customers?limit=100`, token).catch(() => ({ customers: [], count: 0 })),
+    fetchAdmin<{ orders: any[] }>(`/orders?limit=999`, token).catch(() => ({ orders: [] }))
+  ]);
+
+  const ordersByCustomer: Record<string, any[]> = {};
+  ordersData.orders.forEach(o => {
+    if (o.customer_id) {
+      if (!ordersByCustomer[o.customer_id]) ordersByCustomer[o.customer_id] = [];
+      ordersByCustomer[o.customer_id].push(o);
+    }
   });
 
   // Map Medusa customers to UI customers
-  const mappedCustomers: Customer[] = data.customers.map((c) => {
-    const ordersCount = c.orders?.length || 0;
+  const mappedCustomers: Customer[] = customersData.customers.map((c) => {
+    const customerOrders = ordersByCustomer[c.id] || [];
+    const ordersCount = customerOrders.length;
     
     // Calculate total spent
-    const totalSpent = c.orders?.reduce((acc: number, o: any) => acc + (o.total || 0), 0) || 0;
+    const totalSpent = customerOrders.reduce((acc: number, o: any) => acc + (o.total || 0), 0) || 0;
 
     // Map recent orders for the drawer
-    const recentOrders = (c.orders || [])
+    const recentOrders = customerOrders
       .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 5) // Keep only 5 most recent
       .map((o: any) => {
@@ -43,7 +50,7 @@ export default async function CustomersPage() {
         }
 
         return {
-          id: `WLF-${o.display_id || o.id.split('_')[1].substring(0, 5).toUpperCase()}`,
+          id: `WLF-${o.display_id || o.id.split('_')[1]?.substring(0, 5).toUpperCase() || 'XXX'}`,
           amount: o.total || 0,
           status,
           date: new Date(o.created_at).toLocaleString("fr-FR", {
@@ -55,8 +62,8 @@ export default async function CustomersPage() {
     let customerName = "Client Inconnu";
     if (c.first_name || c.last_name) {
       customerName = `${c.first_name || ""} ${c.last_name || ""}`.trim();
-    } else if (c.orders?.[0]?.shipping_address?.first_name || c.orders?.[0]?.shipping_address?.last_name) {
-      const sa = c.orders[0].shipping_address;
+    } else if (customerOrders[0]?.shipping_address?.first_name || customerOrders[0]?.shipping_address?.last_name) {
+      const sa = customerOrders[0].shipping_address;
       customerName = `${sa.first_name || ""} ${sa.last_name || ""}`.trim();
     }
 
@@ -75,5 +82,5 @@ export default async function CustomersPage() {
     };
   });
 
-  return <CustomersClient initialCustomers={mappedCustomers} totalCount={data.count} />;
+  return <CustomersClient initialCustomers={mappedCustomers} totalCount={customersData.count} />;
 }
