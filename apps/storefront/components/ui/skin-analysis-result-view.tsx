@@ -2,7 +2,7 @@
 
 import { motion, Variants } from "framer-motion";
 import { SkinAnalysisResult, RoutineStep } from "@/app/actions/analyze-skin";
-import { Sparkle, Drop, Eye, Lightning, Sun, ShoppingBag, ArrowCounterClockwise, CaretRight, TrendUp, Package, Plus, CheckCircle } from "@phosphor-icons/react";
+import { Sparkle, Drop, Eye, Lightning, Sun, ShoppingBag, ArrowCounterClockwise, CaretRight, TrendUp, Package, Plus, CheckCircle, Printer } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useCart } from "@/lib/cart-context";
@@ -611,42 +611,53 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
         initial={{ y: 120 }}
         animate={{ y: 0 }}
         transition={{ delay: 0.8, type: "spring", bounce: 0.2 }}
-        className="fixed bottom-0 left-0 right-0 z-50 px-5 pb-8 pt-4"
+        className="fixed bottom-0 left-0 right-0 z-50 px-5 pb-8 pt-4 print:hidden"
         style={{ background: "linear-gradient(to top, #FDF8F7 60%, transparent)" }}
       >
-        {hasLinkedProducts ? (
+        <div className="flex gap-2 mb-3">
+          {hasLinkedProducts ? (
+            <button
+              onClick={handleAddAllToCart}
+              disabled={addingAll || allAdded}
+              className="flex-1 py-4 px-6 rounded-2xl font-bold text-[15px] flex justify-center items-center gap-2.5 transition-all active:scale-[0.98] shadow-lg disabled:opacity-70"
+              style={{
+                background: allAdded
+                  ? "linear-gradient(135deg, #10b981, #34d399)"
+                  : "linear-gradient(135deg, #C8868A, #E5B6B9)",
+                color: "white",
+                boxShadow: allAdded
+                  ? "0 8px 30px rgba(16,185,129,0.35)"
+                  : "0 8px 30px rgba(200,134,138,0.35)"
+              }}
+            >
+              {allAdded ? (
+                <><CheckCircle className="w-5 h-5" /> Routine ajoutée</>
+              ) : addingAll ? (
+                <><span className="animate-spin">⏳</span> Ajout...</>
+              ) : (
+                <><ShoppingBag className="w-5 h-5" /> Ajouter la routine</>
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={() => router.push("/shop")}
+              className="flex-1 py-4 px-6 rounded-2xl font-bold text-[15px] flex justify-center items-center gap-2.5 transition-all active:scale-[0.98] shadow-lg"
+              style={{ background: "linear-gradient(135deg, #C8868A, #E5B6B9)", color: "white", boxShadow: "0 8px 30px rgba(200,134,138,0.35)" }}
+            >
+              <ShoppingBag className="w-5 h-5" />
+              Découvrir ma sélection
+            </button>
+          )}
+
           <button
-            onClick={handleAddAllToCart}
-            disabled={addingAll || allAdded}
-            className="w-full py-4 px-6 rounded-2xl font-bold text-[15px] flex justify-center items-center gap-2.5 mb-3 transition-all active:scale-[0.98] shadow-lg disabled:opacity-70"
-            style={{
-              background: allAdded
-                ? "linear-gradient(135deg, #10b981, #34d399)"
-                : "linear-gradient(135deg, #C8868A, #E5B6B9)",
-              color: "white",
-              boxShadow: allAdded
-                ? "0 8px 30px rgba(16,185,129,0.35)"
-                : "0 8px 30px rgba(200,134,138,0.35)"
-            }}
+            onClick={() => window.print()}
+            className="w-14 shrink-0 flex items-center justify-center rounded-2xl bg-white border border-[#EDE0E0] shadow-sm text-[#3D2B2D] hover:bg-gray-50 transition-colors"
+            title="Exporter le rapport en PDF"
           >
-            {allAdded ? (
-              <><CheckCircle className="w-5 h-5" /> Routine ajoutée au panier !</>
-            ) : addingAll ? (
-              <><span className="animate-spin">⏳</span> Ajout en cours...</>
-            ) : (
-              <><ShoppingBag className="w-5 h-5" /> Ajouter ma routine complète au panier</>
-            )}
+            <Printer className="w-6 h-6" />
           </button>
-        ) : (
-          <button
-            onClick={() => router.push("/shop")}
-            className="w-full py-4 px-6 rounded-2xl font-bold text-[15px] flex justify-center items-center gap-2.5 mb-3 transition-all active:scale-[0.98] shadow-lg"
-            style={{ background: "linear-gradient(135deg, #C8868A, #E5B6B9)", color: "white", boxShadow: "0 8px 30px rgba(200,134,138,0.35)" }}
-          >
-            <ShoppingBag className="w-5 h-5" />
-            Découvrir ma sélection de soins
-          </button>
-        )}
+        </div>
+
         <button
           onClick={onRetake}
           className="w-full flex items-center justify-center gap-2 text-[13px] font-semibold transition-colors"

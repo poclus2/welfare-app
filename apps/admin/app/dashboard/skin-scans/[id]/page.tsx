@@ -3,6 +3,7 @@ import { fetchAdmin } from "@/lib/medusa-admin";
 import Link from "next/link";
 import { ArrowLeft, ChevronRight, Activity, FileText, CheckCircle2, ScanFace, User, Calendar, Droplets, Zap, Eye, Circle, Sparkles } from "lucide-react";
 import { ScanImageGallery } from "./ScanImageGallery";
+import { PrintButton } from "./PrintButton";
 
 export const dynamic = "force-dynamic";
 
@@ -138,6 +139,9 @@ export default async function SkinScanDetailsPage({ params }: { params: Promise<
                 <span className="text-sm font-bold text-white">{scan.melanin_phototype}</span>
               </div>
             )}
+            <div className="ml-auto">
+              <PrintButton />
+            </div>
           </div>
         </div>
       </div>
