@@ -382,56 +382,7 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
   const [isExportingPDF, setIsExportingPDF] = useState(false);
 
   const exportReportToPDF = async () => {
-    try {
-      setIsExportingPDF(true);
-      const element = document.getElementById("pdf-report-content");
-      if (!element) {
-        alert("Élément introuvable");
-        return;
-      }
-      
-      const html2canvasModule = await import("html2canvas");
-      const html2canvas = html2canvasModule.default || html2canvasModule;
-      
-      const jspdfModule = await import("jspdf");
-      const jsPDF = jspdfModule.default || jspdfModule.jsPDF;
-
-      // Ensure full height is captured
-      const paddingBottomOriginal = element.style.paddingBottom;
-      const originalHeight = element.style.height;
-      const originalOverflow = element.style.overflow;
-      
-      element.style.paddingBottom = "40px"; // reduce padding at bottom for PDF
-      element.style.height = 'max-content';
-      element.style.overflow = 'visible';
-      
-      const canvas = await html2canvas(element, { 
-        scale: 2, 
-        useCORS: true, 
-        allowTaint: true,
-        backgroundColor: "#FDF8F7",
-        scrollY: 0
-      });
-      
-      element.style.paddingBottom = paddingBottomOriginal;
-      element.style.height = originalHeight;
-      element.style.overflow = originalOverflow;
-
-      const imgData = canvas.toDataURL("image/jpeg", 0.95);
-      
-      const pdfWidth = 210; // A4 width in mm
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
-      const pdf = new jsPDF("p", "mm", [pdfWidth, Math.max(pdfHeight, 297)]);
-      pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save("rapport-diagnostic-thewelfare.pdf");
-      
-    } catch (e: any) {
-      console.error("PDF generation error", e);
-      alert("Erreur lors de la génération: " + e.message);
-    } finally {
-      setIsExportingPDF(false);
-    }
+    window.print();
   };
 
   const handleAddAllToCart = async () => {
@@ -477,7 +428,7 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5 }}
-      className="min-h-[100dvh] relative w-full flex flex-col font-sans"
+      className="min-h-[100dvh] relative w-full flex flex-col font-sans print:h-auto print:block"
       style={{ background: "#FDF8F7" }}
     >
       {/* Background soft orbs */}
@@ -488,7 +439,7 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
           style={{ background: "#C8868A", filter: "blur(120px)" }} />
       </div>
 
-      <div id="pdf-report-content" className="relative z-10 flex-1 pb-44 overflow-y-auto bg-[#FDF8F7]">
+      <div id="pdf-report-content" className="relative z-10 flex-1 pb-44 overflow-y-auto bg-[#FDF8F7] print:overflow-visible print:h-auto print:block print:pb-10">
         {/* Background soft orbs (for PDF) */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
           <div className="absolute top-[-20%] left-[-10%] w-96 h-96 rounded-full opacity-30"

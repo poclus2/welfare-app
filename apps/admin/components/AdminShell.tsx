@@ -92,9 +92,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="flex h-full min-h-screen">
+    <div className="flex h-full min-h-screen print:h-auto print:block">
       {/* Desktop Sidebar */}
-      <div className="hidden lg:flex flex-col bg-white border-r border-[#EDE0E0] h-screen sticky top-0">
+      <div className="hidden lg:flex flex-col bg-white border-r border-[#EDE0E0] h-screen sticky top-0 print:hidden">
         <Sidebar />
       </div>
 
@@ -107,14 +107,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSidebarOpen(false)}
-              className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+              className="fixed inset-0 z-40 bg-black/40 lg:hidden print:hidden"
             />
             <motion.div
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed left-0 top-0 bottom-0 z-50 flex flex-col bg-white w-[220px] lg:hidden"
+              className="fixed left-0 top-0 bottom-0 z-50 flex flex-col bg-white w-[220px] lg:hidden print:hidden"
             >
               <div className="flex items-center justify-between px-5 py-4 border-b border-[#EDE0E0]">
                 <div className="flex items-center gap-2">
@@ -134,9 +134,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </AnimatePresence>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden print:overflow-visible print:block">
         {/* Top bar */}
-        <header className="bg-white border-b border-[#EDE0E0] px-5 lg:px-8 py-3.5 flex items-center gap-4 sticky top-0 z-30">
+        <header className="bg-white border-b border-[#EDE0E0] px-5 lg:px-8 py-3.5 flex items-center gap-4 sticky top-0 z-30 print:hidden">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden p-2 text-[#2A2424]/60 hover:bg-[#F4EAEB] rounded-xl transition-colors"
@@ -174,7 +174,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto print:overflow-visible print:h-auto">
           {children}
         </main>
       </div>
