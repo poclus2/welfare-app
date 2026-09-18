@@ -81,7 +81,7 @@ export default async function SkinScanDetailsPage({ params }: { params: Promise<
   const metrics = scan.metrics;
 
   return (
-    <div className="p-5 lg:p-8 space-y-8">
+    <div id="pdf-report-content" className="p-5 lg:p-8 space-y-8 bg-white">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2">
         <Link href="/dashboard/skin-scans" className="text-[#2A2424]/40 hover:text-[#C08A8E] transition-colors">

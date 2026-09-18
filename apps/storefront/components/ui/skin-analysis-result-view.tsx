@@ -379,6 +379,39 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
     await cart.addItem(variantId, 1);
   };
 
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+
+  const exportReportToPDF = async () => {
+    try {
+      setIsExportingPDF(true);
+      const element = document.getElementById("pdf-report-content");
+      if (!element) return;
+      
+      const html2canvas = (await import("html2canvas")).default;
+      const { jsPDF } = await import("jspdf");
+
+      // Hide specific elements for clean PDF
+      const paddingBottomOriginal = element.style.paddingBottom;
+      element.style.paddingBottom = "40px"; // reduce padding at bottom for PDF
+      
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: "#FDF8F7" });
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      
+      const pdfWidth = 210; // A4 width in mm
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      const pdf = new jsPDF("p", "mm", [pdfWidth, Math.max(pdfHeight, 297)]);
+      pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save("rapport-diagnostic-thewelfare.pdf");
+      
+      element.style.paddingBottom = paddingBottomOriginal;
+    } catch (e) {
+      console.error("PDF generation error", e);
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
   const handleAddAllToCart = async () => {
     setAddingAll(true);
     const url = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000";
@@ -433,8 +466,15 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
           style={{ background: "#C8868A", filter: "blur(120px)" }} />
       </div>
 
-      <div className="relative z-10 flex-1 pb-44 overflow-y-auto">
-
+      <div id="pdf-report-content" className="relative z-10 flex-1 pb-44 overflow-y-auto bg-[#FDF8F7]">
+        {/* Background soft orbs (for PDF) */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+          <div className="absolute top-[-20%] left-[-10%] w-96 h-96 rounded-full opacity-30"
+            style={{ background: "#E5B6B9", filter: "blur(120px)" }} />
+          <div className="absolute bottom-[20%] right-[-15%] w-80 h-80 rounded-full opacity-20"
+            style={{ background: "#C8868A", filter: "blur(120px)" }} />
+        </div>
+        
         {/* ─── HEADER ─── */}
         <motion.div
           variants={containerVariants} initial="hidden" animate="show"
@@ -650,11 +690,16 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
           )}
 
           <button
-            onClick={() => window.print()}
-            className="w-14 shrink-0 flex items-center justify-center rounded-2xl bg-white border border-[#EDE0E0] shadow-sm text-[#3D2B2D] hover:bg-gray-50 transition-colors"
+            onClick={exportReportToPDF}
+            disabled={isExportingPDF}
+            className="w-14 shrink-0 flex items-center justify-center rounded-2xl bg-white border border-[#EDE0E0] shadow-sm text-[#3D2B2D] hover:bg-gray-50 transition-colors disabled:opacity-50"
             title="Exporter le rapport en PDF"
           >
-            <Printer className="w-6 h-6" />
+            {isExportingPDF ? (
+              <span className="animate-spin text-xl">⏳</span>
+            ) : (
+              <Printer className="w-6 h-6" />
+            )}
           </button>
         </div>
 
