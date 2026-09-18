@@ -110,7 +110,7 @@ export default function CustomersClient({ initialCustomers, totalCount }: { init
           <table className="w-full">
             <thead>
               <tr className="bg-[#F5F0EB] border-b border-[#EDE0E0]">
-                {["Client", "Contact", "Commandes", "Valeur à vie", "Inscription", "Actions"].map((h) => (
+                {["Client", "Contact", "Commandes", "Total des commandes", "Inscription", "Actions"].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-[10px] font-bold text-[#2A2424]/40 uppercase tracking-widest whitespace-nowrap">
                     {h}
                   </th>
