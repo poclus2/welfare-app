@@ -6,8 +6,8 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 // Initialize PostHog once outside the component
 if (typeof window !== "undefined") {
-  posthog.init("***REMOVED-POSTHOG-PERSONAL-KEY***", {
-    api_host: "https://eu.i.posthog.com", // Assume EU Cloud, fallback to US if it fails
+  posthog.init("phc_vr9NfBs8aTytbCdwbWbTdkEakjQiNvHHWdZwwE5MVg8t", {
+    api_host: "https://us.i.posthog.com", // US Cloud
     person_profiles: "always", // Create profiles for anonymous users
     capture_pageview: false, // Disable automatic pageview capture, as we capture manually
   });
