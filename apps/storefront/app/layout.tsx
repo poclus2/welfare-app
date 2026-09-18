@@ -7,7 +7,7 @@ import { CartProvider } from "@/lib/cart-context";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { PageProgress } from "@/components/ui/page-progress";
 import { ChatWidget } from "@/components/ui/chat-widget";
-
+import { PostHogProvider } from "@/providers/PostHogProvider";
 export const metadata: Metadata = {
   title: "The Welfare Shop - K-Beauty & Skincare",
   description: "Reveal your natural glow with pure skincare blends.",
@@ -26,21 +26,23 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet" />
       </head>
       <body className="font-sans bg-background text-foreground antialiased flex flex-col min-h-screen" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
-        <CartProvider>
-          {/* Progress bar wraps useSearchParams — needs Suspense */}
-          <Suspense fallback={null}>
-            <PageProgress />
-          </Suspense>
-          <CartDrawer />
-          <AnnouncementBar />
-          <div className="sticky top-0 z-50">
-            <Navbar />
-          </div>
-          <div className="flex-1 flex flex-col w-full">
-            {children}
-          </div>
-          <ChatWidget />
-        </CartProvider>
+        <PostHogProvider>
+          <CartProvider>
+            {/* Progress bar wraps useSearchParams — needs Suspense */}
+            <Suspense fallback={null}>
+              <PageProgress />
+            </Suspense>
+            <CartDrawer />
+            <AnnouncementBar />
+            <div className="sticky top-0 z-50">
+              <Navbar />
+            </div>
+            <div className="flex-1 flex flex-col w-full">
+              {children}
+            </div>
+            <ChatWidget />
+          </CartProvider>
+        </PostHogProvider>
       </body>
     </html>
   );
