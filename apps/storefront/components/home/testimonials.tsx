@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Star, Quotes } from "@phosphor-icons/react";
 import { useState } from "react";
+import { useI18n } from "@/lib/i18n-context";
 
 const testimonials = [
   {
@@ -83,6 +84,7 @@ function Stars({ count, color }: { count: number; color: string }) {
 }
 
 export function Testimonials() {
+  const { t } = useI18n();
   const [activeIndex, setActiveIndex] = useState(0);
   const maxIndex = testimonials.length - 1;
 
@@ -118,15 +120,15 @@ export function Testimonials() {
 
               <div className="relative z-10">
                 <p className="text-xs font-semibold tracking-[0.2em] uppercase text-[#2A2424]/50 mb-6">
-                  Témoignages
+                  {t("Témoignages")}
                 </p>
                 <h2 className="text-3xl lg:text-4xl font-medium text-[#2A2424] leading-tight">
-                  Nos Clients<br />
-                  <em className="font-serif not-italic text-[#E5B6B9]">Parlent</em><br />
-                  d'Eux-Mêmes
+                  {t("Nos Clients")}<br />
+                  <em className="font-serif not-italic text-[#E5B6B9]">{t("Parlent")}</em><br />
+                  {t("d'Eux-Mêmes")}
                 </h2>
                 <p className="text-sm text-[#2A2424]/60 mt-5 leading-relaxed">
-                  Des milliers de clientes au Cameroun font confiance à The Welfare Shop pour leur routine K-Beauty quotidienne.
+                  {t("Des milliers de clientes au Cameroun font confiance à The Welfare Shop pour leur routine K-Beauty quotidienne.")}
                 </p>
               </div>
 
@@ -166,7 +168,7 @@ export function Testimonials() {
 
               <div className="relative z-10">
                 <p className="text-xl lg:text-2xl text-white leading-relaxed font-light mb-8">
-                  "{testimonials[0]!.quote}"
+                  "{t(testimonials[0]!.quote)}"
                 </p>
                 <div className="flex items-center gap-4">
                   <img
@@ -176,7 +178,7 @@ export function Testimonials() {
                   />
                   <div>
                     <p className="font-semibold text-white text-base">{testimonials[0]!.name}</p>
-                    <p className="text-white/50 text-sm mb-1.5">{testimonials[0]!.role}</p>
+                    <p className="text-white/50 text-sm mb-1.5">{t(testimonials[0]!.role)}</p>
                     <Stars count={testimonials[0]!.rating} color="text-[#E5B6B9]" />
                   </div>
                 </div>
@@ -192,7 +194,7 @@ export function Testimonials() {
             <>
               <Quotes className="w-6 h-6 text-[#E5B6B9] mb-3" weight="light" />
               <p className="text-sm text-[#2A2424]/80 leading-relaxed line-clamp-3 flex-1">
-                "{testimonials[1]!.quote}"
+                "{t(testimonials[1]!.quote)}"
               </p>
               <div className="flex items-center gap-3 mt-5">
                 <img
@@ -216,7 +218,7 @@ export function Testimonials() {
             <>
               <Quotes className="w-6 h-6 text-[#E5B6B9] mb-3" weight="light" />
               <p className="text-sm text-[#2A2424]/80 leading-relaxed line-clamp-3 flex-1">
-                "{testimonials[2]!.quote}"
+                "{t(testimonials[2]!.quote)}"
               </p>
               <div className="flex items-center gap-3 mt-5">
                 <img
@@ -243,10 +245,10 @@ export function Testimonials() {
           <motion.div {...fadeUp(0)} className="flex items-end justify-between">
             <>
               <div>
-                <p className="text-[10px] font-semibold tracking-[0.2em] uppercase text-[#2A2424]/50 mb-2">Témoignages</p>
+                <p className="text-[10px] font-semibold tracking-[0.2em] uppercase text-[#2A2424]/50 mb-2">{t("Témoignages")}</p>
                 <h2 className="text-[2rem] leading-[1.1] font-medium text-[#2A2424]">
-                  Nos Clients<br />
-                  <em className="font-serif not-italic text-[#E5B6B9]">Parlent</em>
+                  {t("Nos Clients")}<br />
+                  <em className="font-serif not-italic text-[#E5B6B9]">{t("Parlent")}</em>
                 </h2>
               </div>
               <div className="flex items-center gap-1.5 pb-1">
@@ -276,7 +278,7 @@ export function Testimonials() {
             <div>
               <Quotes className={`w-7 h-7 ${testimonials[activeIndex]!.quoteColor} mb-4`} weight="light" />
               <p className={`text-base ${testimonials[activeIndex]!.textColor} leading-relaxed font-light`}>
-                "{testimonials[activeIndex]!.quote}"
+                "{t(testimonials[activeIndex]!.quote)}"
               </p>
             </div>
 
@@ -292,7 +294,7 @@ export function Testimonials() {
                     {testimonials[activeIndex]!.name}
                   </p>
                   <p className={`${testimonials[activeIndex]!.subColor} text-xs mb-1`}>
-                    {testimonials[activeIndex]!.role}
+                    {t(testimonials[activeIndex]!.role)}
                   </p>
                   <Stars count={testimonials[activeIndex]!.rating} color={testimonials[activeIndex]!.starColor} />
                 </div>

@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { ArrowUpRight, MagnifyingGlass } from "@phosphor-icons/react";
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n-context";
 
 /* ─────────────────────────────────────────
    ANIMATION VARIANTS
@@ -62,6 +63,7 @@ function GlassLabel({
    MAIN COMPONENT
 ───────────────────────────────────────── */
 export function CategoriesBento() {
+  const { t } = useI18n();
   return (
     <section className="w-full bg-white py-20 md:py-32 flex flex-col items-center overflow-hidden relative">
       {/* Cherry blossom background */}
@@ -76,17 +78,17 @@ export function CategoriesBento() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14">
           <div className="max-w-xl">
             <h2 className="text-[2.5rem] md:text-[3.5rem] leading-[1.1] font-medium tracking-tight text-[#2A2424] mb-3">
-              Explorez par catégorie
+              {t("Explorez par catégorie")}
             </h2>
             <p className="text-[#2A2424]/55 text-base md:text-lg">
-              Trouvez exactement ce dont votre peau a besoin parmi notre vaste sélection de soins K-Beauty premium.
+              {t("Trouvez exactement ce dont votre peau a besoin parmi notre vaste sélection de soins K-Beauty premium.")}
             </p>
           </div>
           <Link
             href="/shop"
             className="flex items-center gap-2 border border-[#2A2424]/20 text-[#2A2424] px-5 py-2.5 rounded-full text-sm font-medium hover:bg-[#2A2424] hover:text-white transition-all duration-300 shrink-0"
           >
-            Voir les 2 500+ produits
+            {t("Voir les 2 500+ produits")}
             <ArrowUpRight className="w-4 h-4" />
           </Link>
         </div>
@@ -108,13 +110,13 @@ export function CategoriesBento() {
           >
             <img
               src="/im_cat_hydratant.webp"
-              alt="Hydratants"
+              alt={t("Hydratants")}
               className="w-full h-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-105"
             />
             <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors duration-300 ease-in-out" />
             <GlassLabel
-              title="Hydratants"
-              sub="Restaurez et protégez la barrière cutanée avec nos crèmes essentielles."
+              title={t("Hydratants")}
+              sub={t("Restaurez et protégez la barrière cutanée avec nos crèmes essentielles.")}
               position="bottom"
             />
           </motion.a>
@@ -131,10 +133,10 @@ export function CategoriesBento() {
           >
             <img
               src="/im_cat_nettoyant.webp"
-              alt="Nettoyants"
+              alt={t("Nettoyants")}
               className="w-full h-full object-cover mix-blend-multiply transition-transform duration-700 ease-in-out group-hover:scale-105"
             />
-            <GlassLabel title="Nettoyants" position="bottom" />
+            <GlassLabel title={t("Nettoyants")} position="bottom" />
           </motion.a>
 
           {/* [3] Tall (row-span-2) — Masques en Tissu */}
@@ -149,14 +151,14 @@ export function CategoriesBento() {
           >
             <img
               src="/im_cat_mask.webp"
-              alt="Masques en Tissu"
+              alt={t("Masques en Tissu")}
               className="w-full h-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-105"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
             <GlassLabel
-              eyebrow="Rituels Ciblés"
-              title="Masques en Tissu"
-              sub="Soins iconiques K-Beauty."
+              eyebrow={t("Rituels Ciblés")}
+              title={t("Masques en Tissu")}
+              sub={t("Soins iconiques K-Beauty.")}
               position="bottom"
             />
           </motion.a>
@@ -175,10 +177,10 @@ export function CategoriesBento() {
           >
             <img
               src="/im_cat_serum.webp"
-              alt="Sérums & Ampoules"
+              alt={t("Sérums & Ampoules")}
               className="w-full h-full object-cover mix-blend-multiply transition-transform duration-700 ease-in-out group-hover:scale-105"
             />
-            <GlassLabel title="Sérums & Ampoules" position="bottom" />
+            <GlassLabel title={t("Sérums & Ampoules")} position="bottom" />
           </motion.a>
 
           {/* [5] Square — Protections Solaires */}
@@ -193,11 +195,11 @@ export function CategoriesBento() {
           >
             <img
               src="/im_cat_sunscreen.webp"
-              alt="Protections Solaires"
+              alt={t("Protections Solaires")}
               className="w-full h-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-105"
             />
             <div className="absolute inset-0 bg-black/15 group-hover:bg-black/25 transition-colors duration-300 ease-in-out" />
-            <GlassLabel title="Protections Solaires" position="bottom" />
+            <GlassLabel title={t("Protections Solaires")} position="bottom" />
           </motion.a>
 
           {/* [6] Square — Soins Contour des Yeux */}
@@ -212,10 +214,10 @@ export function CategoriesBento() {
           >
             <img
               src="/im_cat_eyecare.webp"
-              alt="Soins Contour des Yeux"
+              alt={t("Soins Contour des Yeux")}
               className="w-full h-full object-cover mix-blend-multiply opacity-90 transition-transform duration-700 ease-in-out group-hover:scale-105"
             />
-            <GlassLabel title="Soins Contour des Yeux" position="bottom" />
+            <GlassLabel title={t("Soins Contour des Yeux")} position="bottom" />
           </motion.a>
 
           {/* ── ROW 3 ── */}
@@ -238,10 +240,10 @@ export function CategoriesBento() {
                 <MagnifyingGlass className="w-5 h-5 md:w-6 md:h-6 text-[#2A2424]" />
               </div>
               <h3 className="text-2xl md:text-4xl font-medium text-[#2A2424] mb-2">
-                2 500+ Produits
+                {t("2 500+ Produits")}
               </h3>
               <p className="text-[#2A2424]/65 mb-6 max-w-sm text-sm md:text-base">
-                Le plus grand catalogue de soins coréens authentiques et vérifiés.
+                {t("Le plus grand catalogue de soins coréens authentiques et vérifiés.")}
               </p>
             </div>
 
@@ -250,7 +252,7 @@ export function CategoriesBento() {
               className="relative z-10 w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#2A2424] text-white px-6 py-3.5 rounded-full text-sm md:text-base font-medium hover:bg-black/80 transition-all duration-300 ease-in-out"
             >
               <MagnifyingGlass className="w-4 h-4" />
-              Parcourir le catalogue
+              {t("Parcourir le catalogue")}
             </Link>
           </motion.div>
 
@@ -266,13 +268,13 @@ export function CategoriesBento() {
           >
             <img
               src="/im_cat_toner.webp"
-              alt="Toners"
+              alt={t("Toners")}
               className="w-full h-full object-cover transition-transform duration-700 ease-in-out group-hover:scale-105"
             />
             <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors duration-300 ease-in-out" />
             <GlassLabel
-              title="Toners"
-              sub="Préparation essentielle post-nettoyage."
+              title={t("Toners")}
+              sub={t("Préparation essentielle post-nettoyage.")}
               position="bottom"
             />
           </motion.a>

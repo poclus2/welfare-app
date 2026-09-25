@@ -17,6 +17,7 @@ import Link from "next/link";
 import { Footer } from "@/components/home/footer";
 import { FILTER_OPTIONS } from "@/lib/mock-data";
 import { useCart } from "@/lib/cart-context";
+import { useI18n } from "@/lib/i18n-context";
 
 /* ─────────────────────────────────────────
    CATEGORY CONFIG
@@ -34,6 +35,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   coffrets: "Coffrets",
   exfoliants: "Exfoliants",
   cheveux: "Cheveux",
+  "face-care": "Soins du Visage",
+  "body-care": "Soins du Corps",
+  "hair-care": "Soins des Cheveux",
+  "supplements": "Compléments",
 };
 
 const CATEGORY_DESCRIPTIONS: Record<string, string> = {
@@ -49,6 +54,10 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   coffrets: "Nos sélections et routines complètes prêtes à l'emploi.",
   exfoliants: "Éliminez les cellules mortes en douceur pour un teint lissé et lumineux.",
   cheveux: "K-Haircare & Head Spa coréen pour des cheveux resplendissants.",
+  "face-care": "Découvrez notre gamme complète de soins visage ciblés pour une peau éclatante.",
+  "body-care": "Prenez soin de votre corps avec nos crèmes, laits et gommages nourrissants.",
+  "hair-care": "Des soins capillaires experts pour revitaliser et sublimer vos cheveux.",
+  "supplements": "La beauté qui vient de l'intérieur avec nos compléments premium.",
 };
 
 /* ─────────────────────────────────────────
@@ -65,6 +74,7 @@ function FilterSection({
   selected: string[];
   onToggle: (item: string) => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="mb-8">
       <h3 className="text-sm font-bold uppercase tracking-wider text-[#2A2424] mb-4">{title}</h3>
@@ -81,7 +91,7 @@ function FilterSection({
               {selected.includes(opt) && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
             </div>
             <span className={`text-sm ${selected.includes(opt) ? "text-[#2A2424] font-medium" : "text-[#2A2424]/70"}`}>
-              {opt}
+              {t(opt)}
             </span>
           </label>
         ))}
@@ -98,12 +108,12 @@ export type CategoryProduct = {
   image: string;
   price_fcfa: number;
   variantId?: string;
+  brand?: string;
   skin_profile: {
     skin_types: string[];
     skin_concerns: string[];
   };
   active_ingredients: { name: string }[];
-  brand?: string;
 };
 
 export default function CategoryClient({
@@ -113,11 +123,33 @@ export default function CategoryClient({
   category: string;
   products: CategoryProduct[];
 }) {
+  const { t } = useI18n();
+  const normalize = (s: string) =>
+    s
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+
   const searchParams = useSearchParams();
   const query = searchParams.get("q") || "";
+  const brandName = searchParams.get("brand_name");
 
-  const categoryLabel = query ? `Résultats pour "${query}"` : (CATEGORY_LABELS[category] ?? (category ? category.charAt(0).toUpperCase() + category.slice(1) : "Boutique"));
-  const categoryDesc = query ? "Produits correspondants à votre recherche." : (CATEGORY_DESCRIPTIONS[category] ?? "Découvrez notre sélection de soins d'exception.");
+  const categoryLabel = brandName
+    ? `${brandName}`
+    : query
+    ? `${t("Résultats pour")} "${query}"`
+    : CATEGORY_LABELS[category]
+    ? t(CATEGORY_LABELS[category])
+    : category
+    ? category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, " ")
+    : t("Boutique");
+  const categoryDesc = brandName
+    ? `${t("Tous les produits de la marque")} ${brandName}.`
+    : query
+    ? t("Produits correspondants à votre recherche.")
+    : CATEGORY_DESCRIPTIONS[category]
+    ? t(CATEGORY_DESCRIPTIONS[category])
+    : t("Découvrez notre sélection de soins d'exception.");
 
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [selectedSkinTypes, setSelectedSkinTypes] = useState<string[]>([]);
@@ -145,9 +177,6 @@ export default function CategoryClient({
     setList(list.includes(item) ? list.filter((i) => i !== item) : [...list, item]);
   };
 
-  const normalize = (str: string) =>
-    str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-
   const filteredProducts = products.filter((p) => {
     if (query) {
       const qNorm = normalize(query);
@@ -162,17 +191,17 @@ export default function CategoryClient({
     }
 
     if (category !== "all") {
-      const catSlugNorm = normalize(category);
+      const catSlugNorm = normalize(category).replace(/-/g, " ");
       const catLabel = CATEGORY_LABELS[category] || "";
-      const catLabelNorm = normalize(catLabel);
+      const catLabelNorm = normalize(catLabel).replace(/-/g, " ");
       
-      const pCatNorm = normalize(p.category || "");
+      const pCatNorm = normalize(p.category || "").replace(/-/g, " ");
       let matchesCategory =
         (catSlugNorm && pCatNorm.includes(catSlugNorm)) ||
         (catLabelNorm && pCatNorm.includes(catLabelNorm)) ||
         (pCatNorm && catSlugNorm.includes(pCatNorm)) ||
         (p.categories && p.categories.some((c) => {
-          const cNorm = normalize(c);
+          const cNorm = normalize(c).replace(/-/g, " ");
           return (catSlugNorm && cNorm.includes(catSlugNorm)) || (catLabelNorm && cNorm.includes(catLabelNorm)) || (cNorm && catSlugNorm.includes(cNorm));
         }));
 
@@ -213,7 +242,7 @@ export default function CategoryClient({
           <div className="flex items-center gap-2 text-sm text-[#2A2424]/50 mb-6">
             <Link href="/shop" className="flex items-center gap-1.5 hover:text-[#2A2424] transition-colors group">
               <CaretLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-              Boutique
+              {t("Boutique")}
             </Link>
             <span>/</span>
             <span className="text-[#2A2424] font-medium">{categoryLabel}</span>
@@ -229,7 +258,7 @@ export default function CategoryClient({
       <div className="w-full border-b border-[#F4EAEB] sticky top-0 z-30 bg-white/90 backdrop-blur-md">
         <div className="w-full max-w-[1600px] mx-auto px-5 lg:px-12 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar flex-1">
-            {Object.entries(CATEGORY_LABELS).map(([slug, label]) => (
+            {Object.entries(CATEGORY_LABELS).filter(([slug]) => !['face-care', 'body-care', 'hair-care', 'supplements'].includes(slug)).map(([slug, label]) => (
               <Link
                 key={slug}
                 href={`/shop/${slug}`}
@@ -239,13 +268,13 @@ export default function CategoryClient({
                     : "bg-white text-[#2A2424]/70 border-[#F4EAEB] hover:border-[#2A2424]/30"
                 }`}
               >
-                {label}
+                {t(label)}
               </Link>
             ))}
           </div>
           <div className="hidden lg:flex items-center gap-3 shrink-0 pl-4 border-l border-[#F4EAEB]">
             <span className="text-xs font-bold uppercase tracking-wider text-[#2A2424]/50">
-              {filteredProducts.length} Résultat{filteredProducts.length > 1 ? "s" : ""}
+              {filteredProducts.length} {filteredProducts.length > 1 ? t("Résultats") : t("Résultat")}
             </span>
           </div>
           <button
@@ -264,20 +293,20 @@ export default function CategoryClient({
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-2 text-[#2A2424]">
               <Sliders className="w-5 h-5" />
-              <h2 className="text-lg font-medium">Filtres Avancés</h2>
+              <h2 className="text-lg font-medium">{t("Filtres Avancés")}</h2>
             </div>
             {hasFilters && (
               <button onClick={clearAll} className="text-xs font-semibold text-[#2A2424]/50 hover:text-[#2A2424] transition-colors underline underline-offset-2">
-                Effacer
+                {t("Effacer")}
               </button>
             )}
           </div>
           <div className="space-y-8 pr-6">
-            <FilterSection title="Type de Peau" options={FILTER_OPTIONS.skinTypes} selected={selectedSkinTypes} onToggle={(item) => toggleFilter(selectedSkinTypes, setSelectedSkinTypes, item)} />
+            <FilterSection title={t("Type de Peau")} options={FILTER_OPTIONS.skinTypes} selected={selectedSkinTypes} onToggle={(item) => toggleFilter(selectedSkinTypes, setSelectedSkinTypes, item)} />
             <div className="w-full h-px bg-[#F4EAEB]" />
-            <FilterSection title="Préoccupations" options={FILTER_OPTIONS.skinConcerns} selected={selectedConcerns} onToggle={(item) => toggleFilter(selectedConcerns, setSelectedConcerns, item)} />
+            <FilterSection title={t("Préoccupations")} options={FILTER_OPTIONS.skinConcerns} selected={selectedConcerns} onToggle={(item) => toggleFilter(selectedConcerns, setSelectedConcerns, item)} />
             <div className="w-full h-px bg-[#F4EAEB]" />
-            <FilterSection title="Ingrédients Phares" options={FILTER_OPTIONS.ingredients} selected={selectedIngredients} onToggle={(item) => toggleFilter(selectedIngredients, setSelectedIngredients, item)} />
+            <FilterSection title={t("Ingrédients Phares")} options={FILTER_OPTIONS.ingredients} selected={selectedIngredients} onToggle={(item) => toggleFilter(selectedIngredients, setSelectedIngredients, item)} />
           </div>
         </div>
 
@@ -315,10 +344,10 @@ export default function CategoryClient({
                         {addingId === product.id ? (
                           <>
                             <CircleNotch className="w-4 h-4 animate-spin" />
-                            <span>Ajout en cours...</span>
+                            <span>{t("Ajout en cours...")}</span>
                           </>
                         ) : (
-                          <span>Ajouter au panier</span>
+                          <span>{t("Ajouter au panier")}</span>
                         )}
                       </button>
                     </div>
@@ -339,7 +368,7 @@ export default function CategoryClient({
                     <div className="flex-wrap gap-1 md:gap-1.5 mb-2 md:mb-4 hidden sm:flex">
                       {product.skin_profile.skin_concerns.slice(0, 2).map((c: string) => (
                         <span key={c} className="text-[9px] md:text-[10px] uppercase tracking-wider font-semibold px-1.5 md:px-2 py-0.5 md:py-1 rounded bg-[#E5B6B9]/20 text-[#2A2424]">
-                          {c}
+                          {t(c)}
                         </span>
                       ))}
                       {product.skin_profile.skin_concerns.length > 2 && (
@@ -363,7 +392,7 @@ export default function CategoryClient({
                           <ShoppingBag className="w-3.5 h-3.5 md:w-4 md:h-4" />
                         )}
                         <span className="hidden md:inline">
-                          {addingId === product.id ? "Ajout..." : "Ajouter"}
+                          {addingId === product.id ? t("Ajout...") : t("Ajouter")}
                         </span>
                       </button>
                     </div>
@@ -378,10 +407,10 @@ export default function CategoryClient({
               <div className="w-16 h-16 rounded-full bg-[#F4EAEB] flex items-center justify-center mb-6">
                 <MagnifyingGlass className="w-6 h-6 text-[#2A2424]/50" />
               </div>
-              <h3 className="text-xl font-medium text-[#2A2424] mb-2">Aucun produit trouvé</h3>
-              <p className="text-[#2A2424]/60 max-w-md">Essayez de modifier vos filtres pour voir plus de résultats.</p>
+              <h3 className="text-xl font-medium text-[#2A2424] mb-2">{t("Aucun produit trouvé")}</h3>
+              <p className="text-[#2A2424]/60 max-w-md">{t("Essayez de modifier vos filtres pour voir plus de résultats.")}</p>
               <button onClick={clearAll} className="mt-6 px-6 py-2.5 bg-[#2A2424] text-white rounded-full text-sm font-semibold hover:bg-black/80 transition-colors">
-                Réinitialiser les filtres
+                {t("Réinitialiser les filtres")}
               </button>
             </div>
           )}
@@ -401,22 +430,22 @@ export default function CategoryClient({
               className="fixed inset-x-0 bottom-0 h-[85vh] bg-white rounded-t-[2rem] z-[101] lg:hidden flex flex-col shadow-2xl"
             >
               <div className="p-5 flex items-center justify-between border-b border-[#F4EAEB] shrink-0">
-                <h2 className="text-lg font-medium text-[#2A2424]">Filtres Avancés</h2>
+                <h2 className="text-lg font-medium text-[#2A2424]">{t("Filtres Avancés")}</h2>
                 <button onClick={() => setIsMobileFiltersOpen(false)} className="w-10 h-10 rounded-full bg-[#F4EAEB] flex items-center justify-center text-[#2A2424]">
                   <X className="w-5 h-5" />
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto p-5 pb-32">
-                <FilterSection title="Type de Peau" options={FILTER_OPTIONS.skinTypes} selected={selectedSkinTypes} onToggle={(item) => toggleFilter(selectedSkinTypes, setSelectedSkinTypes, item)} />
+                <FilterSection title={t("Type de Peau")} options={FILTER_OPTIONS.skinTypes} selected={selectedSkinTypes} onToggle={(item) => toggleFilter(selectedSkinTypes, setSelectedSkinTypes, item)} />
                 <div className="w-full h-px bg-[#F4EAEB] my-8" />
-                <FilterSection title="Préoccupations" options={FILTER_OPTIONS.skinConcerns} selected={selectedConcerns} onToggle={(item) => toggleFilter(selectedConcerns, setSelectedConcerns, item)} />
+                <FilterSection title={t("Préoccupations")} options={FILTER_OPTIONS.skinConcerns} selected={selectedConcerns} onToggle={(item) => toggleFilter(selectedConcerns, setSelectedConcerns, item)} />
                 <div className="w-full h-px bg-[#F4EAEB] my-8" />
-                <FilterSection title="Ingrédients Phares" options={FILTER_OPTIONS.ingredients} selected={selectedIngredients} onToggle={(item) => toggleFilter(selectedIngredients, setSelectedIngredients, item)} />
+                <FilterSection title={t("Ingrédients Phares")} options={FILTER_OPTIONS.ingredients} selected={selectedIngredients} onToggle={(item) => toggleFilter(selectedIngredients, setSelectedIngredients, item)} />
               </div>
               <div className="absolute bottom-0 inset-x-0 p-5 bg-white border-t border-[#F4EAEB] flex gap-4">
-                <button onClick={clearAll} className="px-6 py-3.5 rounded-full text-sm font-semibold text-[#2A2424] hover:bg-[#F4EAEB] transition-colors">Effacer</button>
+                <button onClick={clearAll} className="px-6 py-3.5 rounded-full text-sm font-semibold text-[#2A2424] hover:bg-[#F4EAEB] transition-colors">{t("Effacer")}</button>
                 <button onClick={() => setIsMobileFiltersOpen(false)} className="flex-1 py-3.5 bg-[#2A2424] text-white rounded-full text-sm font-semibold shadow-lg">
-                  Afficher les résultats ({filteredProducts.length})
+                  {t("Afficher les résultats")} ({filteredProducts.length})
                 </button>
               </div>
             </motion.div>

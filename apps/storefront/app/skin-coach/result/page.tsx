@@ -4,10 +4,11 @@ import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
 import SkinAnalysisResultView from "@/components/ui/skin-analysis-result-view";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
-import { CircleNotch, LockKey, Sparkle, ArrowRight } from "@phosphor-icons/react";
+import { CircleNotch, LockKey, ArrowRight } from "@phosphor-icons/react";
 import { sdk } from "@/lib/medusa";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { IconIA } from "@/components/ui/icons/IconIA";
 
 export default function SkinCoachResultPage() {
   const result = useSkinCoachStore((state) => state.result);
@@ -129,7 +130,7 @@ export default function SkinCoachResultPage() {
 
             <div className="space-y-4">
               <Link href="/account/register?redirect=/skin-coach/result" className="group relative w-full flex items-center justify-center gap-2 bg-[#2A2424] text-[#F9F6F0] px-6 py-4 rounded-xl hover:bg-[#1A1616] transition-colors duration-300 font-medium">
-                <Sparkle weight="fill" className="text-[#E8C0C6]" />
+                <IconIA className="text-[#E8C0C6]" />
                 <span>Dévoiler mes résultats</span>
                 <ArrowRight className="w-4 h-4 opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300" />
               </Link>

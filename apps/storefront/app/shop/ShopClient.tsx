@@ -11,13 +11,14 @@ import {
   Heart,
   Lightning,
   Tag,
-  Sparkle,
   Plus,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { Footer } from "@/components/home/footer";
 import { ShowcaseCarousel } from "@/components/ui/showcase-carousel";
 import { AccordionHero } from "@/components/ui/accordion-hero";
+import { IconIA } from "@/components/ui/icons/IconIA";
+import { useI18n } from "@/lib/i18n-context";
 
 /* ═══════════════════════════════════════════════════════
    DATA
@@ -56,6 +57,7 @@ const BRANDS = ["COSRX", "LANIEGE", "INNISFREE", "ANUA", "TIRTIR", "MIXSOON"];
 ═══════════════════════════════════════════════════════ */
 
 function TabBar({ tabs, active, onChange }: { tabs: string[]; active: string; onChange: (t: string) => void }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar w-full sm:w-auto pb-1 sm:pb-0 -mx-6 px-6 sm:mx-0 sm:px-0">
       {tabs.map((tab) => (
@@ -68,7 +70,7 @@ function TabBar({ tabs, active, onChange }: { tabs: string[]; active: string; on
               : "text-[#2A2424]/60 border-[#2A2424]/15 hover:border-[#2A2424]/40"
           }`}
         >
-          {tab}
+          {t(tab)}
         </button>
       ))}
     </div>
@@ -76,13 +78,14 @@ function TabBar({ tabs, active, onChange }: { tabs: string[]; active: string; on
 }
 
 function ProductCard({ product }: { product: any }) {
+  const { t } = useI18n();
   // We won't use useCart here directly if it's too complex to add, wait, ShopClient already has handleAddToCart?
   // Let's check if ShopClient has an addingId state. It doesn't right now, but I can add it, or just use a simple form.
   // Wait, I'll just keep the existing button but style it identically.
   return (
     <Link
       href={`/shop/product/${product.id}`}
-      className="group relative flex flex-col h-full bg-[#FAFAFA] rounded-[1rem] md:rounded-[1.5rem] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+      className="group relative flex flex-col h-full bg-[#FAFAFA] rounded-[1èrem] md:rounded-[1.5rem] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
     >
       <div className="relative aspect-[4/5] bg-[#F4EAEB] overflow-hidden flex items-center justify-center p-4 md:p-8">
         <button 
@@ -103,7 +106,7 @@ function ProductCard({ product }: { product: any }) {
             onClick={(e) => e.preventDefault()}
             className="w-full py-2 md:py-3.5 bg-[#2A2424] text-white rounded-full text-[10px] md:text-sm font-semibold tracking-wide hover:bg-black transition-colors shadow-lg flex items-center justify-center gap-2"
           >
-            <span>Ajouter au panier</span>
+            <span>{t("Ajouter au panier")}</span>
           </button>
         </div>
       </div>
@@ -131,7 +134,7 @@ function ProductCard({ product }: { product: any }) {
             className="bg-[#E51D5A] text-white w-8 h-8 md:w-auto md:h-auto md:px-4 md:py-2 rounded-full flex items-center justify-center gap-1.5 md:gap-2 text-[10px] md:text-xs font-bold hover:bg-[#C2164A] transition-colors shrink-0 shadow-md shadow-[#E51D5A]/20"
           >
             <ShoppingBag className="w-3.5 h-3.5 md:w-4 md:h-4" />
-            <span className="hidden md:inline">Ajouter</span>
+            <span className="hidden md:inline">{t("Ajouter")}</span>
           </button>
         </div>
       </div>
@@ -143,6 +146,7 @@ function ProductCard({ product }: { product: any }) {
    COLLECTION SPOTLIGHT — Style ANUA (split hero + produits)
 ═══════════════════════════════════════════════════════ */
 function CollectionSpotlight({ products }: { products: any[] }) {
+  const { t } = useI18n();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scroll = (dir: "left" | "right") => {
@@ -171,13 +175,13 @@ function CollectionSpotlight({ products }: { products: any[] }) {
           {/* Header text */}
           <div className="mb-5">
             <p className="text-[11px] font-bold uppercase tracking-widest text-[#C97C85] mb-1.5">
-              Solaire Collection
+              {t("Solaire Collection")}
             </p>
             <h2 className="text-xl md:text-2xl font-bold text-[#2A2424] leading-tight mb-1">
-              Votre Protection,<br className="hidden md:block" /> Chaque Jour
+              {t("Votre Protection,")}<br className="hidden md:block" /> {t("Chaque Jour")}
             </h2>
             <p className="text-sm text-[#2A2424]/50">
-              Des formules coréennes ultra-légères pour protéger votre peau des UV sans fini gras.
+              {t("Des formules coréennes ultra-légères pour protéger votre peau des UV sans fini gras.")}
             </p>
           </div>
 
@@ -209,9 +213,9 @@ function CollectionSpotlight({ products }: { products: any[] }) {
                   {/* Badge */}
                   <div className="flex px-2 pt-2">
                     {i === 0 ? (
-                      <span className="text-[9px] font-bold uppercase tracking-wider bg-[#2A2424] text-white px-2 py-0.5 rounded-sm">Best Seller</span>
+                      <span className="text-[9px] font-bold uppercase tracking-wider bg-[#2A2424] text-white px-2 py-0.5 rounded-sm">{t("Best Seller")}</span>
                     ) : (
-                      <span className="text-[9px] font-bold uppercase tracking-wider bg-[#E5B6B9]/30 text-[#C97C85] px-2 py-0.5 rounded-sm">Nouveau</span>
+                      <span className="text-[9px] font-bold uppercase tracking-wider bg-[#E5B6B9]/30 text-[#C97C85] px-2 py-0.5 rounded-sm">{t("Nouveau")}</span>
                     )}
                   </div>
 
@@ -239,7 +243,7 @@ function CollectionSpotlight({ products }: { products: any[] }) {
                       {[1,2,3,4,5].map((s) => (
                         <Star key={s} weight="fill" className={`w-2.5 h-2.5 ${s <= Math.round(product.rating || 4.8) ? "text-[#F4B942]" : "text-[#E0E0E0]"}`} />
                       ))}
-                      <span className="text-[9px] text-[#2A2424]/40 ml-1">{product.reviews || 90} avis</span>
+                      <span className="text-[9px] text-[#2A2424]/40 ml-1">{product.reviews || 90} {t("avis")}</span>
                     </div>
                     <p className="text-[13px] font-bold text-[#2A2424]">
                       {(product.price || 15000).toLocaleString("fr-FR")} <span className="text-[9px] font-normal">FCFA</span>
@@ -254,7 +258,7 @@ function CollectionSpotlight({ products }: { products: any[] }) {
             href="/shop/all"
             className="mt-4 inline-flex items-center gap-1.5 text-[11px] font-bold text-[#2A2424]/50 hover:text-[#2A2424] transition-colors w-fit"
           >
-            Voir toute la collection <ArrowRight className="w-3 h-3" />
+            {t("Voir toute la collection")} <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
       </div>
@@ -266,6 +270,7 @@ function CollectionSpotlight({ products }: { products: any[] }) {
    PAGE
 ═══════════════════════════════════════════════════════ */
 export default function ShopClient({ flashProducts, bestProducts, sunProducts }: { flashProducts: any[], bestProducts: any[], sunProducts: any[] }) {
+  const { t } = useI18n();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [flashTab, setFlashTab] = useState("Top Rated");
   const [bestTab, setBestTab] = useState("Top Rated");
@@ -307,12 +312,12 @@ export default function ShopClient({ flashProducts, bestProducts, sunProducts }:
               <div className="w-7 h-7 rounded-full bg-[#E5B6B9]/20 flex items-center justify-center">
                 <Lightning className="w-3.5 h-3.5 text-[#E5B6B9]" />
               </div>
-              <h2 className="text-base font-bold text-[#2A2424]">Vente Flash</h2>
+              <h2 className="text-base font-bold text-[#2A2424]">{t("Vente Flash")}</h2>
             </div>
             <div className="flex items-center gap-3 flex-wrap">
               <TabBar tabs={FLASH_TABS} active={flashTab} onChange={setFlashTab} />
               <Link href="/shop/all" className="hidden md:flex items-center gap-1 text-[11px] font-bold text-[#2A2424]/50 hover:text-[#2A2424] transition-colors whitespace-nowrap ml-2">
-                Voir tous les produits <ArrowRight className="w-3 h-3" />
+                {t("Voir tous les produits")} <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
           </div>
@@ -336,17 +341,17 @@ export default function ShopClient({ flashProducts, bestProducts, sunProducts }:
           <div className="relative bg-[#2A2424] rounded-2xl p-7 flex flex-col justify-between overflow-hidden min-h-[160px]">
             <div className="absolute top-0 right-0 w-48 h-48 bg-[#E5B6B9]/10 rounded-full blur-3xl -translate-y-1/3 translate-x-1/3 pointer-events-none" />
             <div className="relative z-10">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#E5B6B9] mb-2">Offre Exclusive</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#E5B6B9] mb-2">{t("Offre Exclusive")}</p>
               <h3 className="text-xl md:text-2xl font-medium text-white mb-1">
-                Économisez jusqu'à<br /><span className="font-bold">35% sur les routines</span>
+                {t("Économisez jusqu'àà")}<br /><span className="font-bold">{t("35% sur les routines")}</span>
               </h3>
-              <p className="text-white/50 text-xs mb-5">Skincare et bundle</p>
+              <p className="text-white/50 text-xs mb-5">{t("Skincare et bundle")}</p>
             </div>
             <Link
               href="/routines"
               className="relative z-10 inline-flex items-center gap-2 bg-white text-[#2A2424] px-5 py-2.5 rounded-full text-xs font-bold hover:bg-[#F4EAEB] transition-all w-fit"
             >
-              Voir les routines <ArrowRight className="w-3.5 h-3.5" />
+              {t("Voir les routines")} <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
@@ -354,14 +359,14 @@ export default function ShopClient({ flashProducts, bestProducts, sunProducts }:
           <div className="relative bg-[#2A2424] rounded-2xl p-7 flex flex-col justify-between overflow-hidden min-h-[160px]">
             <div className="absolute bottom-0 left-0 w-40 h-40 bg-[#E5B6B9]/10 rounded-full blur-2xl translate-y-1/3 -translate-x-1/4 pointer-events-none" />
             <div className="relative z-10">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[#E5B6B9] mb-2">Bienvenue</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#E5B6B9] mb-2">{t("Bienvenue")}</p>
               <h3 className="text-xl md:text-2xl font-medium text-white mb-1">
-                Obtenez <span className="font-bold">-25%</span><br />sur votre 1ère commande
+                {t("Obtenez")} <span className="font-bold">-25%</span><br />{t("sur votre 1ère commande")}
               </h3>
-              <p className="text-white/50 text-xs mb-5">Code promo exclusif</p>
+              <p className="text-white/50 text-xs mb-5">{t("Code promo exclusif")}</p>
             </div>
             <button className="relative z-10 inline-flex items-center gap-2 bg-[#E5B6B9] text-[#2A2424] px-5 py-2.5 rounded-full text-xs font-bold hover:bg-white transition-all w-fit">
-              <Tag className="w-3.5 h-3.5" /> Réclamer le coupon
+              <Tag className="w-3.5 h-3.5" /> {t("Réclamer le coupon")}
             </button>
           </div>
         </div>
@@ -370,7 +375,7 @@ export default function ShopClient({ flashProducts, bestProducts, sunProducts }:
             [5] BRANDS BAR
         ════════════════════════════════════ */}
         <div className="bg-white rounded-2xl border border-[#F4EAEB] px-6 py-4 flex items-center gap-4 overflow-x-auto hide-scrollbar">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-[#2A2424]/40 shrink-0 mr-2">Marques de confiance</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-[#2A2424]/40 shrink-0 mr-2">{t("Marques de confiance")}</span>
           <div className="w-px h-5 bg-[#F4EAEB] shrink-0" />
           {BRANDS.map((brand) => (
             <Link
@@ -390,9 +395,9 @@ export default function ShopClient({ flashProducts, bestProducts, sunProducts }:
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 pt-6 pb-5 border-b border-[#F4EAEB]">
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-full bg-[#E5B6B9]/20 flex items-center justify-center">
-                <Sparkle className="w-3.5 h-3.5 text-[#E5B6B9]" />
+                <IconIA className="w-3.5 h-3.5 text-[#E5B6B9]" />
               </div>
-              <h2 className="text-base font-bold text-[#2A2424]">Meilleures ventes</h2>
+              <h2 className="text-base font-bold text-[#2A2424]">{t("Meilleures ventes")}</h2>
             </div>
             <TabBar tabs={BEST_TABS} active={bestTab} onChange={setBestTab} />
           </div>
@@ -414,9 +419,9 @@ export default function ShopClient({ flashProducts, bestProducts, sunProducts }:
           className="w-full bg-[#2A2424] rounded-3xl px-6 md:px-14 py-10 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left"
         >
           <div className="flex flex-col items-center md:items-start">
-            <p className="text-white/50 text-sm mb-2">Approuvé par plus de 50 000 clientes</p>
+            <p className="text-white/50 text-sm mb-2">{t("Approuvé par plus de 50 000 clientes")}</p>
             <p className="text-white text-xl md:text-2xl font-medium max-w-xs leading-snug">
-              Des milliers d'avis authentiques sur nos produits, livraison et service client.
+              {t("Des milliers d'avis authentiques sur nos produits, livraison et service client.")}
             </p>
           </div>
 
@@ -428,7 +433,7 @@ export default function ShopClient({ flashProducts, bestProducts, sunProducts }:
             ].map((s) => (
               <div key={s.label} className="text-center">
                 <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">{s.val}</p>
-                <p className="text-[#E5B6B9] text-xs mt-1 font-medium">{s.label}</p>
+                <p className="text-[#E5B6B9] text-xs mt-1 font-medium">{t(s.label)}</p>
               </div>
             ))}
           </div>
@@ -437,7 +442,7 @@ export default function ShopClient({ flashProducts, bestProducts, sunProducts }:
             href="/avis"
             className="shrink-0 bg-[#E5B6B9] text-[#2A2424] px-6 py-3.5 rounded-full text-sm font-semibold hover:bg-white transition-all"
           >
-            Voir nos avis
+            {t("Voir nos avis")}
           </Link>
         </motion.div>
 

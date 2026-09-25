@@ -91,5 +91,8 @@ module.exports = defineConfig({
     {
       resolve: "./src/modules/ambassador_application",
     },
+    {
+      resolve: "./src/modules/creator_partner",
+    },
   ],
 });

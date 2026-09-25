@@ -4,54 +4,12 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, CaretLeft, CaretRight } from "@phosphor-icons/react";
+import { useI18n } from "@/lib/i18n-context";
 
 /* ─────────────────────────────────────────
    SLIDES DATA
 ───────────────────────────────────────── */
-const slides = [
-  {
-    id: 0,
-    tag: "Essentiel",
-    heading: ["Le SPF ultime.", "Fini invisible,", "protection totale."],
-    sub: "L'étape indispensable pour prévenir l'hyperpigmentation. Découvrez nos solaires coréens nouvelle génération : aucune trace blanche, 100% éclat.",
-    cta: { label: "Découvrir nos SPF", href: "/shop?category=Protections Solaires" },
-    ctaSecondary: { label: "Guide Solaire", href: "/shop" },
-    accent: "#E5B6B9",
-    bg: "#F4EAEB",
-    image: "/slide1_creme.webp",
-    imagePosition: "object-top",
-    stat: { value: "SPF 50+", label: "Très Haute Protection" },
-    badge: "Bouclier Quotidien",
-  },
-  {
-    id: 1,
-    tag: "Incontournable",
-    heading: ["Double nettoyage.", "Le secret d'un", "teint parfait."],
-    sub: "Éliminez impuretés, sébum et résidus en douceur. Adoptez l'étape fondamentale du K-Beauty pour une peau visiblement transformée.",
-    cta: { label: "Nos Nettoyants", href: "/shop?category=Nettoyants" },
-    ctaSecondary: { label: "Le Rituel", href: "/shop" },
-    accent: "#E5B6B9",
-    bg: "#F4EAEB",
-    image: "/slide2_cleaner.webp",
-    imagePosition: "object-center",
-    stat: { value: "N°1", label: "Étape K-Beauty" },
-    badge: "Purification Profonde",
-  },
-  {
-    id: 2,
-    tag: "Technologie",
-    heading: ["La science IA", "au service de", "votre peau."],
-    sub: "Ne devinez plus. Notre scanner facial analyse vos besoins spécifiques pour concevoir un protocole K-Beauty 100% sur-mesure.",
-    cta: { label: "Faire le Diagnostic", href: "/shop" },
-    ctaSecondary: { label: "Comment ça marche ?", href: "/shop" },
-    accent: "#E5B6B9",
-    bg: "#F4EAEB",
-    image: "/ai_skin_scan_darkskin.webp",
-    imagePosition: "object-top",
-    stat: { value: "98%", label: "Précision prouvée" },
-    badge: "Intelligence Artificielle",
-  },
-];
+
 
 /* ─────────────────────────────────────────
    ANIMATION VARIANTS
@@ -81,7 +39,53 @@ const childFade: any = {
 /* ─────────────────────────────────────────
    MAIN COMPONENT
 ───────────────────────────────────────── */
-export function HeroSlider() {
+export function HeroSlider({ dict }: { dict?: any }) {
+  const { t } = useI18n();
+
+  const slides = [
+  {
+    id: 0,
+    tag: t("Essentiel"),
+    heading: [t("Le SPF ultime."), t("Fini invisible,"), t("protection totale.")],
+    sub: t("L'étape indispensable pour prévenir l'hyperpigmentation. Découvrez nos solaires coréens nouvelle génération : aucune trace blanche, 100% éclat."),
+    cta: { label: t("Découvrir nos SPF"), href: "/shop?category=Protections Solaires" },
+    ctaSecondary: { label: t("Guide Solaire"), href: "/shop" },
+    accent: "#E5B6B9",
+    bg: "#F4EAEB",
+    image: "/slide1_creme.webp",
+    imagePosition: "object-top",
+    stat: { value: "SPF 50+", label: t("Très Haute Protection") },
+    badge: t("Bouclier Quotidien"),
+  },
+  {
+    id: 1,
+    tag: t("Incontournable"),
+    heading: [t("Double nettoyage."), t("Le secret d'un"), t("teint parfait.")],
+    sub: t("Éliminez impuretés, sébum et résidus en douceur. Adoptez l'étape fondamentale du K-Beauty pour une peau visiblement transformée."),
+    cta: { label: t("Nos Nettoyants"), href: "/shop?category=Nettoyants" },
+    ctaSecondary: { label: t("Le Rituel"), href: "/shop" },
+    accent: "#E5B6B9",
+    bg: "#F4EAEB",
+    image: "/slide2_cleaner.webp",
+    imagePosition: "object-center",
+    stat: { value: "N°1", label: t("Étape K-Beauty") },
+    badge: t("Purification Profonde"),
+  },
+  {
+    id: 2,
+    tag: t("Technologie"),
+    heading: [t("La science IA"), t("au service de"), t("votre peau.")],
+    sub: t("Ne devinez plus. Notre scanner facial analyse vos besoins spécifiques pour concevoir un protocole K-Beauty 100% sur-mesure."),
+    cta: { label: t("Faire le diagnostic"), href: "/skin-coach" },
+    ctaSecondary: { label: t("Comment ça marche ?"), href: "/shop" },
+    accent: "#E5B6B9",
+    bg: "#F4EAEB",
+    image: "/ai_skin_scan_darkskin.webp",
+    imagePosition: "object-top",
+    stat: { value: "98%", label: t("Précision prouvée") },
+    badge: t("Intelligence Artificielle"),
+  },
+];
   const [current, setCurrent] = useState(0);
   const [direction, setDirection] = useState(1);
   const [isPaused, setIsPaused] = useState(false);

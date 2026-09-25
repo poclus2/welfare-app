@@ -1,10 +1,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Robot, Sparkle, Scan } from "@phosphor-icons/react";
+import { ArrowRight, Robot, Scan } from "@phosphor-icons/react";
 import Link from "next/link";
+import { IconIA } from "@/components/ui/icons/IconIA";
+import { useI18n } from "@/lib/i18n-context";
 
 export function SkinCoach() {
+  const { t } = useI18n();
   return (
     <section className="w-full bg-[#FFFFFF] py-20 md:py-32 flex flex-col items-center overflow-hidden relative">
       {/* Cherry blossom background */}
@@ -19,11 +22,11 @@ export function SkinCoach() {
 
           
           <h2 className="text-[2.5rem] md:text-[3.5rem] leading-[1.1] font-medium tracking-tight text-[#2A2424] mb-6">
-            Rencontrez votre<br/>Skin Coach IA
+            {t("Rencontrez votre")}<br/>{t("Skin Coach IA")}
           </h2>
           
           <p className="text-[#2A2424]/70 text-lg mb-10 leading-relaxed">
-            Éliminez les doutes. Scannez votre visage, répondez à trois questions simples et laissez notre IA concevoir une routine approuvée par des dermatologues, parfaitement adaptée aux besoins uniques de votre peau.
+            {t("Éliminez les doutes. Scannez votre visage, répondez à trois questions simples et laissez notre IA concevoir une routine approuvée par des dermatologues, parfaitement adaptée aux besoins uniques de votre peau.")}
           </p>
           
           <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
@@ -32,19 +35,19 @@ export function SkinCoach() {
               className="w-full sm:w-auto bg-[#2A2424] text-white px-8 py-4 rounded-full text-[15px] font-medium hover:bg-black/80 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 shadow-xl"
             >
               <Scan className="w-5 h-5" />
-              Démarrer l'analyse gratuite
+              {t("Démarrer l'analyse gratuite")}
             </Link>
           </div>
           
           <div className="mt-8 flex items-center gap-6 border-t border-[#2A2424]/10 pt-8 w-full">
             <div className="flex flex-col">
               <span className="text-2xl font-bold text-[#2A2424]">98%</span>
-              <span className="text-sm text-[#2A2424]/60">Précision</span>
+              <span className="text-sm text-[#2A2424]/60">{t("Précision")}</span>
             </div>
             <div className="w-px h-8 bg-[#2A2424]/10"></div>
             <div className="flex flex-col">
               <span className="text-2xl font-bold text-[#2A2424]">10k+</span>
-              <span className="text-sm text-[#2A2424]/60">Routines créées</span>
+              <span className="text-sm text-[#2A2424]/60">{t("Routines créées")}</span>
             </div>
           </div>
         </div>
@@ -79,7 +82,7 @@ export function SkinCoach() {
                 ></motion.div>
                 <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/40 flex items-center gap-1.5">
                   <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-                  <span className="text-[10px] font-bold text-white tracking-wider">ANALYSE</span>
+                  <span className="text-[10px] font-bold text-white tracking-wider">{t("ANALYSE")}</span>
                 </div>
               </div>
 
@@ -92,7 +95,7 @@ export function SkinCoach() {
                       <Robot className="w-4 h-4 text-[#2A2424]" />
                     </div>
                     <div className="bg-[#FAF8F6] p-3.5 rounded-2xl rounded-tl-sm text-sm text-[#2A2424] shadow-sm">
-                      Analyse terminée ! J'ai détecté une légère déshydratation sur vos joues.
+                      {t("Analyse terminée ! J'ai détecté une légère déshydratation sur vos joues.")}
                     </div>
                   </div>
                   
@@ -104,7 +107,7 @@ export function SkinCoach() {
                       </div>
                       <div>
                         <p className="text-xs font-bold text-[#2A2424]">Aqua Gel Cream</p>
-                        <p className="text-[10px] text-[#2A2424]/60">Parfait pour l'hydratation matinale</p>
+                        <p className="text-[10px] text-[#2A2424]/60">{t("Parfait pour l'hydratation matinale")}</p>
                       </div>
                     </div>
                   </div>
@@ -120,11 +123,11 @@ export function SkinCoach() {
               className="absolute top-[40%] -left-12 lg:-left-24 bg-white/60 backdrop-blur-xl p-3.5 rounded-2xl border border-white shadow-xl flex items-center gap-3"
             >
               <div className="w-8 h-8 rounded-full bg-[#E5B6B9] flex items-center justify-center text-white">
-                <Sparkle className="w-4 h-4" />
+                <IconIA className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-xs font-bold text-[#2A2424]">Barrière intacte</p>
-                <p className="text-[10px] text-[#2A2424]/60">État sain</p>
+                <p className="text-xs font-bold text-[#2A2424]">{t("Barrière intacte")}</p>
+                <p className="text-[10px] text-[#2A2424]/60">{t("État sain")}</p>
               </div>
             </motion.div>
           </motion.div>

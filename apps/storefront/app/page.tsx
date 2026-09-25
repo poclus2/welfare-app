@@ -9,8 +9,10 @@ import { LearningCenter } from "@/components/home/learning-center";
 import { Testimonials } from "@/components/home/testimonials";
 import { Footer } from "@/components/home/footer";
 import { sdk } from "@/lib/medusa";
+import { getDictionary } from "@/lib/dictionary";
 
 export default async function BentoPage() {
+  const dict = await getDictionary();
   let products: any[] = [];
   try {
     const { regions } = await sdk.store.region.list().catch(() => ({ regions: [] }));
@@ -52,7 +54,7 @@ export default async function BentoPage() {
 
   return (
     <main className="flex flex-col w-full overflow-hidden relative">
-      <HeroSlider />
+      <HeroSlider dict={dict.home} />
       <BrandMarquee />
       <CategoriesBento />
       <BestSellers products={products} />
@@ -61,7 +63,7 @@ export default async function BentoPage() {
       <LoyaltyProgram />
       <LearningCenter />
       <Testimonials />
-      <Footer />
+      <Footer dict={dict.footer} />
     </main>
   );
 }

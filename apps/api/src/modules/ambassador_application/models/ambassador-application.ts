@@ -14,5 +14,8 @@ export const AmbassadorApplication = model.define("ambassador_application", {
   content_type: model.text(),
   motivation: model.text(),
   status: model.enum(["pending", "approved", "rejected"]).default("pending"),
+  country: model.text().nullable(),
+  city: model.text().nullable(),
+  media_kit_url: model.text().nullable(),
 })
 

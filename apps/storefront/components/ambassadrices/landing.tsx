@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n-context";
 import { useState, useRef, useEffect } from "react";
 import { motion, useInView, AnimatePresence, useMotionValue, useSpring, useTransform, type Variants } from "framer-motion";
 import {
@@ -24,6 +25,7 @@ import {
   Camera,
   Play,
   Seal,
+  CircleNotch,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 
@@ -62,7 +64,7 @@ function Counter({ to, suffix = "" }: { to: number; suffix?: string }) {
 
 /* ─── DATA ─────────────────────────────────────────────────── */
 const KPI_STATS = [
-  { value: 200, suffix: "+", label: "Ambassadrices actives", icon: <Users className="w-5 h-5" weight="fill" /> },
+  { value: 200, suffix: "+", label: "Créatrices Partenaires actives", icon: <Users className="w-5 h-5" weight="fill" /> },
   { value: 12,  suffix: "M FCFA", label: "Commissions versées", icon: <CurrencyCircleDollar className="w-5 h-5" weight="fill" /> },
   { value: 15,  suffix: "%", label: "Commission par vente", icon: <TrendUp className="w-5 h-5" weight="fill" /> },
   { value: 48,  suffix: "h", label: "Réponse candidature", icon: <Sparkle className="w-5 h-5" weight="fill" /> },
@@ -115,16 +117,16 @@ const TIKTOKS = [
 ];
 
 const STEPS = [
-  { n: "01", icon: <LinkSimple className="w-6 h-6" weight="bold" />, title: "Postulez & recevez votre lien", body: "Remplissez le formulaire en bas de page. Sous 48h, vous recevez votre lien et code personnalisés avec 15% de commission sur chaque vente.", note: "100% gratuit, aucun engagement", bg: C.blush, accent: C.mauve },
+  { n: "01", icon: <LinkSimple className="w-6 h-6" weight="bold" />, title: "Postulez & recevez votre lien", body: "Remplissez le formulaire en bas de page. Sous 48h, vous recevez votre lien et code personnalisés avec Jusqu'à 6% de commission sur chaque vente.", note: "100% gratuit, aucun engagement", bg: C.blush, accent: C.mauve },
   { n: "02", icon: <Camera className="w-6 h-6" weight="bold" />, title: "Créez, partagez, inspirez", body: "Publiez vos routines sincères, vos hauls K-Beauty, vos avis. Votre lien unique traque toutes les ventes — Instagram, TikTok, YouTube, lien en bio.", note: "Tous les réseaux supportés", bg: C.rose, accent: C.crimson },
-  { n: "03", icon: <CurrencyCircleDollar className="w-6 h-6" weight="bold" />, title: "Encaissez chaque mois", body: "15% sur chaque vente réalisée via votre lien. Paiement mensuel garanti par Mobile Money (Wave, Orange Money) ou virement bancaire.", note: "Paiement le 1er de chaque mois", bg: C.charcoal, accent: C.rose },
+  { n: "03", icon: <CurrencyCircleDollar className="w-6 h-6" weight="bold" />, title: "Encaissez chaque mois", body: "Jusqu'à 6% sur chaque vente via votre lien. Paiement mensuel garanti par Mobile Money (Wave, Orange Money) ou virement bancaire.", note: "Paiement le 1er de chaque mois", bg: C.charcoal, accent: C.rose },
 ];
 
 const PERKS = [
-  { icon: <TrendUp className="w-5 h-5" />, title: "15% de commission fixe", sub: "Sur chaque vente, sans plafond" },
+  { icon: <TrendUp className="w-5 h-5" />, title: "Commissions progressives (jusqu'à 6%)", sub: "Sur chaque vente, sans plafond" },
   { icon: <ChartLineUp className="w-5 h-5" />, title: "Dashboard temps réel", sub: "Clics, ventes, commissions live" },
   { icon: <Gift className="w-5 h-5" />, title: "Produits offerts", sub: "Top 10 mensuel = cadeaux exclusifs" },
-  { icon: <Crown className="w-5 h-5" />, title: "Classement ambassadrices", sub: "Challenges et récompenses mensuelles" },
+  { icon: <Crown className="w-5 h-5" />, title: "Classement créatrices partenaires", sub: "Challenges et récompenses mensuelles" },
   { icon: <Heart className="w-5 h-5" />, title: "-20% sur vos achats", sub: "Dès 5 ventes réalisées / mois" },
   { icon: <ShareNetwork className="w-5 h-5" />, title: "Support dédié", sub: "Équipe disponible 7j/7" },
 ];
@@ -132,7 +134,7 @@ const PERKS = [
 const FAQ = [
   { q: "Le programme est-il vraiment gratuit ?", a: "Oui, entièrement. Aucun frais d'adhésion, aucun produit obligatoire, aucun engagement. Vous postulez, vous êtes acceptée, et vous commencez à partager votre lien." },
   { q: "Combien de followers faut-il avoir ?", a: "Aucun minimum. Nano-créatrice (500 abonnés) ou macro-influenceuse (500K+), toutes sont les bienvenues. L'authenticité prime sur la taille de l'audience." },
-  { q: "Comment sont calculées les commissions ?", a: "Vous gagnez 15% sur le montant total HT de chaque commande passée via votre lien ou code. Vos commissions s'accumulent en temps réel dans votre tableau de bord personnel." },
+  { q: "Comment sont calculées les commissions ?", a: "Vous gagnez jusqu'à 6% sur le montant net HT de chaque commande passée via votre lien ou code. Vos commissions s'accumulent en temps réel dans votre tableau de bord personnel." },
   { q: "Quels types de contenus fonctionnent le mieux ?", a: "Les revues sincères, routines morning/evening filmées, hauls mensuels et comparatifs avant/après. L'authenticité génère 3x plus de conversions que le contenu sponsorisé générique." },
   { q: "Puis-je bénéficier de produits offerts ?", a: "À partir de 5 ventes/mois, vous avez -20% sur vos achats. Le Top 10 mensuel reçoit des produits en avant-première, avant même leur sortie officielle sur le site." },
 ];
@@ -180,7 +182,12 @@ function RevenueCalculator() {
   const [posts, setPosts] = useState(4);
   const clicks   = Math.round((community * engagement / 100) * posts * 0.05);
   const orders   = Math.round(clicks * 0.04);
-  const revenue  = Math.round(orders * 18000 * 0.15);
+  const caEligible = orders * 18000;
+  let rate = 0.03;
+  if (caEligible >= 1000000) rate = 0.06;
+  else if (caEligible >= 600000) rate = 0.04;
+  const revenue = Math.round(caEligible * rate);
+  const currentRateStr = (rate * 100) + "%";
 
   const sliders = [
     { label: "Taille de votre communauté", val: community, set: setCommunity, min: 500, max: 200000, step: 500, fmt: (v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v.toString() },
@@ -229,8 +236,8 @@ function RevenueCalculator() {
                 <TrendUp className="w-4 h-4 text-[#E5B6B9]" weight="bold" />
               </div>
               <div>
-                <p className="text-xs font-bold text-[#2A2424]">Commission fixe The Welfare</p>
-                <p className="text-xs text-[#2A2424]/55">15% sur chaque vente • Panier moyen 18 000 FCFA</p>
+                <p className="text-xs font-bold text-[#2A2424]">Commission progressive The Welfare</p>
+                <p className="text-xs text-[#2A2424]/55">{currentRateStr} sur ce volume — Panier moyen 18 000 FCFA</p>
               </div>
             </div>
           </motion.div>
@@ -283,10 +290,12 @@ function RevenueCalculator() {
 
 /* ─── APPLICATION FORM ──────────────────────────────────────── */
 function ApplicationForm() {
+  const { t } = useI18n();
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", instagram:"", tiktok:"", youtube:"", followers:"", content:"", motivation:"" });
-  const set = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+  const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", instagram:"", tiktok:"", youtube:"", followers:"", content:"", motivation:"", other:"", country:"", city:"", media_kit_url:"" });
+  
+  const set = (e: any) =>
     setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
   if (sent) return (
@@ -294,26 +303,9 @@ function ApplicationForm() {
       <div className="w-20 h-20 rounded-full bg-[#E5B6B9]/20 border-2 border-[#E5B6B9] flex items-center justify-center">
         <Check className="w-10 h-10 text-[#C2164A]" weight="bold" />
       </div>
-      <h3 className="text-2xl font-bold text-[#2A2424]" style={{ letterSpacing: "-0.02em" }}>Candidature reçue !</h3>
-      <p className="text-[#2A2424]/60 max-w-sm leading-relaxed">Notre équipe étudie votre profil et vous contacte sous 48h par email avec votre lien d'affiliation.</p>
+      <h3 className="text-2xl font-bold text-[#2A2424]" style={{ letterSpacing: "-0.02em" }}>{t("Candidature reçue !")}</h3>
+      <p className="text-[#2A2424]/60 max-w-sm leading-relaxed">{t("Notre équipe examine votre candidature et vous contacte sous 7 jours ouvrés.")}</p>
     </motion.div>
-  );
-
-  const Field = ({ name, label, type = "text", placeholder }: { name: string; label: string; type?: string; placeholder: string }) => (
-    <div>
-      <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#2A2424]/45 mb-2">{label}</label>
-      <input name={name} type={type} value={(form as any)[name]} onChange={set}
-        placeholder={placeholder}
-        className="w-full bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 text-sm text-[#2A2424] outline-none focus:border-[#E5B6B9] focus:bg-white transition-all duration-200 placeholder:text-[#2A2424]/25" />
-    </div>
-  );
-
-  const SocialField = ({ name, icon, placeholder }: { name: string; icon: React.ReactNode; placeholder: string }) => (
-    <div className="flex items-center gap-3 bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 focus-within:border-[#E5B6B9] focus-within:bg-white transition-all duration-200">
-      <span className="text-[#2A2424]/40 shrink-0">{icon}</span>
-      <input name={name} value={(form as any)[name]} onChange={set} placeholder={placeholder}
-        className="flex-1 text-sm text-[#2A2424] bg-transparent outline-none placeholder:text-[#2A2424]/25" />
-    </div>
   );
 
   return (
@@ -321,7 +313,7 @@ function ApplicationForm() {
       e.preventDefault(); 
       setLoading(true); 
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000"}/store/ambassador-applications`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000"}/store/creator-applications`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -335,82 +327,112 @@ function ApplicationForm() {
             instagram: form.instagram,
             tiktok: form.tiktok,
             youtube: form.youtube,
-            other_link: (form as any).other,
+            other_link: form.other,
             followers: form.followers,
             content_type: form.content,
-            motivation: form.motivation
+            motivation: form.motivation,
+            country: form.country,
+            city: form.city,
+            media_kit_url: form.media_kit_url,
           })
         });
-        if (res.ok) setSent(true);
-        else console.error("Error submitting form", await res.text());
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false); 
-      }
+        if(res.ok) setSent(true);
+      } catch(e) { console.error(e) }
+      finally { setLoading(false) }
     }} className="flex flex-col gap-5">
+      
       <div className="grid grid-cols-2 gap-4">
-        <Field name="firstName" label="Prénom *" placeholder="Aminata" />
-        <Field name="lastName"  label="Nom *"    placeholder="Diallo" />
+        <div>
+          <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#2A2424]/45 mb-2">{t("Prénom *")}</label>
+          <input name="firstName" value={form.firstName} onChange={set} placeholder="Aminata" required className="w-full bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 text-sm text-[#2A2424] outline-none focus:border-[#E5B6B9] focus:bg-white transition-all duration-200" />
+        </div>
+        <div>
+          <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#2A2424]/45 mb-2">{t("Nom *")}</label>
+          <input name="lastName" value={form.lastName} onChange={set} placeholder="Diallo" required className="w-full bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 text-sm text-[#2A2424] outline-none focus:border-[#E5B6B9] focus:bg-white transition-all duration-200" />
+        </div>
       </div>
+
       <div className="grid grid-cols-2 gap-4">
-        <Field name="email" label="Email *" type="email" placeholder="aminata@email.com" />
-        <Field name="phone" label="Téléphone WhatsApp" placeholder="+221 77 000 00 00" />
+        <div>
+          <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#2A2424]/45 mb-2">{t("Email *")}</label>
+          <input name="email" type="email" value={form.email} onChange={set} placeholder="aminata@email.com" required className="w-full bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 text-sm text-[#2A2424] outline-none focus:border-[#E5B6B9] focus:bg-white transition-all duration-200" />
+        </div>
+        <div>
+          <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#2A2424]/45 mb-2">{t("Téléphone WhatsApp")}</label>
+          <input name="phone" value={form.phone} onChange={set} placeholder="+221 77 000 00 00" className="w-full bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 text-sm text-[#2A2424] outline-none focus:border-[#E5B6B9] focus:bg-white transition-all duration-200" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#2A2424]/45 mb-2">{t("Pays *")}</label>
+          <input name="country" value={form.country} onChange={set} placeholder="Sénégal" required className="w-full bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 text-sm text-[#2A2424] outline-none focus:border-[#E5B6B9] focus:bg-white transition-all duration-200" />
+        </div>
+        <div>
+          <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#2A2424]/45 mb-2">{t("Ville *")}</label>
+          <input name="city" value={form.city} onChange={set} placeholder="Dakar" required className="w-full bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 text-sm text-[#2A2424] outline-none focus:border-[#E5B6B9] focus:bg-white transition-all duration-200" />
+        </div>
       </div>
 
       <div>
-        <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#2A2424]/45 mb-3">Vos réseaux sociaux</label>
+        <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#2A2424]/45 mb-3">{t("Vos réseaux sociaux")}</label>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <SocialField name="instagram" icon={<InstagramLogo className="w-4 h-4" weight="fill" />} placeholder="@votre.handle" />
-          <SocialField name="tiktok"    icon={<TiktokLogo className="w-4 h-4" weight="fill" />}    placeholder="@votre.handle" />
-          <SocialField name="youtube"   icon={<YoutubeLogo className="w-4 h-4" weight="fill" />}   placeholder="Nom de chaîne" />
-          <SocialField name="other"     icon={<LinkSimple className="w-4 h-4" />}                   placeholder="Autre lien" />
+          <div className="flex items-center gap-3 bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 focus-within:border-[#E5B6B9] focus-within:bg-white transition-all duration-200">
+            <InstagramLogo className="w-4 h-4 text-[#2A2424]/40 shrink-0" weight="fill" />
+            <input name="instagram" value={form.instagram} onChange={set} placeholder="@votre.handle" className="flex-1 text-sm text-[#2A2424] bg-transparent outline-none" />
+          </div>
+          <div className="flex items-center gap-3 bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 focus-within:border-[#E5B6B9] focus-within:bg-white transition-all duration-200">
+            <TiktokLogo className="w-4 h-4 text-[#2A2424]/40 shrink-0" weight="fill" />
+            <input name="tiktok" value={form.tiktok} onChange={set} placeholder="@votre.handle" className="flex-1 text-sm text-[#2A2424] bg-transparent outline-none" />
+          </div>
+          <div className="flex items-center gap-3 bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 focus-within:border-[#E5B6B9] focus-within:bg-white transition-all duration-200">
+            <YoutubeLogo className="w-4 h-4 text-[#2A2424]/40 shrink-0" weight="fill" />
+            <input name="youtube" value={form.youtube} onChange={set} placeholder={t("Nom de chaîne")} className="flex-1 text-sm text-[#2A2424] bg-transparent outline-none" />
+          </div>
+          <div className="flex items-center gap-3 bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 focus-within:border-[#E5B6B9] focus-within:bg-white transition-all duration-200">
+            <LinkSimple className="w-4 h-4 text-[#2A2424]/40 shrink-0" />
+            <input name="other" value={form.other} onChange={set} placeholder={t("Autre lien")} className="flex-1 text-sm text-[#2A2424] bg-transparent outline-none" />
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4 mt-2">
         <div>
-          <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#2A2424]/45 mb-2">Followers (total) *</label>
-          <select name="followers" value={form.followers} onChange={set} required
-            className="w-full bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 text-sm text-[#2A2424] outline-none focus:border-[#E5B6B9] transition-all appearance-none">
-            <option value="">Sélectionner</option>
-            {["< 1 000","1K – 5K","5K – 20K","20K – 100K","+ 100K"].map(v => <option key={v}>{v}</option>)}
+          <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#2A2424]/45 mb-2">{t("Followers (total) *")}</label>
+          <select name="followers" value={form.followers} onChange={set} required className="w-full bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 text-sm text-[#2A2424] outline-none focus:border-[#E5B6B9] transition-all appearance-none">
+            <option value="">{t("Sélectionner")}</option>
+            {["< 1 000","1K - 5K","5K - 20K","20K - 100K","+ 100K"].map(v => <option key={v} value={v}>{v}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#2A2424]/45 mb-2">Type de contenu *</label>
-          <select name="content" value={form.content} onChange={set} required
-            className="w-full bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 text-sm text-[#2A2424] outline-none focus:border-[#E5B6B9] transition-all appearance-none">
-            <option value="">Sélectionner</option>
-            {["Skincare / Routines","Maquillage","Lifestyle","Bien-être","Plusieurs catégories"].map(v => <option key={v}>{v}</option>)}
+          <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#2A2424]/45 mb-2">{t("Type de contenu *")}</label>
+          <select name="content" value={form.content} onChange={set} required className="w-full bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 text-sm text-[#2A2424] outline-none focus:border-[#E5B6B9] transition-all appearance-none">
+            <option value="">{t("Sélectionner")}</option>
+            {["Skincare / Routines", "Makeup & Beauté", "Lifestyle / Vlogs", "Autre"].map(v => <option key={v} value={v}>{t(v)}</option>)}
           </select>
         </div>
       </div>
 
-      <div>
-        <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#2A2424]/45 mb-2">Pourquoi rejoindre The Welfare ? *</label>
+      <div className="mt-2">
+        <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#2A2424]/45 mb-2">{t("Pourquoi souhaitez-vous rejoindre le programme Créateurs Partenaires The Welfare ? *")}</label>
         <textarea name="motivation" value={form.motivation} onChange={set} required rows={4}
-          placeholder="Partagez votre passion pour la K-Beauty, votre rapport avec votre communauté, pourquoi The Welfare vous correspond..."
-          className="w-full bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 text-sm text-[#2A2424] outline-none focus:border-[#E5B6B9] focus:bg-white transition-all resize-none placeholder:text-[#2A2424]/25" />
+          placeholder={t("Partagez votre passion pour la K-Beauty, votre rapport avec votre communauté, pourquoi The Welfare vous correspond...")}
+          className="w-full bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 text-sm text-[#2A2424] outline-none focus:border-[#E5B6B9] focus:bg-white transition-all resize-none" />
       </div>
 
-      <motion.button type="submit" disabled={loading} whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
-        className="relative w-full overflow-hidden flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-white text-sm disabled:opacity-60 transition-all"
-        style={{ background: "linear-gradient(135deg, #C2164A 0%, #8B0E33 100%)", boxShadow: "0 8px 30px rgba(194,22,74,0.35)" }}>
-        {/* Shimmer */}
-        <span className="absolute inset-0 -translate-x-full animate-[shimmer_2.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-        {loading ? (
-          <span className="flex items-center gap-2"><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Envoi en cours...</span>
-        ) : (
-          <><span>Soumettre ma candidature</span><ArrowRight className="w-4 h-4" weight="bold" /></>
-        )}
-      </motion.button>
-      <p className="text-center text-xs text-[#2A2424]/35">Réponse garantie sous 48h · Données protégées</p>
+      <div className="mt-2">
+        <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#2A2424]/45 mb-2">{t("Pièce jointe (Media Kit, stats, portfolio)")}</label>
+        <p className="text-xs text-[#2A2424]/40 mb-3">{t("Facultatif — Collez un lien Google Drive, Notion, Linktree ou similaire")}</p>
+        <input name="media_kit_url" value={form.media_kit_url} onChange={set} placeholder="https://drive.google.com/..." className="w-full bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 text-sm text-[#2A2424] outline-none focus:border-[#E5B6B9] focus:bg-white transition-all duration-200" />
+      </div>
+
+      <button type="submit" disabled={loading} className="w-full bg-[#2A2424] text-white rounded-xl py-4 font-bold text-sm mt-2 hover:bg-[#2A2424]/90 transition-colors disabled:opacity-50">
+        {loading ? <CircleNotch className="w-5 h-5 animate-spin mx-auto" /> : t("Envoyer ma candidature")}
+      </button>
     </form>
   );
 }
 
-/* ─── VIDEO SLIDER ──────────────────────────────────────────── */
 function HeroVideoSlider() {
   const [activeIdx, setActiveIdx] = useState(0);
 
@@ -544,7 +566,7 @@ export function LandingAmbassadrice() {
             <motion.p variants={fadeUp} initial="hidden" animate="visible" custom={2}
               className="text-lg text-[#2A2424]/65 leading-relaxed mb-10 max-w-[500px]">
               Rejoignez plus de <strong className="text-[#2A2424] font-bold">200 créatrices</strong> qui monétisent leur passion pour la K-Beauty avec{" "}
-              <strong className="text-[#2A2424] font-bold">15% de commission</strong> sur chaque vente. Sans abonnement minimum, sans engagement.
+              <strong className="text-[#2A2424] font-bold">jusqu'à 6% de commission</strong> progressives. Sans abonnement minimum, sans engagement.
             </motion.p>
 
             <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={3} className="flex flex-wrap gap-4 mb-14">
@@ -568,7 +590,7 @@ export function LandingAmbassadrice() {
               </div>
               <div>
                 <div className="flex gap-0.5 mb-1">{[...Array(5)].map((_, i) => <Star key={i} className="w-3.5 h-3.5 text-amber-400" weight="fill" />)}</div>
-                <p className="text-xs text-[#2A2424]/55">+200 ambassadrices actives en Afrique de l'Ouest</p>
+                <p className="text-xs text-[#2A2424]/55">+200 créatrices partenaires actives en Afrique de l'Ouest</p>
               </div>
             </motion.div>
           </div>
@@ -705,7 +727,7 @@ export function LandingAmbassadrice() {
                       </div>
                       <span className="text-white/40 text-xs">dashboard.thewelfare.store</span>
                     </div>
-                    <span className="text-[10px] font-bold bg-[#E5B6B9]/20 text-[#E5B6B9] px-3 py-1 rounded-full">Ambassadrice ✦</span>
+                    <span className="text-[10px] font-bold bg-[#E5B6B9]/20 text-[#E5B6B9] px-3 py-1 rounded-full">Créatrice Partenaire ✦</span>
                   </div>
 
                   {/* Dashboard body */}
@@ -784,7 +806,7 @@ export function LandingAmbassadrice() {
 
               <div className="flex flex-col gap-3">
                 {[
-                  "15% de commission sur chaque vente",
+                  "Jusqu'à 6% de commission sur chaque vente",
                   "Tableau de bord personnel en temps réel",
                   "Paiement mensuel Wave / Orange Money",
                   "Accès prioritaire aux nouveaux produits",
@@ -832,8 +854,8 @@ export function LandingAmbassadrice() {
             <div className="relative z-10">
               <Sparkle className="w-8 h-8 text-[#E5B6B9] mx-auto mb-4" weight="fill" />
               <h3 className="text-white text-xl font-bold mb-2" style={{ letterSpacing: "-0.02em" }}>Une autre question ?</h3>
-              <p className="text-white/50 text-sm mb-6">Notre équipe ambassadrices est disponible 7j/7 pour vous accompagner.</p>
-              <a href="mailto:ambassadrices@thewelfare.store"
+              <p className="text-white/50 text-sm mb-6">Notre équipe créatrices partenaires est disponible 7j/7 pour vous accompagner.</p>
+              <a href="mailto:créatrices partenaires@thewelfare.store"
                 className="inline-flex items-center gap-2 bg-[#E5B6B9] text-[#2A2424] px-7 py-3.5 rounded-full font-bold text-sm hover:bg-white transition-all hover:scale-105 active:scale-95 group">
                 Nous écrire
                 <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" weight="bold" />

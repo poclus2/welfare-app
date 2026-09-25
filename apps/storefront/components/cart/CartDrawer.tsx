@@ -1,6 +1,7 @@
 "use client";
 
 import { useCart } from "@/lib/cart-context";
+import { useI18n } from "@/lib/i18n-context";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { X, Minus, Plus, ShoppingBag, ArrowRight, Trash, Package } from "@phosphor-icons/react";
@@ -10,6 +11,7 @@ function formatPrice(amount: number) {
 }
 
 export function CartDrawer() {
+  const { t } = useI18n();
   const { isOpen, closeCart, items, removeItem, updateQuantity, totalItems, totalAmount } =
     useCart();
 
@@ -47,9 +49,9 @@ export function CartDrawer() {
                   <ShoppingBag className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-[#2A2424]">Mon Panier</h2>
+                  <h2 className="text-sm font-bold text-[#2A2424]">{t("Mon Panier")}</h2>
                   <p className="text-[11px] text-[#2A2424]/50">
-                    {totalItems} article{totalItems !== 1 ? "s" : ""}
+                    {totalItems} {totalItems !== 1 ? t("articles") : t("article")}
                   </p>
                 </div>
               </div>
@@ -69,16 +71,16 @@ export function CartDrawer() {
                     <Package className="w-9 h-9 text-[#C08A8E]/50" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-[#2A2424]">Votre panier est vide</p>
+                    <p className="text-sm font-semibold text-[#2A2424]">{t("Votre panier est vide")}</p>
                     <p className="text-xs text-[#2A2424]/50 mt-1">
-                      Ajoutez des produits pour commencer
+                      {t("Ajoutez des produits pour commencer")}
                     </p>
                   </div>
                   <button
                     onClick={closeCart}
                     className="px-6 py-2.5 bg-[#2A2424] text-white rounded-full text-xs font-bold"
                   >
-                    Découvrir la boutique
+                    {t("Découvrir la boutique")}
                   </button>
                 </div>
               ) : (
@@ -153,16 +155,16 @@ export function CartDrawer() {
                 {/* Totaux */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm text-[#2A2424]/60">
-                    <span>Sous-total</span>
+                    <span>{t("Sous-total")}</span>
                     <span className="font-medium">{formatPrice(totalAmount)} FCFA</span>
                   </div>
                   <div className="flex items-center justify-between text-sm text-[#2A2424]/60">
-                    <span>Livraison</span>
+                    <span>{t("Livraison")}</span>
                     <span className="font-medium">{formatPrice(LIVRAISON)} FCFA</span>
                   </div>
                   <div className="w-full h-px bg-[#EDE0E0]" />
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-[#2A2424]">Total</span>
+                    <span className="text-sm font-bold text-[#2A2424]">{t("Total")}</span>
                     <span className="text-lg font-bold text-[#2A2424]">
                       {formatPrice(total)} FCFA
                     </span>
@@ -175,13 +177,13 @@ export function CartDrawer() {
                   onClick={closeCart}
                   className="flex items-center justify-center gap-2 w-full py-4 bg-[#2A2424] text-white rounded-2xl text-sm font-bold shadow-lg hover:bg-black transition-colors"
                 >
-                  Commander <ArrowRight className="w-4 h-4" />
+                  {t("Commander")} <ArrowRight className="w-4 h-4" />
                 </Link>
                 <button
                   onClick={closeCart}
                   className="w-full text-center text-xs text-[#2A2424]/50 hover:text-[#2A2424] transition-colors py-1"
                 >
-                  Continuer mes achats
+                  {t("Continuer mes achats")}
                 </button>
               </div>
             )}

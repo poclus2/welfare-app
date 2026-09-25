@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkle, Scan, CaretRight, Camera, ArrowCounterClockwise, PaperPlaneTilt, Lightning } from "@phosphor-icons/react";
+import {  Scan, CaretRight, Camera, ArrowCounterClockwise, PaperPlaneTilt, Lightning } from "@phosphor-icons/react";
 import Webcam from "react-webcam";
 import { analyzeSkin, SkinAnalysisResult } from "@/app/actions/analyze-skin";
 import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
 import { useRouter } from "next/navigation";
 import SmartCameraCapture, { CaptureResult } from "./smart-camera-capture";
+import { IconIA } from "@/components/ui/icons/IconIA";
+import { useI18n } from "@/lib/i18n-context";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -158,7 +160,7 @@ const DECISION_TREE: QuestionNode[] = [
 const AIAvatar = () => (
   <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 mr-2.5 mt-auto shadow-md"
     style={{ background: "linear-gradient(135deg, #E8C4C6 0%, #F0D4D6 100%)", border: "1.5px solid rgba(200,134,138,0.4)" }}>
-    <Sparkle className="w-4 h-4" style={{ color: "#B06068" }} />
+    <IconIA className="w-4 h-4" style={{ color: "#B06068" }} />
   </div>
 );
 
@@ -168,6 +170,7 @@ const TOTAL_STEPS = 9;
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export default function SkinCoachFlow() {
+  const { t } = useI18n();
   const router = useRouter();
   const [captures, setCaptures] = useState<CaptureResult | null>(null);
   const [hasCaptured, setHasCaptured] = useState(false);
@@ -253,12 +256,12 @@ export default function SkinCoachFlow() {
           router.push("/skin-coach/result");
         }, 600);
       } else {
-        setMessages(prev => [...prev, { id: `msg-ai-err-${Date.now()}`, sender: "ai", text: "Oups, une erreur est survenue lors de l'analyse : " + result.error }]);
+        setMessages(prev => [...prev, { id: `msg-ai-err-${Date.now()}`, sender: "ai", text: `${t("Oups, une erreur est survenue lors de l'analyse :")} ${result.error}` }]);
         setIsGenerating(false);
       }
     } catch (error) {
       console.error(error);
-      setMessages(prev => [...prev, { id: `msg-ai-err-${Date.now()}`, sender: "ai", text: "Erreur de connexion au serveur d'analyse." }]);
+      setMessages(prev => [...prev, { id: `msg-ai-err-${Date.now()}`, sender: "ai", text: t("Erreur de connexion au serveur d'analyse.") }]);
       setIsGenerating(false);
     }
   };
@@ -309,7 +312,7 @@ export default function SkinCoachFlow() {
         setIsTyping(false);
         setMessages((prev) => [
           ...prev,
-          { id: `msg-ai-${Date.now()}`, sender: "ai", text: "Parfait ! Laissez-moi analyser tout ça... Génération de votre routine personnalisée en cours ✨" }
+          { id: `msg-ai-${Date.now()}`, sender: "ai", text: t("Parfait ! Laissez-moi analyser tout ça... Génération de votre routine personnalisée en cours ✨") }
         ]);
         executeAnalysis(newResponses);
       } else {
@@ -338,9 +341,9 @@ export default function SkinCoachFlow() {
           />
         ) : (
           <div className="relative w-full h-full flex flex-row">
-            <img src={captures?.front} alt="Analyse de peau Face" className="w-1/3 h-full object-cover object-top" />
-            <img src={captures?.left} alt="Analyse de peau Gauche" className="w-1/3 h-full object-cover object-top border-l border-white/10" />
-            <img src={captures?.right} alt="Analyse de peau Droite" className="w-1/3 h-full object-cover object-top border-l border-white/10" />
+            <img src={captures?.front} alt={t("Analyse de peau Face")} className="w-1/3 h-full object-cover object-top" />
+            <img src={captures?.left} alt={t("Analyse de peau Gauche")} className="w-1/3 h-full object-cover object-top border-l border-white/10" />
+            <img src={captures?.right} alt={t("Analyse de peau Droite")} className="w-1/3 h-full object-cover object-top border-l border-white/10" />
 
             {/* Gradient fade to light background */}
             <div className="absolute inset-0 pointer-events-none"
@@ -359,7 +362,7 @@ export default function SkinCoachFlow() {
             <div className="absolute top-5 left-0 right-0 flex justify-around px-2 pointer-events-none">
               {["FACE", "GAUCHE", "DROITE"].map((label) => (
                 <div key={label} className="text-[10px] font-bold tracking-widest uppercase bg-black/25 px-2 py-1 rounded-full backdrop-blur-sm border border-white/10" style={{ color: "rgba(255,240,240,0.9)" }}>
-                  {label}
+                  {t(label)}
                 </div>
               ))}
             </div>
@@ -431,9 +434,9 @@ export default function SkinCoachFlow() {
                       }
                     >
                       {msg.image ? (
-                        <img src={msg.image} alt="Photo utilisateur" className="w-full h-auto rounded-xl object-cover" />
+                        <img src={msg.image} alt={t("Photo utilisateur")} className="w-full h-auto rounded-xl object-cover" />
                       ) : (
-                        msg.text
+                        msg.text ? t(msg.text) : null
                       )}
                     </div>
                   </div>
@@ -444,7 +447,7 @@ export default function SkinCoachFlow() {
                       <div className="flex flex-col gap-4 mt-3 ml-[46px] w-[calc(100%-46px)] pr-4">
                         {currentNode.subtitle && (
                           <p className="text-[13px] font-medium -mt-1 mb-1" style={{ color: "rgba(61,43,45,0.6)" }}>
-                            {currentNode.subtitle}
+                            {t(currentNode.subtitle)}
                           </p>
                         )}
                         <div className="flex flex-wrap gap-2">
@@ -472,7 +475,7 @@ export default function SkinCoachFlow() {
                                     : { background: "transparent", color: "rgba(61,43,45,0.8)", border: "1px solid rgba(200,134,138,0.4)" }
                                 }
                               >
-                                {option.label}
+                                {t(option.label)}
                               </motion.button>
                             );
                           })}
@@ -488,7 +491,7 @@ export default function SkinCoachFlow() {
                             >
                               <input
                                 type="text"
-                                placeholder="Précisez vos allergies..."
+                                placeholder={t("Précisez vos allergies...")}
                                 value={otherText}
                                 onChange={(e) => setOtherText(e.target.value)}
                                 className="w-full mt-2 px-4 py-3 rounded-xl text-sm focus:outline-none transition-all"
@@ -513,7 +516,7 @@ export default function SkinCoachFlow() {
                             const answerText = finalChoices.join(", ");
                             const newResponses = [...userResponses, { questionId: currentQuestionId, answer: answerText }];
                             setUserResponses(newResponses);
-                            const userMsg: Message = { id: `msg-user-${Date.now()}`, sender: "user", text: answerText };
+                            const userMsg: Message = { id: `msg-user-${Date.now()}`, sender: "user", text: finalChoices.map(c => t(c)).join(", ") };
                             setMessages((prev) => [...prev, userMsg]);
                             
                             setSelectedMultiChoice([]);
@@ -525,7 +528,7 @@ export default function SkinCoachFlow() {
                           className="mt-3 w-full py-3.5 px-4 rounded-full text-sm font-bold tracking-wide transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                           style={{ background: "#2A2424", color: "white", boxShadow: "0 4px 12px rgba(42,36,36,0.15)" }}
                         >
-                          Valider mes choix
+                          {t("Valider mes choix")}
                         </motion.button>
                       </div>
                     ) : (
@@ -553,7 +556,7 @@ export default function SkinCoachFlow() {
                               e.currentTarget.style.borderColor = "rgba(200,134,138,0.2)";
                             }}
                           >
-                            <span>{option.label}</span>
+                            <span>{t(option.label)}</span>
                             <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 ml-3"
                               style={{ background: "rgba(200,134,138,0.1)", border: "1px solid rgba(200,134,138,0.2)" }}>
                               <CaretRight className="w-3.5 h-3.5" style={{ color: "#C8868A" }} />
@@ -615,7 +618,7 @@ export default function SkinCoachFlow() {
                           handleTextSubmit(inputText, currentNode.nextQuestionId);
                         }
                       }}
-                      placeholder="Votre réponse..."
+                      placeholder={t("Votre réponse...")}
                       className={`w-full text-[14px] py-4 ${currentNode.type === "text_or_photo" ? 'pl-5 pr-14' : 'pl-5 pr-5'} rounded-2xl outline-none transition-all`}
                       style={{
                         background: "white",
@@ -675,7 +678,7 @@ export default function SkinCoachFlow() {
                   onClick={() => setShowCamera(false)}
                   className="bg-black/50 text-white px-4 py-2 rounded-full backdrop-blur-md border border-white/20 text-sm font-semibold"
                 >
-                  Annuler
+                  {t("Annuler")}
                 </button>
               </div>
               <div className="absolute bottom-24 left-0 right-0 flex justify-center items-center">
@@ -762,7 +765,7 @@ export default function SkinCoachFlow() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                Analyse en cours...
+                {t("Analyse en cours...")}
               </motion.h2>
 
               <motion.p
@@ -772,16 +775,16 @@ export default function SkinCoachFlow() {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
               >
-                Notre IA dermatologique croise vos données visuelles avec vos réponses pour créer votre routine parfaite.
+                {t("Notre IA dermatologique croise vos données visuelles avec vos réponses pour créer votre routine parfaite.")}
               </motion.p>
 
               {/* Step list */}
               <div className="mt-6 space-y-2.5 text-left">
                 {[
-                  { label: "Analyse des photos (Face, Gauche, Droite)", delay: 0.6 },
-                  { label: "Calcul des indices cutanés", delay: 1.1 },
-                  { label: "Croisement avec vos réponses", delay: 1.6 },
-                  { label: "Génération de votre routine K-Beauty", delay: 2.1 },
+                  { label: t("Analyse des photos (Face, Gauche, Droite)"), delay: 0.6 },
+                  { label: t("Calcul des indices cutanés"), delay: 1.1 },
+                  { label: t("Croisement avec vos réponses"), delay: 1.6 },
+                  { label: t("Génération de votre routine K-Beauty"), delay: 2.1 },
                 ].map((step, i) => (
                   <motion.div
                     key={i}

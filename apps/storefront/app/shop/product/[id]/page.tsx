@@ -23,30 +23,56 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     product = response.product;
 
     const categoryId = product?.categories?.[0]?.id;
+    const collectionId = product?.collection_id || product?.collection?.id;
+    
     const recommendedParams: any = {
-      limit: 6,
+      limit: 8,
       fields: queryParams.fields,
       region_id: regionId
     };
+
+    let recommendedRes: any = { products: [] };
+    
+    // 1. Try category
     if (categoryId) {
       recommendedParams.category_id = [categoryId];
-    }
-
-    let recommendedRes = await sdk.store.product.list(
-      recommendedParams,
-      { next: { revalidate: 60 } } as any
-    ).catch(() => ({ products: [] }));
-    
-    // Fallback if we didn't get enough products in the same category
-    if (!recommendedRes.products || recommendedRes.products.length < 2) {
       recommendedRes = await sdk.store.product.list(
-        { limit: 6, fields: queryParams.fields, region_id: regionId },
+        recommendedParams,
         { next: { revalidate: 60 } } as any
       ).catch(() => ({ products: [] }));
+      
+      // Filter out current product
+      recommendedRes.products = (recommendedRes.products || []).filter((p: any) => p.id !== id);
     }
     
-    // Filtrer le produit actuel
-    recommendedProducts = (recommendedRes.products || []).filter((p: any) => p.id !== id).slice(0, 4);
+    // 2. Try collection if category didn't yield enough
+    if ((!recommendedRes.products || recommendedRes.products.length < 3) && collectionId) {
+      delete recommendedParams.category_id;
+      recommendedParams.collection_id = [collectionId];
+      const collectionRes = await sdk.store.product.list(
+        recommendedParams,
+        { next: { revalidate: 60 } } as any
+      ).catch(() => ({ products: [] }));
+      
+      const newProducts = (collectionRes.products || []).filter((p: any) => p.id !== id);
+      recommendedRes.products = Array.from(new Map([...recommendedRes.products, ...newProducts].map(item => [item.id, item])).values());
+    }
+
+    // 3. Fallback to all products if still not enough
+    if (!recommendedRes.products || recommendedRes.products.length < 3) {
+      delete recommendedParams.category_id;
+      delete recommendedParams.collection_id;
+      const fallbackRes = await sdk.store.product.list(
+        recommendedParams,
+        { next: { revalidate: 60 } } as any
+      ).catch(() => ({ products: [] }));
+      
+      const newProducts = (fallbackRes.products || []).filter((p: any) => p.id !== id);
+      recommendedRes.products = Array.from(new Map([...recommendedRes.products, ...newProducts].map(item => [item.id, item])).values());
+    }
+    
+    // Take up to 4
+    recommendedProducts = recommendedRes.products.slice(0, 4);
 
   } catch (error) {
     console.error("Failed to fetch product:", error);

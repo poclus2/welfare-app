@@ -87,13 +87,16 @@ export default async function rebuildCategories({ container }: ExecArgs) {
       }
     }
 
-    // 3. Assign category to product (we overwrite existing categories)
+    // 3. Assign category to product (we APPEND to existing categories)
     try {
+      const existingCategoryIds = product.categories?.map((c: any) => c.id) || []
+      const newCategoryIds = Array.from(new Set([...existingCategoryIds, categoryIdToAssign]))
+      
       await updateProductsWorkflow(container).run({
         input: {
           products: [{
             id: product.id,
-            category_ids: [categoryIdToAssign] // Assigns to subcategory (or main if no sub)
+            category_ids: newCategoryIds // Keep old categories and add new one
           }]
         }
       })

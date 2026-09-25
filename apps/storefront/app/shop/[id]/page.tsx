@@ -11,6 +11,7 @@ export default async function CategoryPage({
   const { id: category } = await params;
   const resolvedSearchParams = await searchParams;
   const q = typeof resolvedSearchParams.q === "string" ? resolvedSearchParams.q : undefined;
+  const collection_id = typeof resolvedSearchParams.collection_id === "string" ? resolvedSearchParams.collection_id : undefined;
 
   let products: CategoryProduct[] = [];
 
@@ -20,7 +21,7 @@ export default async function CategoryPage({
 
     // Fetch products. If category is "cheveux", use text search since there is no Medusa category
     const queryParams: any = {
-      limit: 100,
+      limit: 1000,
       fields: "+variants,*images,*categories,*collection",
     };
     
@@ -39,10 +40,26 @@ export default async function CategoryPage({
 
     if (q) {
       queryParams.q = q;
-    } else if (searchMap[category]) {
+    } 
+    if (collection_id) {
+      queryParams.collection_id = [collection_id];
+    }
+    
+    if (!q && !collection_id && searchMap[category]) {
       queryParams.q = searchMap[category];
-    } else if (category !== "all") {
-      queryParams.category_handle = [categoryMap[category] || category];
+    } else if (!collection_id && category !== "all") {
+      const handle = categoryMap[category] || category;
+      try {
+        const catRes = await sdk.store.category.list({ handle }, { next: { revalidate: 60 } } as any);
+        if (catRes && catRes.product_categories && catRes.product_categories.length > 0) {
+          queryParams.category_id = [catRes.product_categories[0]!.id as string];
+        } else {
+          console.log(`Category handle '${handle}' not found via Store API.`);
+          // If category not found, we can still fallback below, or pass an empty array to return 0 products
+        }
+      } catch (err) {
+        console.error("Failed to fetch category by handle:", err);
+      }
     }
     
     if (regionId) {
@@ -60,7 +77,7 @@ export default async function CategoryPage({
     } catch {
       // Fallback: if category_handle filter fails, fetch without it (limited)
       const fallbackParams: any = {
-        limit: 100,
+        limit: 1000,
         fields: "+variants,*images,*categories,*collection",
       };
       if (regionId) {

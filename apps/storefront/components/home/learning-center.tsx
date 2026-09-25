@@ -1,8 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowUpRight, BookOpen, Clock, Sparkle } from "@phosphor-icons/react";
+import { ArrowUpRight, BookOpen, Clock } from "@phosphor-icons/react";
 import Link from "next/link";
+import { IconIA } from "@/components/ui/icons/IconIA";
+import { useI18n } from "@/lib/i18n-context";
 
 const fadeUp = (delay = 0): any => ({
   initial: { opacity: 0, y: 24 },
@@ -92,6 +94,7 @@ const articles = [
 ];
 
 export function LearningCenter() {
+  const { t } = useI18n();
   const featured = articles[0]!;
   const secondary = articles.slice(1);
 
@@ -109,15 +112,15 @@ export function LearningCenter() {
           <div>
 
             <h2 className="text-[2.5rem] md:text-[3.5rem] leading-[1.1] font-medium tracking-tight text-[#2A2424]">
-              Apprends la science<br />
-              <em className="font-serif not-italic text-[#E5B6B9]">d'une peau rayonnante</em>
+              {t("Apprends la science")}<br />
+              <em className="font-serif not-italic text-[#E5B6B9]">{t("d'une peau rayonnante")}</em>
             </h2>
           </div>
           <Link
             href="/journal"
             className="flex items-center gap-2 bg-[#2A2424] text-white px-6 py-3 rounded-full font-medium hover:bg-black transition-all duration-300 w-fit text-sm shrink-0"
           >
-            Tous les articles
+            {t("Tous les articles")}
             <ArrowUpRight className="w-4 h-4" />
           </Link>
         </motion.div>
@@ -143,28 +146,28 @@ export function LearningCenter() {
             {/* Content */}
             <div className="absolute bottom-0 left-0 right-0 p-8">
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-xs font-bold tracking-[0.15em] uppercase text-[#E5B6B9]">{featured.category}</span>
+                <span className="text-xs font-bold tracking-[0.15em] uppercase text-[#E5B6B9]">{t(featured.category)}</span>
                 <span className="w-1 h-1 rounded-full bg-white/30" />
                 <div className="flex items-center gap-1 text-white/50">
                   <Clock className="w-3 h-3" />
-                  <span className="text-xs">{featured.readTime}</span>
+                  <span className="text-xs">{t(featured.readTime)}</span>
                 </div>
               </div>
               <h3 className="text-2xl lg:text-3xl font-medium text-white leading-snug mb-4 max-w-md">
-                {featured.title}
+                {t(featured.title)}
               </h3>
               <p className="text-white/60 text-sm leading-relaxed mb-6 max-w-sm line-clamp-2">
-                {featured.excerpt}
+                {t(featured.excerpt)}
               </p>
               <div className="flex items-center gap-2 text-sm font-semibold text-white opacity-0 group-hover:opacity-100 -translate-y-2 group-hover:translate-y-0 transition-all duration-300">
-                Lire l'article <ArrowUpRight className="w-4 h-4" />
+                {t("Lire l'article")} <ArrowUpRight className="w-4 h-4" />
               </div>
             </div>
 
             {/* Featured badge */}
             <div className="absolute top-6 left-6 flex items-center gap-1.5 bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-full">
-              <Sparkle className="w-3 h-3 text-[#E5B6B9]" />
-              <span className="text-white text-xs font-medium">À la une</span>
+              <IconIA className="w-3 h-3 text-[#E5B6B9]" />
+              <span className="text-white text-xs font-medium">{t("À la une")}</span>
             </div>
           </motion.div>
 
@@ -185,7 +188,7 @@ export function LearningCenter() {
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20" />
                 {/* Tag badge */}
                 <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-full">
-                  <span className="text-[10px] font-bold tracking-[0.1em] uppercase text-[#2A2424]">{article.tag}</span>
+                  <span className="text-[10px] font-bold tracking-[0.1em] uppercase text-[#2A2424]">{t(article.tag)}</span>
                 </div>
               </div>
 
@@ -193,19 +196,19 @@ export function LearningCenter() {
               <div className="p-5 flex flex-col justify-between h-[48%]">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[10px] font-bold tracking-[0.12em] uppercase text-[#E5B6B9]">{article.category}</span>
+                    <span className="text-[10px] font-bold tracking-[0.12em] uppercase text-[#E5B6B9]">{t(article.category)}</span>
                     <span className="w-1 h-1 rounded-full bg-[#2A2424]/20" />
                     <div className="flex items-center gap-1 text-[#2A2424]/40">
                       <Clock className="w-2.5 h-2.5" />
-                      <span className="text-[10px]">{article.readTime}</span>
+                      <span className="text-[10px]">{t(article.readTime)}</span>
                     </div>
                   </div>
                   <h3 className="text-sm font-semibold text-[#2A2424] leading-snug line-clamp-2 group-hover:text-[#2A2424]/70 transition-colors">
-                    {article.title}
+                    {t(article.title)}
                   </h3>
                 </div>
                 <div className="flex items-center gap-1.5 text-xs font-medium text-[#2A2424] opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  Lire <ArrowUpRight className="w-3.5 h-3.5" />
+                  {t("Lire")} <ArrowUpRight className="w-3.5 h-3.5" />
                 </div>
               </div>
             </motion.div>
@@ -223,15 +226,15 @@ export function LearningCenter() {
             <img src={featured.image} alt={featured.title} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#2A2424]/90 via-[#2A2424]/30 to-transparent" />
             <div className="absolute top-5 left-5 flex items-center gap-1.5 bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-full">
-              <Sparkle className="w-3 h-3 text-[#E5B6B9]" />
-              <span className="text-white text-xs font-medium">À la une</span>
+              <IconIA className="w-3 h-3 text-[#E5B6B9]" />
+              <span className="text-white text-xs font-medium">{t("À la une")}</span>
             </div>
             <div className="absolute bottom-0 left-0 right-0 p-6">
-              <span className="text-xs font-bold tracking-[0.15em] uppercase text-[#E5B6B9] block mb-2">{featured.category}</span>
-              <h3 className="text-xl font-medium text-white leading-snug mb-1">{featured.title}</h3>
+              <span className="text-xs font-bold tracking-[0.15em] uppercase text-[#E5B6B9] block mb-2">{t(featured.category)}</span>
+              <h3 className="text-xl font-medium text-white leading-snug mb-1">{t(featured.title)}</h3>
               <div className="flex items-center gap-1 text-white/50 mt-2">
                 <Clock className="w-3 h-3" />
-                <span className="text-xs">{featured.readTime}</span>
+                <span className="text-xs">{t(featured.readTime)}</span>
               </div>
             </div>
           </motion.div>
@@ -248,15 +251,15 @@ export function LearningCenter() {
                   <div className="relative h-[140px] overflow-hidden">
                     <img src={article.image} alt={article.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full">
-                      <span className="text-[9px] font-bold tracking-widest uppercase text-[#2A2424]">{article.tag}</span>
+                      <span className="text-[9px] font-bold tracking-widest uppercase text-[#2A2424]">{t(article.tag)}</span>
                     </div>
                   </div>
                   <div className="p-4">
-                    <span className="text-[9px] font-bold tracking-[0.12em] uppercase text-[#E5B6B9] block mb-1.5">{article.category}</span>
-                    <h3 className="text-sm font-semibold text-[#2A2424] leading-snug line-clamp-3">{article.title}</h3>
+                    <span className="text-[9px] font-bold tracking-[0.12em] uppercase text-[#E5B6B9] block mb-1.5">{t(article.category)}</span>
+                    <h3 className="text-sm font-semibold text-[#2A2424] leading-snug line-clamp-3">{t(article.title)}</h3>
                     <div className="flex items-center gap-1 text-[#2A2424]/40 mt-2">
                       <Clock className="w-2.5 h-2.5" />
-                      <span className="text-[10px]">{article.readTime}</span>
+                      <span className="text-[10px]">{t(article.readTime)}</span>
                     </div>
                   </div>
                 </motion.div>
@@ -268,7 +271,7 @@ export function LearningCenter() {
             href="/journal"
             className="flex items-center justify-center gap-2 bg-[#2A2424] text-white font-semibold py-4 rounded-full text-sm"
           >
-            Lire tous les articles <ArrowUpRight className="w-4 h-4" />
+            {t("Lire tous les articles")} <ArrowUpRight className="w-4 h-4" />
           </Link>
 
         </div>

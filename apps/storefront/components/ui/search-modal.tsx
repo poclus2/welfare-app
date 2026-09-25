@@ -4,10 +4,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { instantMeiliSearch } from "@meilisearch/instant-meilisearch";
 import { InstantSearch, SearchBox, Highlight, Configure, useHits, useSearchBox } from "react-instantsearch";
-import { X, MagnifyingGlass, Sparkle, ArrowRight, Scan, BookOpen } from "@phosphor-icons/react";
+import { X, MagnifyingGlass, ArrowRight, Scan, BookOpen } from "@phosphor-icons/react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { sdk } from "@/lib/medusa";
+import { IconIA } from "@/components/ui/icons/IconIA";
+import { useI18n } from "@/lib/i18n-context";
 
 const searchClient = instantMeiliSearch(
   process.env.NEXT_PUBLIC_MEILISEARCH_HOST || "http://localhost:7700",
@@ -49,6 +51,7 @@ function Hit({ hit, onClose }: { hit: any; onClose: () => void }) {
 }
 
 export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const { t } = useI18n();
   const router = useRouter();
 
   useEffect(() => {
@@ -100,7 +103,7 @@ export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                   <MagnifyingGlass className="w-5 h-5 text-[#2A2424]/40 shrink-0 ml-2" />
                   <SearchBox
                     onSubmit={handleSubmit}
-                    placeholder="Rechercher un produit, une marque, un besoin..."
+                    placeholder={t("Rechercher un produit, une marque, un besoin...")}
                     classNames={{
                       root: "flex-1",
                       form: "relative flex items-center",
@@ -123,9 +126,9 @@ export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 </div>
                 
                 <div className="p-3 bg-white border-t border-[#F4EAEB] flex items-center justify-between text-[10px] font-medium text-[#2A2424]/40">
-                  <span>Recherche instantanée by Meilisearch</span>
+                  <span>{t("Recherche instantanée by Meilisearch")}</span>
                   <div className="flex items-center gap-1">
-                    <kbd className="px-1.5 py-0.5 rounded bg-[#F4EAEB] text-[#2A2424]">esc</kbd> pour fermer
+                    <kbd className="px-1.5 py-0.5 rounded bg-[#F4EAEB] text-[#2A2424]">esc</kbd> {t("pour fermer")}
                   </div>
                 </div>
               </InstantSearch>
@@ -138,6 +141,7 @@ export function SearchModal({ isOpen, onClose }: { isOpen: boolean; onClose: () 
 }
 
 function CustomHits({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n();
   const { hits } = useHits();
   const { query } = useSearchBox();
 
@@ -164,8 +168,8 @@ function CustomHits({ onClose }: { onClose: () => void }) {
           <div className="w-16 h-16 mx-auto bg-amber-50 rounded-full flex items-center justify-center mb-4">
             <MagnifyingGlass className="w-8 h-8 text-amber-500" />
           </div>
-          <h3 className="text-lg font-bold text-[#2A2424] mb-2">Aucun résultat exact pour "{query}"</h3>
-          <p className="text-sm text-[#2A2424]/60">L'Intelligence Comportementale The Welfare a sélectionné ces alternatives pour vous aider.</p>
+          <h3 className="text-lg font-bold text-[#2A2424] mb-2">{t("Aucun résultat exact pour")} "{query}"</h3>
+          <p className="text-sm text-[#2A2424]/60">{t("L'Intelligence Comportementale The Welfare a sélectionné ces alternatives pour vous aider.")}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -174,11 +178,11 @@ function CustomHits({ onClose }: { onClose: () => void }) {
               <Scan className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-[#2A2424] mb-1 group-hover:text-[#E5B6B9] transition-colors">Vous ne trouvez pas votre routine ?</h4>
-              <p className="text-xs text-[#2A2424]/60">Laissez notre IA clinique analyser votre peau et formuler vos soins sur-mesure.</p>
+              <h4 className="text-sm font-bold text-[#2A2424] mb-1 group-hover:text-[#E5B6B9] transition-colors">{t("Vous ne trouvez pas votre routine ?")}</h4>
+              <p className="text-xs text-[#2A2424]/60">{t("Laissez notre IA clinique analyser votre peau et formuler vos soins sur-mesure.")}</p>
             </div>
             <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider flex items-center gap-1 mt-auto">
-              Lancer le Scan IA <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+              {t("Lancer le Scan IA")} <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
             </span>
           </Link>
 
@@ -187,11 +191,11 @@ function CustomHits({ onClose }: { onClose: () => void }) {
               <BookOpen className="w-5 h-5 text-emerald-600" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-[#2A2424] mb-1 group-hover:text-[#E5B6B9] transition-colors">Skin Learning Center</h4>
-              <p className="text-xs text-[#2A2424]/60">Découvrez nos articles cliniques sur les actifs dermatologiques adaptés à vos besoins.</p>
+              <h4 className="text-sm font-bold text-[#2A2424] mb-1 group-hover:text-[#E5B6B9] transition-colors">{t("Skin Learning Center")}</h4>
+              <p className="text-xs text-[#2A2424]/60">{t("Découvrez nos articles cliniques sur les actifs dermatologiques adaptés à vos besoins.")}</p>
             </div>
             <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-1 mt-auto">
-              Explorer les guides <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+              {t("Explorer les guides")} <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
             </span>
           </Link>
         </div>
@@ -202,8 +206,8 @@ function CustomHits({ onClose }: { onClose: () => void }) {
   if (hits.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-48 text-[#2A2424]/40">
-        <Sparkle className="w-8 h-8 mb-3 opacity-50" />
-        <span className="text-sm">Commencez à taper pour découvrir notre catalogue...</span>
+        <IconIA className="w-8 h-8 mb-3 opacity-50" />
+        <span className="text-sm">{t("Commencez à taper pour découvrir notre catalogue...")}</span>
       </div>
     )
   }

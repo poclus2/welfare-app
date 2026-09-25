@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useCart } from "@/lib/cart-context";
+import { useI18n } from "@/lib/i18n-context";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { sdk } from "@/lib/medusa";
@@ -64,9 +65,10 @@ const CAMEROON_CITIES = [
 
 // ─── Step indicator ────────────────────────────────────────────────────────────
 function StepIndicator({ step }: { step: 1 | 2 }) {
+  const { t } = useI18n();
   const steps = [
-    { num: 1, label: "Identité" },
-    { num: 2, label: "Livraison" },
+    { num: 1, label: t("Identité") },
+    { num: 2, label: t("Livraison") },
   ];
   return (
     <div className="flex items-center gap-0 mb-8">
@@ -104,6 +106,7 @@ function StepIndicator({ step }: { step: 1 | 2 }) {
 // ─── Main component ────────────────────────────────────────────────────────────
 export default function CheckoutPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const { items, totalAmount, clearCart, cartId } = useCart();
   const [step, setStep] = useState<1 | 2>(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -229,20 +232,20 @@ useEffect(() => {
   // ── Validation ──────────────────────────────────────────────────────────────
   const validateIdentity = () => {
     const e: Partial<IdentityForm> = {};
-    if (!identity.firstName.trim()) e.firstName = "Requis";
-    if (!identity.lastName.trim()) e.lastName = "Requis";
-    if (!identity.email.trim() || !/\S+@\S+\.\S+/.test(identity.email)) e.email = "Email invalide";
-    if (!identity.phone.trim()) e.phone = "Requis";
+    if (!identity.firstName.trim()) e.firstName = t("Requis");
+    if (!identity.lastName.trim()) e.lastName = t("Requis");
+    if (!identity.email.trim() || !/\S+@\S+\.\S+/.test(identity.email)) e.email = t("Email invalide");
+    if (!identity.phone.trim()) e.phone = t("Requis");
     setIdentityErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const validateDelivery = () => {
     const e: Partial<Record<keyof DeliveryForm, string> & { shipping: string, neighborhood: string }> = {};
-    if (delivery.mode === "retrait" && !delivery.store) e.store = "Choisissez un magasin";
+    if (delivery.mode === "retrait" && !delivery.store) e.store = t("Choisissez un magasin");
     if (delivery.mode === "domicile") {
-      if (!delivery.address.trim()) e.address = "Requis";
-      if (!delivery.city.trim()) e.city = "Requis";
+      if (!delivery.address.trim()) e.address = t("Requis");
+      if (!delivery.city.trim()) e.city = t("Requis");
     }
     // Comment out strict shipping option validation so users can still test if options aren't seeded yet
     // if (!selectedShippingOptionId) e.shipping = "Veuillez sélectionner une méthode de livraison";
@@ -254,11 +257,11 @@ useEffect(() => {
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleStep1Next = async () => {
     if (!validateIdentity()) {
-      alert("Veuillez remplir correctement tous les champs d'identité.");
+      alert(t("Veuillez remplir correctement tous les champs d'identité."));
       return;
     }
     if (!cartId) {
-      alert("Panier non initialisé");
+      alert(t("Panier non initialisé"));
       return;
     }
     
@@ -277,7 +280,7 @@ useEffect(() => {
       setStep(2);
     } catch (err) {
       console.error(err);
-      alert("Erreur de connexion au serveur");
+      alert(t("Erreur de connexion au serveur"));
     } finally {
       setIsLoading(false);
     }
@@ -285,11 +288,11 @@ useEffect(() => {
 
   const handleSubmit = async () => {
     if (!validateDelivery()) {
-      alert("Veuillez remplir tous les champs de livraison (voir les bordures rouges).");
+      alert(t("Veuillez remplir tous les champs de livraison (voir les bordures rouges)."));
       return;
     }
     if (!cartId) {
-      alert("Le panier n'est pas initialisé correctement.");
+      alert(t("Le panier n'est pas initialisé correctement."));
       return;
     }
     setIsLoading(true);
@@ -329,7 +332,7 @@ useEffect(() => {
           await sdk.store.cart.addShippingMethod(cartId, { option_id: defaultOpt.id });
         }
       } else {
-        throw new Error("Aucun mode de livraison n'est disponible pour cette adresse.");
+        throw new Error(t("Aucun mode de livraison n'est disponible pour cette adresse."));
       }
 
       // 3. Initiate Payment Session
@@ -365,8 +368,8 @@ useEffect(() => {
       window.location.href = `/checkout/confirmation?ref=${ref}`;
     } catch (err: any) {
       console.error("Payment Error:", err);
-      const msg = err?.message || err?.toString() || "Erreur inconnue";
-      alert("Erreur lors de la validation: " + msg);
+      const msg = err?.message || err?.toString() || t("Erreur inconnue");
+      alert(t("Erreur lors de la validation: ") + msg);
       setIsLoading(false);
     }
   };
@@ -391,11 +394,11 @@ useEffect(() => {
           className="flex items-center gap-2 text-sm font-medium text-[#2A2424]/60 hover:text-[#2A2424] transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          {step === 2 ? "Retour" : "Retour à la boutique"}
+          {step === 2 ? t("Retour") : t("Retour à la boutique")}
         </button>
         <div className="flex items-center gap-1.5 text-xs font-semibold text-[#2A2424]/50">
           <ShieldCheck className="w-4 h-4 text-emerald-500" />
-          Paiement 100% sécurisé
+          {t("Paiement 100% sécurisé")}
         </div>
       </div>
 
@@ -404,10 +407,10 @@ useEffect(() => {
         {/* LEFT — Forms */}
         <div className="flex-1">
           <h1 className="text-2xl font-bold text-[#2A2424] mb-1" style={{ letterSpacing: "-0.02em" }}>
-            Finaliser ma commande
+            {t("Finaliser ma commande")}
           </h1>
           <p className="text-sm text-[#2A2424]/50 mb-6">
-            {step === 1 ? "Étape 1 sur 2 — Vos informations" : "Étape 2 sur 2 — Mode de livraison"}
+            {step === 1 ? t("Étape 1 sur 2 — Vos informations") : t("Étape 2 sur 2 — Mode de livraison")}
           </p>
 
           <StepIndicator step={step} />
@@ -425,12 +428,12 @@ useEffect(() => {
                 <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 space-y-5">
                   <div className="flex items-center gap-2 mb-1">
                     <User className="w-4 h-4 text-[#C08A8E]" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-[#2A2424]/50">Identité</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-[#2A2424]/50">{t("Identité")}</span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">Prénom</label>
+                      <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">{t("Prénom")}</label>
                       <input
                         type="text"
                         placeholder="Fatou"
@@ -441,7 +444,7 @@ useEffect(() => {
                       {identityErrors.firstName && <p className="text-[10px] text-red-500 mt-1">{identityErrors.firstName}</p>}
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">Nom</label>
+                      <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">{t("Nom")}</label>
                       <input
                         type="text"
                         placeholder="Diallo"
@@ -455,7 +458,7 @@ useEffect(() => {
 
                   <div>
                     <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">
-                      <Envelope className="inline w-3 h-3 mr-1" />Email
+                      <Envelope className="inline w-3 h-3 mr-1" />{t("Email")}
                     </label>
                     <input
                       type="email"
@@ -469,7 +472,7 @@ useEffect(() => {
 
                   <div>
                     <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">
-                      <Phone className="inline w-3 h-3 mr-1" />Téléphone / WhatsApp
+                      <Phone className="inline w-3 h-3 mr-1" />{t("Téléphone / WhatsApp")}
                     </label>
                     <input
                       type="tel"
@@ -487,7 +490,7 @@ useEffect(() => {
                   whileTap={{ scale: 0.97 }}
                   className="mt-5 w-full py-4 bg-[#2A2424] text-white rounded-2xl text-sm font-bold shadow-lg hover:bg-black transition-colors flex items-center justify-center gap-2"
                 >
-                  Continuer vers la livraison <CaretRight className="w-4 h-4" />
+                  {t("Continuer vers la livraison")} <CaretRight className="w-4 h-4" />
                 </motion.button>
               </motion.div>
             )}
@@ -506,7 +509,7 @@ useEffect(() => {
                 <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6">
                   <div className="flex items-center gap-2 mb-4">
                     <Truck className="w-4 h-4 text-[#C08A8E]" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-[#2A2424]/50">Mode de livraison</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-[#2A2424]/50">{t("Mode de livraison")}</span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -528,9 +531,9 @@ useEffect(() => {
                         <House className={`w-5 h-5 ${delivery.mode === "domicile" ? "text-white" : "text-[#C08A8E]"}`} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-[#2A2424]">Livraison</p>
-                        <p className="text-xs font-bold text-[#2A2424]">à domicile</p>
-                        <p className="text-[10px] text-[#C08A8E] font-semibold mt-1">+{livraisonFee > 0 ? `+${formatPrice(livraisonFee)} FCFA` : "Gratuit"}</p>
+                        <p className="text-xs font-bold text-[#2A2424]">{t("Livraison")}</p>
+                        <p className="text-xs font-bold text-[#2A2424]">{t("à domicile")}</p>
+                        <p className="text-[10px] text-[#C08A8E] font-semibold mt-1">+{livraisonFee > 0 ? `+${formatPrice(livraisonFee)} FCFA` : t("Gratuit")}</p>
                       </div>
                     </button>
 
@@ -552,9 +555,9 @@ useEffect(() => {
                         <Storefront className={`w-5 h-5 ${delivery.mode === "retrait" ? "text-white" : "text-[#C08A8E]"}`} />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-[#2A2424]">Retrait</p>
-                        <p className="text-xs font-bold text-[#2A2424]">en magasin</p>
-                        <p className="text-[10px] text-emerald-600 font-semibold mt-1">Gratuit</p>
+                        <p className="text-xs font-bold text-[#2A2424]">{t("Retrait")}</p>
+                        <p className="text-xs font-bold text-[#2A2424]">{t("en magasin")}</p>
+                        <p className="text-[10px] text-emerald-600 font-semibold mt-1">{t("Gratuit")}</p>
                       </div>
                     </button>
                   </div>
@@ -574,10 +577,10 @@ useEffect(() => {
                       <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 space-y-4">
                         <div className="flex items-center gap-2">
                           <MapPin className="w-4 h-4 text-[#C08A8E]" />
-                          <span className="text-xs font-bold uppercase tracking-widest text-[#2A2424]/50">Adresse de livraison</span>
+                          <span className="text-xs font-bold uppercase tracking-widest text-[#2A2424]/50">{t("Adresse de livraison")}</span>
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">Adresse complète</label>
+                          <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">{t("Adresse complète")}</label>
                           <input
                             type="text"
                             placeholder="Rue 10, Villa 5, Sacré Cœur 3"
@@ -589,7 +592,7 @@ useEffect(() => {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">Ville</label>
+                            <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">{t("Ville")}</label>
                             <select
                               value={delivery.city}
                               onChange={(e) => setDelivery({ ...delivery, city: e.target.value })}
@@ -602,13 +605,13 @@ useEffect(() => {
                             {deliveryErrors.city && <p className="text-[10px] text-red-500 mt-1">{deliveryErrors.city}</p>}
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">Pays</label>
+                            <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">{t("Pays")}</label>
                             <select
                               value={delivery.country}
                               onChange={(e) => setDelivery({ ...delivery, country: e.target.value })}
                               className="w-full px-4 py-3 rounded-xl border border-[#EDE0E0] focus:border-[#C08A8E] focus:ring-2 focus:ring-[#F4EAEB] text-sm text-[#2A2424] bg-white outline-none transition-all"
                             >
-                              <option>Cameroun</option>
+                              <option value="Cameroun">{t("Cameroun")}</option>
                             </select>
                           </div>
                         </div>
@@ -620,13 +623,13 @@ useEffect(() => {
                             animate={{ opacity: 1, height: "auto" }}
                             className="mt-3"
                           >
-                            <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">Quartier</label>
+                            <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">{t("Quartier")}</label>
                             <select
                               value={deliveryNeighborhood}
                               onChange={(e) => setDeliveryNeighborhood(e.target.value)}
                               className="w-full px-4 py-3 rounded-xl border border-[#EDE0E0] focus:border-[#C08A8E] focus:ring-2 focus:ring-[#F4EAEB] text-sm text-[#2A2424] bg-white outline-none transition-all"
                             >
-                              <option value="">Sélectionnez un quartier</option>
+                              <option value="">{t("Sélectionnez un quartier")}</option>
                               {citiesData.find(c => c.name === delivery.city)?.neighborhoods?.map((h: any) => (
                                 <option key={h.id} value={h.id}>{h.name}</option>
                               ))}
@@ -639,16 +642,16 @@ useEffect(() => {
                         {eta && (
                           <div className="mt-2 flex items-center gap-2 text-[11px] text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg font-medium">
                             <Clock className="w-3.5 h-3.5" />
-                            Délai estimé : {eta}
+                            {t("Délai estimé :")} {eta}
                           </div>
                         )}
                         <div>
                           <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">
-                            Instructions <span className="text-[#2A2424]/30">(optionnel)</span>
+                            {t("Instructions")} <span className="text-[#2A2424]/30">{t("(optionnel)")}</span>
                           </label>
                           <textarea
                             rows={2}
-                            placeholder="Ex: Appeler avant de venir, passer par l'entrée latérale..."
+                            placeholder={t("Ex: Appeler avant de venir, passer par l'entrée latérale...")}
                             value={delivery.notes}
                             onChange={(e) => setDelivery({ ...delivery, notes: e.target.value })}
                             className="w-full px-4 py-3 rounded-xl border border-[#EDE0E0] focus:border-[#C08A8E] focus:ring-2 focus:ring-[#F4EAEB] text-sm text-[#2A2424] bg-white outline-none transition-all resize-none"
@@ -673,7 +676,7 @@ useEffect(() => {
                       <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 space-y-3">
                         <div className="flex items-center gap-2 mb-1">
                           <Storefront className="w-4 h-4 text-[#C08A8E]" />
-                          <span className="text-xs font-bold uppercase tracking-widest text-[#2A2424]/50">Choisissez votre magasin</span>
+                          <span className="text-xs font-bold uppercase tracking-widest text-[#2A2424]/50">{t("Choisissez votre magasin")}</span>
                         </div>
                         {deliveryErrors.store && (
                           <p className="text-[10px] text-red-500">{deliveryErrors.store}</p>
@@ -695,7 +698,7 @@ useEffect(() => {
                               <p className="text-sm font-bold text-[#2A2424]">{store.name}</p>
                               <p className="text-xs text-[#2A2424]/50 mt-0.5">{store.address}</p>
                               <p className="text-[10px] text-[#C08A8E] font-semibold mt-1 flex items-center gap-1">
-                                <Clock className="w-3 h-3" /> {store.hours}
+                                <Clock className="w-3 h-3" /> {t(store.hours)}
                               </p>
                             </div>
                             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${delivery.store === store.id ? "border-[#2A2424] bg-[#2A2424]" : "border-[#EDE0E0]"}`}>
@@ -711,7 +714,7 @@ useEffect(() => {
                 {/* Payment info */}
                 <div className="bg-[#F4EAEB]/40 border border-[#EDE0E0] rounded-2xl p-5">
                   <p className="text-xs font-bold uppercase tracking-widest text-[#C08A8E] mb-3 flex items-center gap-1.5">
-                    <CreditCard className="w-4 h-4 text-[#1DAFEC]" /> Mode de paiement
+                    <CreditCard className="w-4 h-4 text-[#1DAFEC]" /> {t("Mode de paiement")}
                   </p>
                   
                   <div className="space-y-3">
@@ -725,8 +728,8 @@ useEffect(() => {
                         <DeviceMobile className="w-5 h-5 text-[#1DAFEC]" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-bold text-[#2A2424]">Paiement automatisé (+3%)</p>
-                        <p className="text-xs text-[#2A2424]/50">Mobile Money direct (Wave, Orange, MTN...)</p>
+                        <p className="text-sm font-bold text-[#2A2424]">{t("Paiement automatisé (+3%)")}</p>
+                        <p className="text-xs text-[#2A2424]/50">{t("Mobile Money direct (Wave, Orange, MTN...)")}</p>
                       </div>
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${paymentMode === "pawapay" ? "border-[#2A2424] bg-[#2A2424]" : "border-[#EDE0E0]"}`}>
                         {paymentMode === "pawapay" && <Check className="w-3 h-3 text-white" />}
@@ -747,16 +750,16 @@ useEffect(() => {
                               onChange={(e) => setMobileNetwork(e.target.value)}
                               className="w-full text-xs px-3 py-2.5 rounded-xl border border-[#EDE0E0] bg-white outline-none focus:border-[#C08A8E]"
                             >
-                              <option value="SEN-WAVE">Wave Sénégal</option>
-                              <option value="SEN-ORANGE_MONEY">Orange Money Sénégal</option>
-                              <option value="SEN-FREE_MONEY">Free Money Sénégal</option>
-                              <option value="CMR-MTN_MOMO">MTN MoMo Cameroun</option>
-                              <option value="CMR-ORANGE_MONEY">Orange Money Cameroun</option>
-                              <option value="CIV-WAVE">Wave Côte d'Ivoire</option>
-                              <option value="CIV-ORANGE_MONEY">Orange Money Côte d'Ivoire</option>
+                              <option value="SEN-WAVE">{t("Wave Sénégal")}</option>
+                              <option value="SEN-ORANGE_MONEY">{t("Orange Money Sénégal")}</option>
+                              <option value="SEN-FREE_MONEY">{t("Free Money Sénégal")}</option>
+                              <option value="CMR-MTN_MOMO">{t("MTN MoMo Cameroun")}</option>
+                              <option value="CMR-ORANGE_MONEY">{t("Orange Money Cameroun")}</option>
+                              <option value="CIV-WAVE">{t("Wave Côte d'Ivoire")}</option>
+                              <option value="CIV-ORANGE_MONEY">{t("Orange Money Côte d'Ivoire")}</option>
                             </select>
                             <p className="text-[11px] text-[#2A2424]/50 mt-2 leading-relaxed">
-                              Vous recevrez une notification (Push USSD) sur votre téléphone après confirmation pour valider le paiement.
+                              {t("Vous recevrez une notification (Push USSD) sur votre téléphone après confirmation pour valider le paiement.")}
                             </p>
                           </div>
                         </motion.div>
@@ -773,8 +776,8 @@ useEffect(() => {
                         <Money className="w-5 h-5 text-emerald-500" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-bold text-[#2A2424]">Paiement manuel (USSD)</p>
-                        <p className="text-xs text-[#2A2424]/50">Orange Money / MTN Mobile Money</p>
+                        <p className="text-sm font-bold text-[#2A2424]">{t("Paiement manuel (USSD)")}</p>
+                        <p className="text-xs text-[#2A2424]/50">{t("Orange Money / MTN Mobile Money")}</p>
                       </div>
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${paymentMode === "manuel" ? "border-[#2A2424] bg-[#2A2424]" : "border-[#EDE0E0]"}`}>
                         {paymentMode === "manuel" && <Check className="w-3 h-3 text-white" />}
@@ -790,7 +793,7 @@ useEffect(() => {
                           className="overflow-hidden px-1"
                         >
                           <div className="pt-2 pb-4 text-xs bg-emerald-50/50 px-4 rounded-xl border border-emerald-100 mt-2 space-y-4">
-                            <p className="text-[#2A2424] font-semibold text-sm">Instructions USSD :</p>
+                            <p className="text-[#2A2424] font-semibold text-sm">{t("Instructions USSD :")}</p>
                             
                             <div className="flex gap-2">
                               <button
@@ -808,16 +811,16 @@ useEffect(() => {
                             </div>
 
                             <div className="space-y-2 text-[#2A2424]/80 leading-relaxed bg-white p-3 rounded-lg border border-emerald-100/50">
-                              <p><strong>1.</strong> Cliquez sur <strong>"Lancer le paiement"</strong> ci-dessous pour ouvrir votre tlphone avec le code (<strong className="text-[#2A2424]">{manualProvider === "orange" ? "#150*47*356456#" : "*126*14*673464553#"}</strong>).</p>
-                              <p><strong>2.</strong> Transfrez le montant exact de <strong className="text-[#2A2424]">{formatPrice(total)} FCFA</strong>.</p>
-                              <p><strong>3.</strong> Une fois terminé, cliquez sur "Confirmer ma commande" en bas de page pour valider votre achat.</p>
+                              <p><strong>1.</strong> {t("Cliquez sur")} <strong>"{t("Lancer le paiement")}"</strong> {t("ci-dessous pour ouvrir votre téléphone avec le code")} (<strong className="text-[#2A2424]">{manualProvider === "orange" ? "#150*47*356456#" : "*126*14*673464553#"}</strong>).</p>
+                              <p><strong>2.</strong> {t("Transférez le montant exact de")} <strong className="text-[#2A2424]">{formatPrice(total)} FCFA</strong>.</p>
+                              <p><strong>3.</strong> {t("Une fois terminé, cliquez sur \"Confirmer ma commande\" en bas de page pour valider votre achat.")}</p>
                             </div>
 
                             <a 
                               href={`tel:${manualProvider === "orange" ? "%23150*47*356456%23" : "*126*14*673464553%23"}`} 
                               className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-colors shadow-sm ${manualProvider === "orange" ? "bg-orange-500 hover:bg-orange-600 text-white" : "bg-yellow-400 hover:bg-yellow-500 text-black"}`}
                             >
-                              Lancer le paiement (USSD) <Phone className="w-4 h-4" />
+                              {t("Lancer le paiement (USSD)")} <Phone className="w-4 h-4" />
                             </a>
                           </div>
                         </motion.div>
@@ -836,7 +839,7 @@ useEffect(() => {
                   {isLoading ? (
                     <CircleNotch className="w-4 h-4 animate-spin" />
                   ) : (
-                    <>Confirmer ma commande <CaretRight className="w-4 h-4" /></>
+                    <>{t("Confirmer ma commande")} <CaretRight className="w-4 h-4" /></>
                   )}
                 </motion.button>
 
@@ -844,7 +847,7 @@ useEffect(() => {
                   onClick={() => setStep(1)}
                   className="w-full flex items-center justify-center gap-1.5 text-xs text-[#2A2424]/50 hover:text-[#2A2424] transition-colors py-1"
                 >
-                  <CaretLeft className="w-3.5 h-3.5" /> Modifier mes informations
+                  <CaretLeft className="w-3.5 h-3.5" /> {t("Modifier mes informations")}
                 </button>
               </motion.div>
             )}
@@ -859,7 +862,7 @@ useEffect(() => {
           transition={{ duration: 0.4, delay: 0.1 }}
         >
           <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 sticky top-24">
-            <h2 className="text-sm font-bold text-[#2A2424] mb-4">Récapitulatif</h2>
+            <h2 className="text-sm font-bold text-[#2A2424] mb-4">{t("Récapitulatif")}</h2>
 
             <div className="space-y-3 mb-4">
               {items.map((item) => (
@@ -873,7 +876,7 @@ useEffect(() => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-[#2A2424] line-clamp-2 leading-tight">{item.title}</p>
-                    <p className="text-[11px] text-[#2A2424]/50 mt-0.5">Qté : {item.quantity}</p>
+                    <p className="text-[11px] text-[#2A2424]/50 mt-0.5">{t("Qté :")} {item.quantity}</p>
                   </div>
                   <p className="text-xs font-bold text-[#2A2424] shrink-0">
                     {formatPrice(item.price * item.quantity)} FCFA
@@ -886,43 +889,43 @@ useEffect(() => {
 
             <div className="space-y-2.5 mb-5">
               <div className="flex justify-between text-sm text-[#2A2424]/60">
-                <span>Sous-total</span>
+                <span>{t("Sous-total")}</span>
                 <span>{formatPrice(totalAmount)} FCFA</span>
               </div>
               <div className="flex justify-between text-sm text-[#2A2424]/60">
                 <span className="flex items-center gap-1.5">
                   {delivery.mode === "retrait" ? <Storefront className="w-3.5 h-3.5" /> : <Truck className="w-3.5 h-3.5" />}
-                  {delivery.mode === "retrait" ? "Retrait magasin" : "Livraison"}
+                  {delivery.mode === "retrait" ? t("Retrait magasin") : t("Livraison")}
                 </span>
                 <span className={delivery.mode === "retrait" && step === 2 ? "text-emerald-600 font-semibold" : ""}>
-                  {step === 1 ? "à calculer" : (delivery.mode === "retrait" ? "Gratuit" : `${livraisonFee > 0 ? `+${formatPrice(livraisonFee)} FCFA` : "Gratuit"}`)}
+                  {step === 1 ? t("à calculer") : (delivery.mode === "retrait" ? t("Gratuit") : `${livraisonFee > 0 ? `+${formatPrice(livraisonFee)} FCFA` : t("Gratuit")}`)}
                 </span>
               </div>
               {paymentFee > 0 && step === 2 && (
                 <div className="flex justify-between text-sm text-[#2A2424]/60 mt-2.5">
                   <span className="flex items-center gap-1.5">
                     <CreditCard className="w-3.5 h-3.5" />
-                    Frais automatisé (3%)
+                    {t("Frais automatisé (3%)")}
                   </span>
                   <span>+{formatPrice(paymentFee)} FCFA</span>
                 </div>
               )}
               <div className="w-full h-px bg-[#F4EAEB] mt-2.5" />
               <div className="flex justify-between">
-                <span className="text-sm font-bold text-[#2A2424]">Total</span>
+                <span className="text-sm font-bold text-[#2A2424]">{t("Total")}</span>
                 <span className="text-base font-bold text-[#2A2424]">{formatPrice(total)} FCFA</span>
               </div>
             </div>
 
             <div className="flex items-center justify-center gap-4">
               <div className="flex items-center gap-1 text-[10px] text-[#2A2424]/40">
-                <ShieldCheck className="w-3 h-3 text-emerald-500" /> Sécurisé
+                <ShieldCheck className="w-3 h-3 text-emerald-500" /> {t("Sécurisé")}
               </div>
               <div className="flex items-center gap-1 text-[10px] text-[#2A2424]/40">
-                <Package className="w-3 h-3" /> Authentique
+                <Package className="w-3 h-3" /> {t("Authentique")}
               </div>
               <div className="flex items-center gap-1 text-[10px] text-[#2A2424]/40">
-                <Truck className="w-3 h-3" /> Rapide
+                <Truck className="w-3 h-3" /> {t("Rapide")}
               </div>
             </div>
           </div>

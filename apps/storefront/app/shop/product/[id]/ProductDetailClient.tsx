@@ -12,6 +12,7 @@ import ReactMarkdown from "react-markdown";
 import { Footer } from "@/components/home/footer";
 import { useCart } from "@/lib/cart-context";
 import { useChatStore } from "@/lib/store/use-chat-store";
+import { useI18n } from "@/lib/i18n-context";
 
 /* ─── MOCK DATA ───────────────────────────────────────────────── */
 const mockProduct = {
@@ -150,6 +151,7 @@ function Accordion({
 
 /* ─── IMAGE GALLERY ───────────────────────────────────────────── */
 function Gallery({ images, title }: { images: string[]; title: string }) {
+  const { t } = useI18n();
   const [active, setActive] = useState(0);
   const [isWishlisted, setIsWishlisted] = useState(false);
 
@@ -181,7 +183,7 @@ function Gallery({ images, title }: { images: string[]; title: string }) {
         {/* Badge */}
         <div className="absolute top-4 left-4 z-10">
           <span className="text-[10px] font-bold uppercase tracking-widest bg-[#2A2424] text-white px-2.5 py-1 rounded-full">
-            Best-seller
+            {t("Best-seller")}
           </span>
         </div>
 
@@ -190,7 +192,7 @@ function Gallery({ images, title }: { images: string[]; title: string }) {
           <motion.img
             key={active}
             src={images[active]}
-            alt={`${title} — vue ${active + 1}`}
+            alt={`${title} — ${t("vue")} ${active + 1}`}
             initial={{ opacity: 0, scale: 1.04 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.96 }}
@@ -235,6 +237,7 @@ function Gallery({ images, title }: { images: string[]; title: string }) {
 
 /* ─── STAR RATING ─────────────────────────────────────────────── */
 function Stars({ rating, count }: { rating: number; count: number }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center gap-2">
       <div className="flex gap-0.5">
@@ -248,7 +251,7 @@ function Stars({ rating, count }: { rating: number; count: number }) {
         ))}
       </div>
       <span className="text-xs font-semibold text-[#2A2424]">{rating}</span>
-      <span className="text-xs text-[#2A2424]/40">({count} avis)</span>
+      <span className="text-xs text-[#2A2424]/40">({count} {t("avis")})</span>
     </div>
   );
 }
@@ -268,6 +271,7 @@ function TrustBadge({ icon, label, sub }: { icon: React.ReactNode; label: string
 
 /* ─── MAIN COMPONENT ──────────────────────────────────────────── */
 export function ProductDetailClient({ product: _product, recommendedProducts = [] }: { product?: any; recommendedProducts?: any[] }) {
+  const { t } = useI18n();
   const meta = _product?.metadata || {};
   
   // Extraire le prix réel (premier variant, premier prix)
@@ -302,7 +306,7 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
     }
     return {
       id: p.id,
-      brand: p.collection?.title || "Marque",
+      brand: p.collection?.title || t("Marque"),
       title: p.title,
       price: `${recPriceStr} ${recCurrencyStr}`,
       img: p.images?.[0]?.url || "https://placehold.co/400x400/F4EAEB/2A2424?text=Produit"
@@ -387,10 +391,10 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
         className="w-full max-w-[1160px] mx-auto px-5 md:px-8 pt-5 pb-0"
       >
         <div className="flex items-center gap-2 text-[11px] text-[#2A2424]/40 font-medium">
-          <Link href="/" className="hover:text-[#C08A8E] transition-colors">Accueil</Link>
+          <Link href="/" className="hover:text-[#C08A8E] transition-colors">{t("Accueil")}</Link>
           <span>/</span>
           <Link href="/shop" className="hover:text-[#C08A8E] transition-colors flex items-center gap-1">
-            <ArrowLeft className="w-3 h-3" /> Boutique
+            <ArrowLeft className="w-3 h-3" /> {t("Boutique")}
           </Link>
           <span>/</span>
           <span className="text-[#2A2424] truncate max-w-[160px]">{data.title}</span>
@@ -445,10 +449,10 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
                 {data.totalStock > 0 ? (
                   <>
                     <Check className="w-3 h-3" /> 
-                    {data.totalStock < 5 ? `Plus que ${data.totalStock} en stock` : "En stock"}
+                    {data.totalStock < 5 ? `${t("Plus que")} ${data.totalStock} ${t("en stock")}` : t("En stock")}
                   </>
                 ) : (
-                  <>Rupture de stock</>
+                  <>{t("Rupture de stock")}</>
                 )}
               </span>
             </motion.div>
@@ -459,7 +463,7 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
                 variants={fadeUp} initial="hidden" animate="visible" custom={3}
                 className="mb-7"
               >
-                <span className="text-[10px] font-bold text-[#2A2424]/40 uppercase tracking-widest block mb-2">Préoccupations ciblées</span>
+                <span className="text-[10px] font-bold text-[#2A2424]/40 uppercase tracking-widest block mb-2">{t("Préoccupations ciblées")}</span>
                 <div className="flex flex-wrap gap-2">
                   {data.skin_concerns.map((concern: string, i: number) => (
                     <span
@@ -475,11 +479,11 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
 
             {/* Pourquoi on l'aime */}
             <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={5} className="mb-7">
-              <Accordion title="✦ Pourquoi on l'aime" defaultOpen accent>
+              <Accordion title={`✦ ${t("Pourquoi on l'aime")}`} defaultOpen accent>
                 <div className="flex flex-col gap-3 pt-1">
                   {data.skin_types.length > 0 && (
                     <div>
-                      <span className="text-[10px] font-bold text-[#2A2424]/40 uppercase tracking-widest block mb-2">Types de peau</span>
+                      <span className="text-[10px] font-bold text-[#2A2424]/40 uppercase tracking-widest block mb-2">{t("Types de peau")}</span>
                       <div className="flex flex-wrap gap-2">
                         {data.skin_types.map((type: string, i: number) => (
                           <motion.span
@@ -508,7 +512,7 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
                           className="inline-flex items-center gap-1.5 text-[11px] font-medium px-3 py-1.5 rounded-full bg-[#F4EAEB] text-[#2A2424]"
                         >
                           <span className="text-[#C08A8E]">{b.icon}</span>
-                          {b.label}
+                          {t(b.label)}
                         </motion.span>
                       ))}
                     </div>
@@ -522,7 +526,7 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
               variants={fadeUp} initial="hidden" animate="visible" custom={6}
               className="flex items-center gap-3 mb-4"
             >
-              <span className="text-xs font-semibold text-[#2A2424]/50 uppercase tracking-wider w-20">Quantité</span>
+              <span className="text-xs font-semibold text-[#2A2424]/50 uppercase tracking-wider w-20">{t("Quantité")}</span>
               <div className="flex items-center border border-[#EDE0E0] rounded-full overflow-hidden bg-white shadow-sm">
                 <button
                   onClick={() => setQty((q) => Math.max(1, q - 1))}
@@ -572,7 +576,7 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
                       exit={{ opacity: 0, y: -6 }}
                       className="flex items-center gap-2"
                     >
-                      <Check className="w-4 h-4" /> Ajouté au panier !
+                      <Check className="w-4 h-4" /> {t("Ajouté au panier !")}
                     </motion.span>
                   ) : (
                     <motion.span
@@ -583,9 +587,9 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
                       className="flex items-center gap-2"
                     >
                       {data.totalStock === 0 ? (
-                        <>Épuisé</>
+                        <>{t("Épuisé")}</>
                       ) : (
-                        <><ShoppingBag className="w-4 h-4" /> Ajouter au panier - {data.price} FCFA</>
+                        <><ShoppingBag className="w-4 h-4" /> {t("Ajouter au panier")} - {data.price} FCFA</>
                       )}
                     </motion.span>
                   )}
@@ -607,7 +611,7 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
                 className="w-full mt-3 py-3 rounded-2xl text-[13px] font-bold text-[#2A2424] flex items-center justify-center gap-2 bg-[#F8F5F2] border border-[#EDE0E0] hover:bg-[#F4EAEB] transition-colors"
               >
                 <ChatTeardropText className="w-4 h-4 text-[#C2164A]" weight="fill" />
-                Poser une question sur ce produit
+                {t("Poser une question sur ce produit")}
               </motion.button>
             </motion.div>
 
@@ -616,11 +620,11 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
               variants={fadeUp} initial="hidden" animate="visible" custom={8}
               className="flex items-start justify-between gap-3 px-2 py-4 rounded-2xl bg-white border border-[#EDE0E0] mb-6"
             >
-              <TrustBadge icon={<ShieldCheck className="w-5 h-5" />} label="Paiement" sub="100% Sécurisé" />
+              <TrustBadge icon={<ShieldCheck className="w-5 h-5" />} label={t("Paiement")} sub={t("100% Sécurisé")} />
               <div className="w-px h-10 self-center bg-[#EDE0E0]" />
-              <TrustBadge icon={<Truck className="w-5 h-5" />} label="Livraison" sub="Rapide & Locale" />
+              <TrustBadge icon={<Truck className="w-5 h-5" />} label={t("Livraison")} sub={t("Rapide & Locale")} />
               <div className="w-px h-10 self-center bg-[#EDE0E0]" />
-              <TrustBadge icon={<Package className="w-5 h-5" />} label="Authentique" sub="Certifié K-Beauty" />
+              <TrustBadge icon={<Package className="w-5 h-5" />} label={t("Authentique")} sub={t("Certifié K-Beauty")} />
             </motion.div>
 
             {/* ── DESCRIPTION & ACCORDÉONS RESTANTS ───────────────────────── */}
@@ -634,7 +638,7 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
                 </p>
               </div>
 
-              <Accordion title="Conseils d'utilisation" defaultOpen>
+              <Accordion title={t("Conseils d'utilisation")} defaultOpen>
                 <div className="pt-2 pb-1">
                   {data.layering_steps.map((step: any, i: number) => {
                     const iconMap: Record<string, React.ReactNode> = {
@@ -679,11 +683,11 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
                                   step.highlight ? "text-[#2A2424]" : "text-[#2A2424]/40"
                                 }`}
                               >
-                                Étape {step.step}
+                                {t("Étape")} {step.step}
                               </span>
                               {step.highlight && (
                                 <span className="text-[9px] font-bold uppercase tracking-wider bg-[#E5B6B9]/30 text-[#C08A8E] px-2 py-0.5 rounded-full">
-                                  Ce produit
+                                  {t("Ce produit")}
                                 </span>
                               )}
                             </div>
@@ -696,7 +700,7 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
                                   : "bg-indigo-50 text-indigo-400"
                               }`}
                             >
-                              {step.timing}
+                              {step.timing ? t(step.timing) : ""}
                             </span>
                           </div>
 
@@ -725,16 +729,16 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
                 </div>
               </Accordion>
 
-              <Accordion title="Transparence & Ingrédients INCI" defaultOpen>
+              <Accordion title={t("Transparence & Ingrédients INCI")} defaultOpen>
                 <div className="prose prose-sm prose-stone max-w-none text-[#2A2424]/60 pt-1
                   [&_h3]:text-[13px] [&_h3]:font-bold [&_h3]:text-[#2A2424] [&_h3]:mb-2
                   [&_strong]:text-[#2A2424] [&_ul]:pl-4 [&_li]:mb-1.5">
                   <ReactMarkdown>{data.inci_markdown}</ReactMarkdown>
 
                   <div className="mt-6 pt-4 border-t border-[#EDE0E0]">
-                    <h3 className="text-[13px] font-bold text-[#2A2424] mb-2">Liste complète INCI</h3>
+                    <h3 className="text-[13px] font-bold text-[#2A2424] mb-2">{t("Liste complète INCI")}</h3>
                     <p className="text-xs leading-relaxed text-[#2A2424]/60">
-                      {data.raw_inci || "Non communiquée"}
+                      {data.raw_inci || t("Non communiquée")}
                     </p>
                   </div>
                 </div>
@@ -755,9 +759,9 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C08A8E] mb-1">Découvrez aussi</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C08A8E] mb-1">{t("Découvrez aussi")}</p>
             <h2 className="text-xl md:text-2xl font-bold text-[#2A2424] tracking-tight" style={{ letterSpacing: "-0.02em" }}>
-              Produits similaires
+              {t("Produits similaires")}
             </h2>
           </motion.div>
         </div>
@@ -824,7 +828,7 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
                 whileTap={{ scale: 0.95 }}
                 className="shrink-0 px-5 py-2.5 bg-[#2A2424] text-white rounded-xl text-xs font-bold shadow-sm"
               >
-                Ajouter
+                {t("Ajouter")}
               </motion.button>
             </div>
           </motion.div>

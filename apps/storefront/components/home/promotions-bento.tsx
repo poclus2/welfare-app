@@ -2,10 +2,11 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowUpRight, Package, Sparkle, Clock, CheckCircle, ArrowRight,
+  ArrowUpRight, Package, Clock, CheckCircle, ArrowRight,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useI18n } from "@/lib/i18n-context";
 
 /* ─────────────────────────────────────────
    BRAND TOKENS – SEKORIA RED
@@ -37,11 +38,12 @@ function useCountdown(targetH: number) {
 }
 
 function LiveCountdown() {
-  const t = useCountdown(72);
+  const { t } = useI18n();
+  const cd = useCountdown(72);
   const units = [
-    { v: t.h, l: "Heures" },
-    { v: t.m, l: "Mins" },
-    { v: t.s, l: "Secs" },
+    { v: cd.h, l: "Heures" },
+    { v: cd.m, l: "Mins" },
+    { v: cd.s, l: "Secs" },
   ];
   return (
     <div className="flex items-end gap-2">
@@ -55,7 +57,7 @@ function LiveCountdown() {
               {v}
             </span>
             <span className="text-[9px] font-bold tracking-[0.15em] uppercase mt-1.5" style={{ color: `${S.red}99` }}>
-              {l}
+              {t(l)}
             </span>
           </div>
           {i < 2 && (
@@ -126,6 +128,7 @@ const sekoriaProducts = [
    SUCCESS TOAST
 ───────────────────────────────────────── */
 function Toast({ visible, name }: { visible: boolean; name: string }) {
+  const { t } = useI18n();
   return (
     <AnimatePresence>
       {visible && (
@@ -148,9 +151,9 @@ function Toast({ visible, name }: { visible: boolean; name: string }) {
             <CheckCircle className="w-5 h-5" style={{ color: S.red }} />
           </div>
           <div>
-            <p className="text-sm font-bold leading-tight">Précommande confirmée !</p>
+            <p className="text-sm font-bold leading-tight">{t("Précommande confirmée !")}</p>
             <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.45)" }}>
-              {name} · Livraison estimée : {AVAILABILITY}
+              {name} · {t("Livraison estimée :")} {AVAILABILITY}
             </p>
           </div>
         </motion.div>
@@ -163,6 +166,7 @@ function Toast({ visible, name }: { visible: boolean; name: string }) {
    PREORDER BADGE
 ───────────────────────────────────────── */
 function PreorderBadge({ small = false }: { small?: boolean }) {
+  const { t } = useI18n();
   return (
     <span
       className={`inline-flex items-center gap-1 font-bold tracking-[0.15em] uppercase rounded-full ${
@@ -175,7 +179,7 @@ function PreorderBadge({ small = false }: { small?: boolean }) {
       }}
     >
       <Package className={small ? "w-2 h-2" : "w-2.5 h-2.5"} />
-      Précommande
+      {t("Précommande")}
     </span>
   );
 }
@@ -184,6 +188,7 @@ function PreorderBadge({ small = false }: { small?: boolean }) {
    PRODUCT CARD (Desktop)
 ───────────────────────────────────────── */
 function ProductCard({ p, onPreorder }: { p: typeof sekoriaProducts[0]; onPreorder: (n: string) => void }) {
+  const { t } = useI18n();
   const isDark = !!(p as any).isDark;
   const textCol = isDark ? "text-white" : "text-[#0F0A09]";
   const subCol  = isDark ? "text-white/40" : "text-[#0F0A09]/50";
@@ -211,9 +216,9 @@ function ProductCard({ p, onPreorder }: { p: typeof sekoriaProducts[0]; onPreord
       <div className="flex items-end justify-between flex-1 gap-2">
         {/* Text block */}
         <div className="flex flex-col justify-end min-w-0 flex-1">
-          <p className={`text-[10px] font-semibold tracking-[0.12em] uppercase mb-1 truncate ${subCol}`}>{p.subtitle}</p>
+          <p className={`text-[10px] font-semibold tracking-[0.12em] uppercase mb-1 truncate ${subCol}`}>{t(p.subtitle)}</p>
           <h3 className={`text-[1.05rem] font-bold leading-snug mb-1 ${textCol}`}>{p.name}</h3>
-          <p className={`text-[10px] leading-relaxed mb-3 line-clamp-2 ${noteCol}`}>{p.note}</p>
+          <p className={`text-[10px] leading-relaxed mb-3 line-clamp-2 ${noteCol}`}>{t(p.note)}</p>
           <p className={`text-base font-black leading-none ${textCol}`}>{p.price}</p>
           <p className={`text-[9px] mt-1 ${noteCol}`}>📦 {AVAILABILITY}</p>
         </div>
@@ -238,7 +243,7 @@ function ProductCard({ p, onPreorder }: { p: typeof sekoriaProducts[0]; onPreord
         whileTap={{ scale: 0.97 }}
       >
         <Package className="w-3.5 h-3.5" />
-        Précommander
+        {t("Précommander")}
       </motion.button>
     </motion.div>
   );
@@ -249,6 +254,7 @@ function ProductCard({ p, onPreorder }: { p: typeof sekoriaProducts[0]; onPreord
    MAIN COMPONENT
 ───────────────────────────────────────── */
 export function PromotionsBento() {
+  const { t } = useI18n();
   const [toast, setToast] = useState({ visible: false, name: "" });
 
   const handlePreorder = (name: string) => {
@@ -269,7 +275,7 @@ export function PromotionsBento() {
               className="text-[2rem] md:text-[2.8rem] lg:text-[3.8rem] leading-[1.05] font-black tracking-[-0.03em]"
               style={{ color: S.dark }}
             >
-              Collection{" "}
+              {t("Collection")}{" "}
               <span
                 className="inline-block"
                 style={{
@@ -283,12 +289,12 @@ export function PromotionsBento() {
               </span>
               <br />
               <span className="font-medium" style={{ color: `${S.dark}70` }}>
-                Précommandes ouvertes
+                {t("Précommandes ouvertes")}
               </span>
             </h2>
 
             <p className="mt-4 text-sm md:text-base max-w-md leading-relaxed" style={{ color: `${S.dark}60` }}>
-              La première marque K-Beauty conçue pour les peaux africaines. Réservez votre routine avant le lancement officiel du <strong style={{ color: S.dark }}>{AVAILABILITY}</strong>.
+              {t("La première marque K-Beauty conçue pour les peaux africaines. Réservez votre routine avant le lancement officiel du")} <strong style={{ color: S.dark }}>{AVAILABILITY}</strong>.
             </p>
           </div>
 
@@ -296,7 +302,7 @@ export function PromotionsBento() {
           <div className="flex flex-col items-start lg:items-end gap-4 shrink-0">
             <div>
               <p className="text-[10px] font-bold tracking-[0.2em] uppercase mb-3" style={{ color: `${S.dark}40` }}>
-                Lancement dans
+                {t("Lancement dans")}
               </p>
               <LiveCountdown />
             </div>
@@ -305,7 +311,7 @@ export function PromotionsBento() {
               className="hidden lg:inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold text-white transition-all duration-200 hover:scale-105 active:scale-95"
               style={{ background: S.red, boxShadow: `0 8px 32px ${S.redGlow}` }}
             >
-              Voir toute la collection <ArrowUpRight className="w-4 h-4" />
+              {t("Voir toute la collection")} <ArrowUpRight className="w-4 h-4" />
             </Link>
           </div>
         </motion.div>
@@ -349,7 +355,7 @@ export function PromotionsBento() {
               >
                 <Clock className="w-3.5 h-3.5 text-white/60" />
                 <span className="text-white text-xs font-bold tabular-nums">72:00:00</span>
-                <span className="text-white/40 text-[10px]">restants</span>
+                <span className="text-white/40 text-[10px]">{t("restants")}</span>
               </div>
             </div>
             <div className="relative z-10 p-7 pb-8">
@@ -358,26 +364,26 @@ export function PromotionsBento() {
                 <div className="w-0.5 h-10 rounded-full" style={{ background: S.red }} />
                 <div>
                   <p className="text-xs font-black tracking-[0.3em] uppercase" style={{ color: S.red }}>Sekoria</p>
-                  <p className="text-[10px] tracking-[0.15em] uppercase text-white/30">Made in Cameroun</p>
+                  <p className="text-[10px] tracking-[0.15em] uppercase text-white/30">{t("Made in Cameroun")}</p>
                 </div>
               </div>
 
               <h3 className="text-[2.5rem] lg:text-[3rem] font-black text-white leading-[1.0] tracking-[-0.03em] mb-3">
-                Coffret Rituels<br />
-                <span style={{ color: S.redLight }}>Édition Fondatrice</span>
+                {t("Coffret Rituels")}<br />
+                <span style={{ color: S.redLight }}>{t("Édition Fondatrice")}</span>
               </h3>
 
               <p className="text-white/50 text-sm mb-1 leading-relaxed max-w-sm">
-                4 soins iconiques pensés pour révéler l'éclat naturel des peaux africaines.
+                {t("4 soins iconiques pensés pour révéler l'éclat naturel des peaux africaines.")}
               </p>
-              <p className="text-white/30 text-xs mb-6">📦 Disponibilité estimée : <span className="text-white/60 font-semibold">{AVAILABILITY}</span></p>
+              <p className="text-white/30 text-xs mb-6">📦 {t("Disponibilité estimée :")} <span className="text-white/60 font-semibold">{AVAILABILITY}</span></p>
 
               {/* Price + CTA */}
               <div className="flex items-end justify-between gap-4">
                 <div>
-                  <p className="text-white/30 text-xs mb-0.5">Coffret 4 soins</p>
+                  <p className="text-white/30 text-xs mb-0.5">{t("Coffret 4 soins")}</p>
                   <p className="text-4xl font-black text-white tracking-tight">85 000 <span className="text-lg font-medium text-white/40">FCFA</span></p>
-                  <p className="text-white/20 text-[10px] mt-0.5">Sans avance de frais</p>
+                  <p className="text-white/20 text-[10px] mt-0.5">{t("Sans avance de frais")}</p>
                 </div>
                 <motion.button
                   onClick={() => handlePreorder("Coffret Rituels Sekoria")}
@@ -387,7 +393,7 @@ export function PromotionsBento() {
                   whileTap={{ scale: 0.97 }}
                 >
                   <Package className="w-4 h-4" />
-                  Précommander le coffret
+                  {t("Précommander le coffret")}
                 </motion.button>
               </div>
             </div>
@@ -422,13 +428,13 @@ export function PromotionsBento() {
             {/* Left: brand story */}
             <div className="relative z-10 flex-1">
               <h3 className="text-xl lg:text-2xl font-black text-white leading-tight mb-2 tracking-[-0.02em]">
-                Rejoignez les{" "}
-                <span style={{ color: S.redLight }}>247 fondatrices</span>
-                {" "}qui ont déjà<br />
-                réservé leur routine Sekoria.
+                {t("Rejoignez les")}{" "}
+                <span style={{ color: S.redLight }}>{t("247 fondatrices")}</span>
+                {" "}{t("qui ont déjà")}<br />
+                {t("réservé leur routine Sekoria.")}
               </h3>
               <p className="text-white/40 text-sm">
-                Réservation sans engagement financier · Annulation gratuite avant le {AVAILABILITY}.
+                {t("Réservation sans engagement financier · Annulation gratuite avant le")} {AVAILABILITY}.
               </p>
             </div>
 
@@ -437,9 +443,9 @@ export function PromotionsBento() {
               className="relative z-10 flex flex-col items-center gap-1 shrink-0 px-8 py-5 rounded-2xl"
               style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
             >
-              <p className="text-white/30 text-[9px] tracking-widest uppercase">Places restantes</p>
+              <p className="text-white/30 text-[9px] tracking-widest uppercase">{t("Places restantes")}</p>
               <p className="text-5xl font-black" style={{ color: S.red }}>53</p>
-              <p className="text-white/20 text-[10px]">sur 300 spots fondateurs</p>
+              <p className="text-white/20 text-[10px]">{t("sur 300 spots fondateurs")}</p>
             </div>
 
             {/* Right: CTA */}
@@ -452,10 +458,10 @@ export function PromotionsBento() {
                 whileTap={{ scale: 0.97 }}
               >
                 <Package className="w-4 h-4" />
-                Réserver ma place
+                {t("Réserver ma place")}
                 <ArrowRight className="w-4 h-4" />
               </motion.button>
-              <p className="text-white/20 text-[10px]">📦 Livraison estimée : {AVAILABILITY}</p>
+              <p className="text-white/20 text-[10px]">📦 {t("Livraison estimée :")} {AVAILABILITY}</p>
             </div>
           </motion.div>
         </div>
@@ -493,20 +499,20 @@ export function PromotionsBento() {
                 style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
               >
                 <Clock className="w-3 h-3 text-white/50" />
-                <span className="text-white text-xs font-bold">72h restantes</span>
+                <span className="text-white text-xs font-bold">{t("72h restantes")}</span>
               </div>
             </div>
 
             <div className="relative z-10 p-5">
-              <p className="text-xs font-black tracking-[0.25em] uppercase mb-1" style={{ color: S.red }}>Sekoria · Édition Fondatrice</p>
-              <h3 className="text-2xl font-black text-white leading-tight mb-1">Coffret Rituels<br />
-                <span style={{ color: S.redLight }}>Collection Complète</span>
+              <p className="text-xs font-black tracking-[0.25em] uppercase mb-1" style={{ color: S.red }}>{t("Sekoria · Édition Fondatrice")}</p>
+              <h3 className="text-2xl font-black text-white leading-tight mb-1">{t("Coffret Rituels")}<br />
+                <span style={{ color: S.redLight }}>{t("Collection Complète")}</span>
               </h3>
-              <p className="text-white/30 text-xs mb-4">📦 Disponibilité estimée : {AVAILABILITY}</p>
+              <p className="text-white/30 text-xs mb-4">📦 {t("Disponibilité estimée :")} {AVAILABILITY}</p>
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xl font-black text-white">85 000 FCFA</p>
-                  <p className="text-white/30 text-[10px]">Sans engagement</p>
+                  <p className="text-white/30 text-[10px]">{t("Sans engagement")}</p>
                 </div>
                 <button
                   onClick={() => handlePreorder("Coffret Rituels Complet")}
@@ -514,7 +520,7 @@ export function PromotionsBento() {
                   style={{ background: S.red, boxShadow: `0 4px 20px ${S.redGlow}` }}
                 >
                   <Package className="w-4 h-4" />
-                  Précommander
+                  {t("Précommander")}
                 </button>
               </div>
             </div>
@@ -548,7 +554,7 @@ export function PromotionsBento() {
                   {/* Text bottom */}
                   <div>
                     <h3 className={`text-sm font-bold leading-tight mb-0.5 ${isDark ? "text-white" : "text-[#0F0A09]"}`}>{p.name}</h3>
-                    <p className={`text-[9px] mb-2 ${isDark ? "text-white/40" : "text-[#0F0A09]/50"}`}>{p.subtitle}</p>
+                    <p className={`text-[9px] mb-2 ${isDark ? "text-white/40" : "text-[#0F0A09]/50"}`}>{t(p.subtitle)}</p>
                     <p className={`text-sm font-black ${isDark ? "text-white" : "text-[#0F0A09]"}`}>{p.price}</p>
                     <p className={`text-[8px] mt-0.5 ${isDark ? "text-white/25" : "text-[#0F0A09]/35"}`}>📦 {AVAILABILITY}</p>
                   </div>
@@ -569,9 +575,9 @@ export function PromotionsBento() {
               style={{ background: `radial-gradient(circle, ${S.red}20 0%, transparent 70%)` }}
             />
             <div className="relative z-10">
-              <p className="text-white/30 text-[10px] tracking-widest uppercase mb-1">Places restantes</p>
+              <p className="text-white/30 text-[10px] tracking-widest uppercase mb-1">{t("Places restantes")}</p>
               <p className="text-4xl font-black" style={{ color: S.red }}>53</p>
-              <p className="text-white/40 text-sm mt-1">sur 300 spots fondateurs</p>
+              <p className="text-white/40 text-sm mt-1">{t("sur 300 spots fondateurs")}</p>
             </div>
             <button
               onClick={() => handlePreorder("Collection Complète Sekoria")}
@@ -579,9 +585,9 @@ export function PromotionsBento() {
               style={{ background: S.red, boxShadow: `0 4px 20px ${S.redGlow}` }}
             >
               <Package className="w-4 h-4" />
-              Réserver ma place <ArrowRight className="w-4 h-4" />
+              {t("Réserver ma place")} <ArrowRight className="w-4 h-4" />
             </button>
-            <p className="relative z-10 text-white/20 text-[10px] text-center">📦 Livraison estimée : {AVAILABILITY}</p>
+            <p className="relative z-10 text-white/20 text-[10px] text-center">📦 {t("Livraison estimée :")} {AVAILABILITY}</p>
           </motion.div>
         </div>
       </div>

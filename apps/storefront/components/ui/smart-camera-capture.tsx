@@ -5,6 +5,7 @@ import Webcam from "react-webcam";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import { Camera, ArrowLeft, ArrowRight, Sun, Eyeglasses, X } from "@phosphor-icons/react";
+import { IconIA } from "@/components/ui/icons/IconIA";
 
 export type CaptureResult = {
   front: string;
@@ -277,7 +278,7 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
 
               {/* Icon */}
               <div className="flex items-center justify-center w-16 h-16 bg-[rgba(200,134,138,0.1)] border border-[rgba(200,134,138,0.2)] rounded-2xl mb-6 mx-auto">
-                <Camera className="w-8 h-8" style={{ color: "#C8868A" }} />
+                <IconIA className="w-12 h-12 text-[#C97C85]" />
               </div>
 
               {/* Title */}

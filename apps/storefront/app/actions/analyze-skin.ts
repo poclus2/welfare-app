@@ -107,7 +107,7 @@ async function fetchStoreProductsByIds(
     // Build query with comma-separated IDs — Medusa store supports id[]
     const query = ids.map((id) => `id[]=${id}`).join("&");
     const res = await fetch(
-      `${medusaUrl}/store/products?${query}&limit=${ids.length}&fields=*variants.prices,*variants.calculated_price`,
+      `${medusaUrl}/store/products?${query}&limit=${ids.length}&fields=*variants.prices`,
       {
         headers: {
           "x-publishable-api-key": publishableKey,
@@ -441,7 +441,8 @@ Les produits suivants sont TOUS disponibles en stock. Tu DOIS choisir tes recomm
 ${miniCatalogText}
 
 RÈGLE DE PRIORISATION (The Welfare Strategy) & BUDGET :
-- BUDGET : Vérifie le budget souhaité par la cliente dans le questionnaire ci-dessous. Tu DOIS construire une routine dont la somme des prix en FCFA s'approche au mieux de ce budget sans l'exploser de manière disproportionnée. Privilégie une routine courte et abordable si le budget est restreint ("Découverte").
+- BUDGET (RÈGLE STRICTE) : Vérifie le budget souhaité par la cliente dans le questionnaire. La somme totale des prix des produits recommandés NE DOIT SOUS AUCUN PRÉTEXTE dépasser ce budget.
+  - Si le budget est limité (ex: 40 000 FCFA), tu DOIS impérativement supprimer des étapes (par exemple, retirer le toner ou le sérum) pour ne garder que l'essentiel (ex: Nettoyant + Hydratant/Solaire) afin de rester strictement sous le budget. Le respect du budget est ABSOLU et prioritaire sur le fait d'avoir une routine longue.
 - En cas d'hésitation entre deux produits cutanément équivalents et qui respectent le budget, donne TOUJOURS la priorité au produit avec le stock le plus élevé (indiqué entre parenthèses après "stock:").
 - Si le mode est "Sélection éditoriale manuelle", ces produits ont été choisis par notre équipe : leur recommandation est FORTEMENT encouragée si pertinente au budget.
 - Pour chaque étape, copie EXACTEMENT le medusa_product_id du produit choisi.
@@ -486,11 +487,11 @@ TA MISSION (4 points obligatoires)
 RÈGLES D'EXPERTISE K-BEAUTY — THE WELFARE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🌿 SKINIMALISME STRICT (${aiConfig.max_routine_steps} étapes MAXIMUM) :
-   RÈGLE ABSOLUE : Tu ne DOIS SOUS AUCUN PRÉTEXTE dépasser ${aiConfig.max_routine_steps} étapes.
+🌿 SKINIMALISME STRICT & BUDGET (${aiConfig.max_routine_steps} étapes MAXIMUM) :
+   RÈGLE ABSOLUE : Tu ne DOIS SOUS AUCUN PRÉTEXTE dépasser le budget de la cliente, même si cela implique de ne recommander que 2 produits.
    Le tableau "routine_steps" doit contenir MAXIMUM ${aiConfig.max_routine_steps} éléments.
-   Ne surcharge JAMAIS la routine. Chaque produit doit être indispensable.
-   Si 3 produits suffisent, reste à 3. Qualité > Quantité.
+   Ne surcharge JAMAIS la routine. Le respect strict du budget passe avant tout.
+   Si le budget ne permet que 2 produits (ex: 30 000 FCFA), propose uniquement 2 produits. Qualité et respect du budget > Quantité.
 
 🚨 CAS CLINIQUES SÉVÈRES (Acné grave, pathologies) :
    Si le diagnostic révèle une pathologie cutanée poussée (acné kystique sévère, rosacée, dermatite, etc.), propose une routine EXTRÊMEMENT minimaliste (apaisement et barrière uniquement) et recommande IMPÉRATIVEMENT dans ton 'empathetic_message' de consulter un spécialiste ou un dermatologue. Ne joue pas au médecin.
@@ -589,6 +590,64 @@ FORMAT JSON ATTENDU :
       // Sécurité absolue : forcer la limite du tableau
       if (routineSteps.length > aiConfig.max_routine_steps) {
         routineSteps = routineSteps.slice(0, aiConfig.max_routine_steps);
+      }
+
+      // ─── FILTRAGE BUDGET STRICT EN TYPESCRIPT ───
+      try {
+        let maxBudget = Infinity;
+        const budgetQuestion = userResponses.find(r => r.answer && typeof r.answer === 'string' && r.answer.includes("000F"));
+        if (budgetQuestion) {
+          const ans = String(budgetQuestion.answer);
+          if (ans.includes("25 000F")) maxBudget = 25000;
+          else if (ans.includes("40 000F")) maxBudget = 40000;
+        }
+
+        if (maxBudget < Infinity && routineSteps.length > 0) {
+          const prices = new Map<string, number>();
+          (hasCatalog ? productCatalog : []).forEach(p => {
+            const price = p.price || 15000;
+            prices.set(p.id, price);
+          });
+
+          const getImportance = (name: string) => {
+            const n = name.toLowerCase();
+            if (n.includes("solaire") || n.includes("spf")) return 1;
+            if (n.includes("nettoyant") || n.includes("cleanser") || n.includes("démaquillant")) return 2;
+            if (n.includes("hydratant") || n.includes("crème") || n.includes("cream")) return 3;
+            if (n.includes("sérum") || n.includes("serum") || n.includes("traitement") || n.includes("ampoule")) return 4;
+            return 5;
+          };
+
+          const scored = routineSteps.map((step: any, idx: number) => ({
+            step,
+            idx,
+            imp: getImportance(step.step_name || ""),
+            price: step.medusa_product_id ? (prices.get(step.medusa_product_id) || 0) : 0
+          }));
+
+          scored.sort((a: any, b: any) => a.imp - b.imp);
+
+          let total = 0;
+          const kept = new Set<number>();
+          for (const item of scored) {
+            // Tolérance de 5000 FCFA
+            if (total + item.price <= maxBudget + 5000) {
+              kept.add(item.idx);
+              total += item.price;
+            }
+          }
+
+          if (kept.size === 0 && scored.length > 0) {
+            kept.add(scored[0].idx); // Au moins 1 produit
+          }
+
+          routineSteps = routineSteps.filter((_: any, i: number) => kept.has(i));
+          
+          // Re-numéroter les étapes proprement
+          routineSteps.forEach((s: any, i: number) => { s.step_number = i + 1; });
+        }
+      } catch (err) {
+        console.error("Erreur filtrage budget:", err);
       }
 
       finalResult = {

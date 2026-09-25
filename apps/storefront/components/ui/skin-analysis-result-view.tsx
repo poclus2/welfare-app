@@ -2,10 +2,11 @@
 
 import { motion, Variants } from "framer-motion";
 import { SkinAnalysisResult, RoutineStep } from "@/app/actions/analyze-skin";
-import { Sparkle, Drop, Eye, Lightning, Sun, ShoppingBag, ArrowCounterClockwise, CaretRight, TrendUp, Package, Plus, CheckCircle, Printer } from "@phosphor-icons/react";
+import {  Drop, Eye, Lightning, Sun, ShoppingBag, ArrowCounterClockwise, CaretRight, TrendUp, Package, Plus, CheckCircle, Printer } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useCart } from "@/lib/cart-context";
+import { IconIA } from "@/components/ui/icons/IconIA";
 
 interface Props {
   result: SkinAnalysisResult;
@@ -456,7 +457,7 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
           {/* Badge */}
           <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-6 text-[11px] font-bold uppercase tracking-widest"
             style={{ background: "rgba(200,134,138,0.1)", border: "1px solid rgba(200,134,138,0.25)", color: "#B06068" }}>
-            <Sparkle className="w-3 h-3" />
+            <IconIA className="w-3 h-3" />
             Diagnostic IA Finalisé
           </motion.div>
 
@@ -569,7 +570,7 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
             <div className="flex gap-3 mb-4">
               <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
                 style={{ background: "rgba(200,134,138,0.1)", border: "1px solid rgba(200,134,138,0.18)" }}>
-                <Sparkle className="w-4 h-4" style={{ color: "#C8868A" }} />
+                <IconIA className="w-4 h-4" style={{ color: "#C8868A" }} />
               </div>
               <p className="text-sm leading-relaxed font-medium" style={{ color: "rgba(61,43,45,0.7)" }}>
                 &ldquo;{result.empathetic_message}&rdquo;

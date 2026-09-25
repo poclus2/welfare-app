@@ -24,6 +24,7 @@ import {
   ShoppingBag
 } from "@phosphor-icons/react";
 import Link from "next/link";
+import { IconIA } from "@/components/ui/icons/IconIA";
 import { OrderCard } from "@/components/account/OrderCard";
 import { OrderDetailsTab } from "@/components/account/OrderDetailsTab";
 import ProfileTab from "@/components/account/ProfileTab";
@@ -55,13 +56,13 @@ function useCounter(target: number, duration = 1500) {
   return count;
 }
 
-type TierType = { name: string; min: number; max: number; color: string; icon: typeof Star };
+type TierType = { name: string; min: number; max: number; color: string; icon: any };
 
 const loyaltyTiers: TierType[] = [
   { name: "Découverte", min: 0, max: 500, color: "#8B7B7B", icon: Star },
   { name: "Bien-être", min: 500, max: 1500, color: "#C97C85", icon: Heart },
   { name: "Prestige", min: 1500, max: 3000, color: "#9B59B6", icon: Seal },
-  { name: "Élite", min: 3000, max: Infinity, color: "#F59E0B", icon: Sparkle },
+  { name: "Élite", min: 3000, max: Infinity, color: "#F59E0B", icon: IconIA },
 ];
 
 function getTier(points: number): TierType {
@@ -73,6 +74,72 @@ function getNextTier(points: number): TierType | null {
   const idx = loyaltyTiers.findIndex((t) => points >= t.min && points < t.max);
   return idx >= 0 && idx < loyaltyTiers.length - 1 ? (loyaltyTiers[idx + 1] as TierType) : null;
 }
+
+const SkinCoachScanCard = ({ scan, onClick }: { scan: any, onClick: () => void }) => {
+  const displaySummary = scan.qwen_raw_summary && scan.qwen_raw_summary !== "Generated from UI" 
+    ? scan.qwen_raw_summary 
+    : "Votre rituel beauté sur-mesure a été élaboré par notre intelligence artificielle à partir de votre diagnostic.";
+  
+  const rawSkinType = scan.final_skin_type || "";
+  const displaySkinType = rawSkinType.toUpperCase().startsWith("PEAU ") 
+    ? rawSkinType 
+    : `Peau ${rawSkinType}`;
+
+  return (
+    <div 
+      className="relative overflow-hidden bg-white rounded-[24px] border border-[#F1E5D8] shadow-[0_4px_24px_-8px_rgba(201,124,133,0.15)] hover:shadow-[0_12px_40px_-8px_rgba(201,124,133,0.25)] transition-all duration-500 group cursor-pointer" 
+      onClick={onClick}
+    >
+      <div className="absolute inset-0 bg-gradient-to-b from-[#FCF9F8] to-white opacity-80 z-0"></div>
+      
+      <div className="absolute -top-16 -right-16 w-48 h-48 bg-[#cd858d] rounded-full mix-blend-multiply filter blur-[50px] opacity-[0.08] group-hover:opacity-[0.15] transition-opacity duration-700"></div>
+      <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-[#E5B6B9] rounded-full mix-blend-multiply filter blur-[50px] opacity-[0.12] group-hover:opacity-[0.25] transition-opacity duration-700"></div>
+      
+      <div className="relative z-10 p-6 sm:p-7 h-full flex flex-col">
+        <div className="flex items-start justify-between mb-6">
+          <div className="w-11 h-11 rounded-2xl bg-white shadow-sm border border-[#F1E5D8] flex items-center justify-center text-[#cd858d] transform group-hover:scale-105 group-hover:-rotate-3 transition-transform duration-500">
+            <IconIA className="w-5 h-5" />
+          </div>
+          <span className="max-w-[70%] text-right px-3 py-1.5 bg-white/60 backdrop-blur-md border border-[#F1E5D8]/50 rounded-full text-[9px] font-bold tracking-[0.1em] uppercase text-[#cd858d] leading-none truncate shadow-sm">
+            {displaySkinType}
+          </span>
+        </div>
+        
+        <h3 className="text-[1.15rem] font-bold text-[#2A2424] mb-1.5 tracking-tight group-hover:text-[#cd858d] transition-colors">
+          Votre rituel sur-mesure
+        </h3>
+        <p className="text-[10px] text-[#C97C85]/80 font-bold tracking-[0.15em] uppercase mb-4">
+          Analysé le {new Date(scan.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+        </p>
+        
+        <p className="text-[13px] text-gray-500 mb-8 line-clamp-3 leading-[1.6] flex-grow font-medium">
+          {displaySummary}
+        </p>
+        
+        {scan.estimated_skin_age && (
+          <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100/60">
+            <div className="flex flex-col">
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Âge estimé</span>
+              <span className="text-sm font-semibold text-[#2A2424]">{scan.estimated_skin_age} ans</span>
+            </div>
+            <div className="w-px h-8 bg-gray-100"></div>
+            <div className="flex flex-col">
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Phototype</span>
+              <span className="text-sm font-semibold text-[#2A2424]">{scan.melanin_phototype || "N/A"}</span>
+            </div>
+          </div>
+        )}
+        
+        <button 
+          onClick={(e) => { e.stopPropagation(); onClick(); }}
+          className="mt-auto w-full py-[14px] bg-[#FAF5F0] text-[#cd858d] text-[10px] font-bold uppercase tracking-[0.15em] rounded-xl hover:bg-[#cd858d] hover:text-white hover:shadow-lg hover:shadow-[#cd858d]/20 transition-all duration-300 flex items-center justify-center gap-2 group-hover:translate-y-[-2px]"
+        >
+          Consulter la routine <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
+        </button>
+      </div>
+    </div>
+  );
+};
 
 export default function AccountPage() {
   const [customer, setCustomer] = useState<any>(null);
@@ -296,7 +363,7 @@ export default function AccountPage() {
                       animate={{ opacity: 1, y: 0 }}
                       className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/60 backdrop-blur-md border border-white/50 shadow-sm text-xs font-semibold tracking-wide text-[#C97C85] mb-6"
                     >
-                      <Sparkle className="w-3.5 h-3.5" weight="fill" />
+                      <IconIA className="w-3.5 h-3.5" />
                       MEMBRE DEPUIS {new Date(customer?.created_at).getFullYear()}
                     </motion.div>
                     
@@ -406,7 +473,7 @@ export default function AccountPage() {
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
                       <div className="flex gap-4 items-center">
                         <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#cd858d] to-[#e4a8b0] text-white flex items-center justify-center shadow-md shadow-[#cd858d]/20">
-                          <Sparkle weight="fill" className="w-6 h-6" />
+                          <IconIA className="w-6 h-6" />
                         </div>
                         <div>
                           <h2 className="text-2xl text-[#2A2424] flex items-center gap-2">
@@ -423,42 +490,7 @@ export default function AccountPage() {
                     {scans.length > 0 ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {scans.slice(0, 2).map((scan: any) => (
-                          <div key={scan.id} className="relative overflow-hidden bg-white rounded-3xl border border-[#F1E5D8] p-1.5 shadow-sm hover:shadow-md transition-all group cursor-pointer" onClick={() => handleViewScan(scan)}>
-                            {/* Soft gradient background */}
-                            <div className="absolute inset-0 bg-gradient-to-br from-[#FAF5F0] via-white to-white opacity-80 z-0"></div>
-                            
-                            {/* Glowing orb effect */}
-                            <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#cd858d] rounded-full mix-blend-multiply filter blur-[40px] opacity-10 group-hover:opacity-20 transition-opacity"></div>
-                            
-                            <div className="relative z-10 bg-white rounded-[1.35rem] p-6 h-full flex flex-col border border-gray-50/50">
-                              <div className="flex items-start justify-between mb-4">
-                                <div className="w-10 h-10 rounded-full bg-[#FAF5F0] flex items-center justify-center text-[#cd858d]">
-                                  <Scan className="w-5 h-5" />
-                                </div>
-                                <span className="px-3 py-2 bg-[#FAF5F0] rounded-lg text-[10px] font-bold tracking-widest uppercase text-[#cd858d] leading-relaxed">
-                                  Peau {scan.final_skin_type}
-                                </span>
-                              </div>
-                              
-                              <h3 className="text-lg font-bold text-[#2A2424] mb-1">
-                                Votre rituel sur-mesure
-                              </h3>
-                              <p className="text-xs text-gray-400 font-medium mb-4">
-                                Analysé le {new Date(scan.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                              </p>
-                              
-                              <p className="text-sm text-gray-600 mb-6 line-clamp-2 leading-relaxed flex-grow">
-                                {scan.qwen_raw_summary || "Routine personnalisée générée par notre intelligence artificielle suite à votre diagnostic de peau."}
-                              </p>
-                              
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); handleViewScan(scan); }}
-                                className="mt-auto w-full py-3 bg-[#FAF5F0] text-[#cd858d] text-xs font-bold uppercase tracking-widest rounded-xl group-hover:bg-[#cd858d] group-hover:text-white transition-colors flex items-center justify-center gap-2"
-                              >
-                                Consulter la routine <ArrowRight className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
+                          <SkinCoachScanCard key={scan.id} scan={scan} onClick={() => handleViewScan(scan)} />
                         ))}
                       </div>
                     ) : (
@@ -468,7 +500,7 @@ export default function AccountPage() {
                         
                         <div className="relative z-10 flex flex-col items-center">
                           <div className="w-16 h-16 rounded-3xl bg-[#FAF5F0] text-[#cd858d] flex items-center justify-center mb-6 shadow-inner border border-white">
-                            <Sparkle weight="fill" className="w-8 h-8" />
+                            <IconIA className="w-8 h-8" />
                           </div>
                           <h3 className="text-xl font-bold text-[#2A2424] mb-3">
                             Découvrez les besoins de votre peau
@@ -477,7 +509,7 @@ export default function AccountPage() {
                             Notre intelligence artificielle analyse votre visage pour créer une routine de soins botanique 100% sur-mesure.
                           </p>
                           <Link href="/skin-coach" className="inline-flex items-center gap-2 px-8 py-4 bg-[#cd858d] text-white text-sm font-bold uppercase tracking-widest rounded-xl hover:bg-[#b5737a] transition-colors shadow-lg shadow-[#cd858d]/20">
-                            <Sparkle weight="fill" className="w-4 h-4" />
+                            <IconIA className="w-4 h-4" />
                             Démarrer l&apos;analyse IA
                           </Link>
                         </div>
@@ -535,7 +567,7 @@ export default function AccountPage() {
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
                   <div className="flex gap-4 items-center">
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#cd858d] to-[#e4a8b0] text-white flex items-center justify-center shadow-md shadow-[#cd858d]/20">
-                      <Sparkle weight="fill" className="w-6 h-6" />
+                      <IconIA className="w-6 h-6" />
                     </div>
                     <div>
                       <h2 className="text-2xl text-[#2A2424] flex items-center gap-2">
@@ -556,7 +588,7 @@ export default function AccountPage() {
                     
                     <div className="relative z-10 flex flex-col items-center">
                       <div className="w-16 h-16 rounded-3xl bg-[#FAF5F0] text-[#cd858d] flex items-center justify-center mb-6 shadow-inner border border-white">
-                        <Sparkle weight="fill" className="w-8 h-8" />
+                        <IconIA className="w-8 h-8" />
                       </div>
                       <h3 className="text-xl font-bold text-[#2A2424] mb-3">
                         Découvrez les besoins de votre peau
@@ -565,7 +597,7 @@ export default function AccountPage() {
                         Notre intelligence artificielle analyse votre visage pour créer une routine de soins botanique 100% sur-mesure.
                       </p>
                       <Link href="/skin-coach" className="inline-flex items-center gap-2 px-8 py-4 bg-[#cd858d] text-white text-sm font-bold uppercase tracking-widest rounded-xl hover:bg-[#b5737a] transition-colors shadow-lg shadow-[#cd858d]/20">
-                        <Sparkle weight="fill" className="w-4 h-4" />
+                        <IconIA className="w-4 h-4" />
                         Démarrer l&apos;analyse IA
                       </Link>
                     </div>
@@ -573,47 +605,7 @@ export default function AccountPage() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {scans.map((scan: any) => (
-                      <div key={scan.id} className="relative overflow-hidden bg-white rounded-3xl border border-[#F1E5D8] p-1.5 shadow-sm hover:shadow-md transition-all group cursor-pointer" onClick={() => handleViewScan(scan)}>
-                        {/* Soft gradient background */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-[#FAF5F0] via-white to-white opacity-80 z-0"></div>
-                        
-                        {/* Glowing orb effect */}
-                        <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#cd858d] rounded-full mix-blend-multiply filter blur-[40px] opacity-10 group-hover:opacity-20 transition-opacity"></div>
-                        
-                        <div className="relative z-10 bg-white rounded-[1.35rem] p-6 h-full flex flex-col border border-gray-50/50">
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="w-10 h-10 rounded-full bg-[#FAF5F0] flex items-center justify-center text-[#cd858d]">
-                              <Scan className="w-5 h-5" />
-                            </div>
-                            <span className="px-3 py-2 bg-[#FAF5F0] rounded-lg text-[10px] font-bold tracking-widest uppercase text-[#cd858d] leading-relaxed shadow-sm">
-                              Peau {scan.final_skin_type}
-                            </span>
-                          </div>
-                          
-                          <h3 className="text-lg font-bold text-[#2A2424] mb-1">
-                            Votre rituel sur-mesure
-                          </h3>
-                          <p className="text-xs text-gray-400 font-medium mb-4">
-                            Analysé le {new Date(scan.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                          </p>
-                          
-                          <p className="text-sm text-gray-600 mb-6 line-clamp-2 leading-relaxed flex-grow">
-                            {scan.qwen_raw_summary || "Routine personnalisée générée par notre intelligence artificielle suite à votre diagnostic de peau."}
-                          </p>
-                          
-                          <div className="mt-auto pt-4 border-t border-gray-50 flex justify-between text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4">
-                            <span>Âge estimé: {scan.estimated_skin_age} ans</span>
-                            <span>Photo: {scan.melanin_phototype}</span>
-                          </div>
-                          
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleViewScan(scan); }}
-                            className="w-full py-3 bg-[#FAF5F0] text-[#cd858d] text-xs font-bold uppercase tracking-widest rounded-xl group-hover:bg-[#cd858d] group-hover:text-white transition-colors flex items-center justify-center gap-2"
-                          >
-                            Consulter la routine <ArrowRight className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
+                      <SkinCoachScanCard key={scan.id} scan={scan} onClick={() => handleViewScan(scan)} />
                     ))}
                   </div>
                 )}

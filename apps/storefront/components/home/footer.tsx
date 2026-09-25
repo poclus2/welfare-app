@@ -1,7 +1,23 @@
 import Link from "next/link";
 import { ArrowRight, Leaf } from "@phosphor-icons/react/dist/ssr";
 
-export function Footer() {
+export function Footer({ dict }: { dict?: any }) {
+  const t = dict || {
+    joinListTitle: "Rejoignez la glow list.",
+    joinListDesc: "Abonnez-vous pour obtenir 10% de réduction sur votre première routine, un accès exclusif aux nouveautés et des conseils soins de la peau.",
+    emailPlaceholder: "Entrez votre email",
+    subscribe: "S'abonner",
+    about: "À Propos",
+    ourStory: "Notre Histoire",
+    help: "Aide",
+    faq: "FAQ",
+    shipping: "Livraison & Retours",
+    trackOrder: "Suivre ma commande",
+    privacy: "Politique de confidentialité",
+    terms: "Conditions d'utilisation",
+    rights: "© {year} The Welfare Shop. Tous droits réservés."
+  };
+
   return (
     <footer className="w-full bg-[#1A1616] text-[#FDFDFC] pt-24 pb-12 flex flex-col items-center overflow-hidden">
       <div className="w-full max-w-[1600px] mx-auto px-8 md:px-12">
@@ -12,25 +28,26 @@ export function Footer() {
           {/* Brand & Newsletter */}
           <div className="max-w-xl">
             <Link href="/" className="flex items-center mb-8 group inline-flex hover:opacity-80 transition-opacity">
-              <img 
-                src="/logo.webp" 
-                alt="The Welfare Shop" 
-                className="h-16 md:h-20 lg:h-24 w-auto object-contain scale-[1.3] origin-left group-hover:scale-[1.35] transition-transform" 
-                style={{ filter: "brightness(0) invert(1)" }} 
-              />
+              <div className="bg-white rounded-full w-24 h-24 md:w-32 md:h-32 shadow-lg group-hover:scale-105 transition-transform flex items-center justify-center p-3">
+                <img 
+                  src="/logo.webp" 
+                  alt="The Welfare Shop" 
+                  className="w-full h-full object-contain scale-[1.2]" 
+                />
+              </div>
             </Link>
             
             <h3 className="text-3xl md:text-4xl font-medium tracking-tight mb-4">
-              Rejoignez la glow list.
+              {t.joinListTitle}
             </h3>
             <p className="text-white/60 mb-8 text-lg">
-              Abonnez-vous pour obtenir 10% de réduction sur votre première routine, un accès exclusif aux nouveautés et des conseils soins de la peau.
+              {t.joinListDesc}
             </p>
             
             <form className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
               <input 
                 type="email" 
-                placeholder="Entrez votre email" 
+                placeholder={t.emailPlaceholder}
                 className="flex-1 bg-white/5 border border-white/10 rounded-full px-6 py-4 text-white placeholder:text-white/40 focus:outline-none focus:border-[#E5B6B9] transition-colors"
                 required
               />
@@ -38,7 +55,7 @@ export function Footer() {
                 type="submit" 
                 className="bg-[#E5B6B9] text-[#1A1616] px-8 py-4 rounded-full font-medium hover:bg-white transition-colors flex items-center justify-center gap-2"
               >
-                S'abonner
+                {t.subscribe}
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>
@@ -59,8 +76,8 @@ export function Footer() {
 
             {/* Column 2 */}
             <div className="flex flex-col gap-4">
-              <h4 className="text-xs font-bold tracking-widest uppercase text-white/40 mb-2">À propos</h4>
-              <Link href="/about" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Notre Histoire</Link>
+              <h4 className="text-xs font-bold tracking-widest uppercase text-white/40 mb-2">{t.about}</h4>
+              <Link href="/about" className="text-white/80 hover:text-[#E5B6B9] transition-colors">{t.ourStory}</Link>
               <Link href="/journal" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Le Journal</Link>
               <Link href="/sekoria" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Gamme Sekoria</Link>
               <Link href="/coach" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Skin Coach IA</Link>
@@ -69,10 +86,10 @@ export function Footer() {
 
             {/* Column 3 */}
             <div className="flex flex-col gap-4">
-              <h4 className="text-xs font-bold tracking-widest uppercase text-white/40 mb-2">Aide</h4>
-              <Link href="/faq" className="text-white/80 hover:text-[#E5B6B9] transition-colors">FAQ</Link>
-              <Link href="/shipping" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Livraison & Retours</Link>
-              <Link href="/track" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Suivre ma commande</Link>
+              <h4 className="text-xs font-bold tracking-widest uppercase text-white/40 mb-2">{t.help}</h4>
+              <Link href="/faq" className="text-white/80 hover:text-[#E5B6B9] transition-colors">{t.faq}</Link>
+              <Link href="/shipping" className="text-white/80 hover:text-[#E5B6B9] transition-colors">{t.shipping}</Link>
+              <Link href="/track" className="text-white/80 hover:text-[#E5B6B9] transition-colors">{t.trackOrder}</Link>
               <Link href="/dashboard" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Mon Compte</Link>
             </div>
 
@@ -82,7 +99,7 @@ export function Footer() {
         {/* Bottom Section */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="text-white/40 text-sm">
-            © {new Date().getFullYear()} The Welfare Shop. Tous droits réservés.
+            {t.rights.replace("{year}", new Date().getFullYear().toString())}
           </p>
           
           <div className="flex items-center gap-6">
@@ -92,8 +109,8 @@ export function Footer() {
           </div>
           
           <div className="flex items-center gap-6 text-sm text-white/40">
-            <Link href="/privacy" className="hover:text-white transition-colors">Politique de confidentialité</Link>
-            <Link href="/terms" className="hover:text-white transition-colors">Conditions d'utilisation</Link>
+            <Link href="/privacy" className="hover:text-white transition-colors">{t.privacy}</Link>
+            <Link href="/terms" className="hover:text-white transition-colors">{t.terms}</Link>
           </div>
         </div>
 

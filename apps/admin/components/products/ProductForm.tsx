@@ -19,13 +19,11 @@ export function ProductForm({ initialData, collections, categories = [] }: { ini
   const [handle, setHandle] = useState(initialData?.handle || "");
   const [collectionId, setCollectionId] = useState(initialData?.collection_id || "");
 
-  const initialCatId = initialData?.categories?.[0]?.id;
-  const initialCat = categories.find(c => c.id === initialCatId);
-  const [mainCategoryId, setMainCategoryId] = useState(initialCat?.parent_category_id || (initialCat ? initialCat.id : ""));
-  const [subCategoryId, setSubCategoryId] = useState(initialCat?.parent_category_id ? initialCat.id : "");
+  // All categories the product belongs to
+  const initialCategoryIds = initialData?.categories?.map((c: any) => c.id) || [];
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(initialCategoryIds);
 
   const mainCategories = categories.filter(c => !c.parent_category_id);
-  const availableSubCategories = categories.filter(c => c.parent_category_id === mainCategoryId);
 
   const [thumbnail, setThumbnail] = useState(initialData?.thumbnail || "");
   const [status, setStatus] = useState(initialData?.status || "draft");
@@ -52,7 +50,7 @@ export function ProductForm({ initialData, collections, categories = [] }: { ini
         description,
         handle,
         collection_id: collectionId || null,
-        categories: subCategoryId ? [{ id: subCategoryId }] : (mainCategoryId ? [{ id: mainCategoryId }] : []),
+        categories: selectedCategoryIds.map(id => ({ id })),
         status,
         discountable: true,
         thumbnail,
@@ -332,22 +330,49 @@ export function ProductForm({ initialData, collections, categories = [] }: { ini
                   {collections.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
                 </select>
               </div>
-              <div>
-                <label className={labelClass}>Catégorie Principale</label>
-                <select value={mainCategoryId} onChange={e => { setMainCategoryId(e.target.value); setSubCategoryId(""); }} className={inputClass}>
-                  <option value="">Aucune catégorie</option>
-                  {mainCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-              {availableSubCategories.length > 0 && (
-                <div>
-                  <label className={labelClass}>Sous-catégorie</label>
-                  <select value={subCategoryId} onChange={e => setSubCategoryId(e.target.value)} className={inputClass}>
-                    <option value="">Aucune sous-catégorie</option>
-                    {availableSubCategories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+              <div className="pt-2 border-t border-[#EDE0E0]">
+                <label className={labelClass}>Catégories</label>
+                <div className="max-h-64 overflow-y-auto border border-[#EDE0E0] rounded-xl p-3 space-y-4 bg-[#FDFBF7]">
+                  {mainCategories.map(mainCat => {
+                    const subs = categories.filter(c => c.parent_category_id === mainCat.id);
+                    return (
+                      <div key={mainCat.id} className="space-y-1.5">
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                          <input 
+                            type="checkbox" 
+                            checked={selectedCategoryIds.includes(mainCat.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) setSelectedCategoryIds([...selectedCategoryIds, mainCat.id]);
+                              else setSelectedCategoryIds(selectedCategoryIds.filter(id => id !== mainCat.id));
+                            }}
+                            className="w-4 h-4 rounded border-[#EDE0E0] text-[#2A2424] focus:ring-[#2A2424]"
+                          />
+                          <span className="text-sm font-bold text-[#2A2424]">{mainCat.name}</span>
+                        </label>
+                        {subs.length > 0 && (
+                          <div className="pl-6 space-y-1.5 border-l-2 border-[#EDE0E0] ml-2 mt-1.5">
+                            {subs.map(sub => (
+                              <label key={sub.id} className="flex items-center gap-2 cursor-pointer group">
+                                <input 
+                                  type="checkbox" 
+                                  checked={selectedCategoryIds.includes(sub.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) setSelectedCategoryIds([...selectedCategoryIds, sub.id]);
+                                    else setSelectedCategoryIds(selectedCategoryIds.filter(id => id !== sub.id));
+                                  }}
+                                  className="w-3.5 h-3.5 rounded border-[#EDE0E0] text-[#2A2424] focus:ring-[#2A2424]"
+                                />
+                                <span className="text-xs text-[#2A2424]/80">{sub.name}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
+                <p className="text-[10px] text-[#2A2424]/40 mt-1">Vous pouvez sélectionner plusieurs catégories (ex: "Sérums" + "Face Care")</p>
+              </div>
             </div>
           </div>
 

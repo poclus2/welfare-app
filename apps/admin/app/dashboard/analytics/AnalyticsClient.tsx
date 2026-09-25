@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -349,36 +349,35 @@ function LogisticsTab({ paymentData }: any) {
 // --- Visites & Comportements ---
 
 function TrafficBehaviorTab() {
-  const trafficData = [
-    { name: 'Lun', visits: 1200, bounce: 42 },
-    { name: 'Mar', visits: 1350, bounce: 40 },
-    { name: 'Mer', visits: 1100, bounce: 45 },
-    { name: 'Jeu', visits: 1420, bounce: 38 },
-    { name: 'Ven', visits: 1800, bounce: 35 },
-    { name: 'Sam', visits: 2200, bounce: 32 },
-    { name: 'Dim', visits: 2100, bounce: 34 },
-  ];
+  const [trafficData, setTrafficData] = useState<any[]>([]);
+  const [deviceData, setDeviceData] = useState<any[]>([]);
+  const [regionData, setRegionData] = useState<any[]>([]);
+  const [stats, setStats] = useState({ pageviews: 0, uniqueVisitors: 0 });
+  const [loading, setLoading] = useState(true);
 
-  const acquisitionChannels = [
-    { name: 'Réseaux Sociaux (Instagram/TikTok)', value: 55, color: '#e1306c' },
-    { name: 'Recherche Organique (Google)', value: 25, color: '#3b82f6' },
-    { name: 'Direct', value: 15, color: '#10b981' },
-    { name: 'Publicité (Ads)', value: 5, color: '#f59e0b' },
-  ];
-
-  const deviceData = [
-    { name: 'Mobile', value: 82, color: '#C08A8E' },
-    { name: 'Desktop', value: 15, color: '#2A2424' },
-    { name: 'Tablette', value: 3, color: '#EDE0E0' },
-  ];
+  useEffect(() => {
+    fetch('/api/posthog')
+      .then(res => res.json())
+      .then(data => {
+        if (data.trafficData) setTrafficData(data.trafficData);
+        if (data.deviceData) setDeviceData(data.deviceData);
+        if (data.regionData) setRegionData(data.regionData);
+        setStats({ pageviews: data.pageviews || 0, uniqueVisitors: data.uniqueVisitors || 0 });
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, []);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <KpiCard label="Visiteurs Uniques (30j)" value="24 850" icon={Users} trend="+12%" trendColor="bg-emerald-50 text-emerald-600" />
-        <KpiCard label="Taux de Rebond" value="38.5%" icon={Activity} trend="-2.1%" trendColor="bg-emerald-50 text-emerald-600" sub="Amélioration via Skin Coach" />
-        <KpiCard label="Temps Moyen / Session" value="4m 12s" icon={Clock} sub="Engagement très élevé" />
-        <KpiCard label="Pages Vues" value="86 420" icon={Layers} trend="+18%" trendColor="bg-emerald-50 text-emerald-600" />
+        <KpiCard label="Visiteurs Uniques (30j)" value={stats.uniqueVisitors.toLocaleString('fr-FR')} icon={Users} trend="Réel" trendColor="bg-emerald-50 text-emerald-600" />
+        <KpiCard label="Taux de Rebond" value="--" icon={Activity} trend="Calcul en cours" trendColor="bg-gray-50 text-gray-600" />
+        <KpiCard label="Temps Moyen / Session" value="--" icon={Clock} sub="Besoin de + de données" />
+        <KpiCard label="Pages Vues (30j)" value={stats.pageviews.toLocaleString('fr-FR')} icon={Layers} trend="Réel" trendColor="bg-emerald-50 text-emerald-600" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -425,19 +424,28 @@ function TrafficBehaviorTab() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Acquisition */}
         <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm">
-          <h2 className="text-sm font-bold text-[#2A2424] mb-4">Canaux d'Acquisition</h2>
+          <h2 className="text-sm font-bold text-[#2A2424] mb-4 flex items-center justify-between">
+            <span>Répartition Géographique</span>
+            <Globe className="w-4 h-4 text-[#C08A8E]" />
+          </h2>
           <div className="space-y-4 mt-6">
-            {acquisitionChannels.map((c) => (
-              <div key={c.name}>
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="font-semibold text-[#2A2424]">{c.name}</span>
-                  <span className="font-bold">{c.value}%</span>
+            {regionData && regionData.length > 0 ? regionData.map((c: any, index: number) => {
+              const colors = ['#C08A8E', '#2A2424', '#f59e0b', '#3b82f6', '#10b981'];
+              const color = colors[index % colors.length];
+              return (
+                <div key={c.name}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="font-semibold text-[#2A2424]">{c.name}</span>
+                    <span className="font-bold">{c.value}% <span className="text-[10px] text-gray-400 font-normal ml-1">({c.count})</span></span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2">
+                    <div className="h-2 rounded-full" style={{ width: `${c.value}%`, background: color }}></div>
+                  </div>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-2">
-                  <div className="h-2 rounded-full" style={{ width: `${c.value}%`, background: c.color }}></div>
-                </div>
-              </div>
-            ))}
+              );
+            }) : (
+              <p className="text-xs text-gray-500">Aucune donnée de localisation disponible pour l'instant.</p>
+            )}
           </div>
         </div>
 

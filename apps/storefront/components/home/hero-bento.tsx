@@ -1,13 +1,15 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Leaf, Drop, Sparkle, Lock, ShieldCheck, Sun, MagnifyingGlass, ShoppingBag } from "@phosphor-icons/react";
+import { ArrowRight, Leaf, Drop, Lock, ShieldCheck, Sun, MagnifyingGlass, ShoppingBag } from "@phosphor-icons/react";
 import Link from "next/link";
 import { Navbar } from "@/components/ui/navbar";
 import { SearchModal } from "@/components/ui/search-modal";
 import { useState, useEffect } from "react";
+import { useI18n } from "@/lib/i18n-context";
 
 export function HeroBento() {
+  const { t } = useI18n();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   useEffect(() => {
@@ -36,11 +38,11 @@ export function HeroBento() {
               transition={{ duration: 0.6 }}
             >
               <h1 className="text-[3.5rem] md:text-[5rem] lg:text-[5.5rem] leading-[1.0] font-medium tracking-tight text-[#2A2424] mb-6">
-                Skincare that<br/>feels like you.
+                {t("Des soins qui vous ressemblent.")}
               </h1>
               
               <p className="text-[#2A2424]/60 text-lg md:text-xl leading-relaxed mb-10 max-w-md">
-                Elevate your daily routine with a seamless collection of botanical formulas. Effortless hydration, repair, and glow in one organic interface.
+                {t("Sublimez votre routine quotidienne avec une collection unique de formules botaniques. Hydratation sans effort, réparation et éclat dans une interface organique.")}
               </p>
               
               <div className="flex flex-wrap items-center gap-4">
@@ -48,13 +50,13 @@ export function HeroBento() {
                   href="/shop" 
                   className="bg-[#121212] text-white px-8 py-4 rounded-full text-[15px] font-medium hover:bg-black/80 transition-all hover:scale-105 active:scale-95"
                 >
-                  Build Your Routine
+                  {t("Créer votre routine")}
                 </Link>
                 <Link 
                   href="/about" 
                   className="bg-transparent border border-[#2A2424]/20 text-[#2A2424] px-8 py-4 rounded-full text-[15px] font-medium hover:bg-black/5 transition-all hover:scale-105 active:scale-95"
                 >
-                  Explore Products
+                  {t("Explorer les produits")}
                 </Link>
               </div>
             </motion.div>
@@ -70,24 +72,24 @@ export function HeroBento() {
             >
               {/* Top Left (Small wide-ish) */}
               <div className="col-span-1 row-span-1 rounded-[1.5rem] overflow-hidden relative group shadow-sm bg-[#D9D3CA]">
-                <img src="https://images.pexels.com/photos/4465121/pexels-photo-4465121.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Serum" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                <img src="https://images.pexels.com/photos/4465121/pexels-photo-4465121.jpeg?auto=compress&cs=tinysrgb&w=600" alt={t("Sérum")} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
               </div>
 
               {/* Top Right (Tall) */}
               <div className="col-span-1 row-span-2 rounded-[1.5rem] overflow-hidden relative group shadow-sm bg-[#E1DAD0]">
-                <img src="https://images.pexels.com/photos/3685523/pexels-photo-3685523.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Product Bundle" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                <img src="https://images.pexels.com/photos/3685523/pexels-photo-3685523.jpeg?auto=compress&cs=tinysrgb&w=600" alt={t("Pack de produits")} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
               </div>
 
               {/* Middle Left (Small square-ish) */}
               <div className="col-span-1 row-span-1 rounded-[1.5rem] overflow-hidden relative group shadow-sm bg-[#E5DFD4]">
-                <img src="https://images.pexels.com/photos/3685530/pexels-photo-3685530.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Cream" className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700" />
+                <img src="https://images.pexels.com/photos/3685530/pexels-photo-3685530.jpeg?auto=compress&cs=tinysrgb&w=600" alt={t("Crème")} className="w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-700" />
               </div>
 
               {/* Bottom (Wide) */}
               <div className="col-span-2 row-span-1 rounded-[1.5rem] overflow-hidden relative group shadow-sm bg-[#D3CFC6]">
-                <img src="https://images.pexels.com/photos/4041392/pexels-photo-4041392.jpeg?auto=compress&cs=tinysrgb&w=1200" alt="Applying Cream" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                <img src="https://images.pexels.com/photos/4041392/pexels-photo-4041392.jpeg?auto=compress&cs=tinysrgb&w=1200" alt={t("Application crème")} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
                 
                 {/* Bottom Left Info */}
@@ -96,8 +98,8 @@ export function HeroBento() {
                     <Sun className="w-5 h-5" />
                   </div>
                   <div className="flex flex-col text-white">
-                    <span className="text-xs font-bold tracking-wider uppercase">Morning Routine | <span className="text-[#B2C28E]">Active</span></span>
-                    <span className="text-[11px] opacity-80 mt-0.5">Hydration 98% | Protection ON</span>
+                    <span className="text-xs font-bold tracking-wider uppercase">{t("Routine Matin")} | <span className="text-[#B2C28E]">{t("Actif")}</span></span>
+                    <span className="text-[11px] opacity-80 mt-0.5">{t("Hydratation 98% | Protection ACTIVÉE")}</span>
                   </div>
                 </div>
 

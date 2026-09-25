@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkle, X, PaperPlaneRight, CaretDown, ChatTeardropText } from "@phosphor-icons/react";
+import {  X, PaperPlaneRight, CaretDown, ChatTeardropText } from "@phosphor-icons/react";
+import { IconChatAI } from "@/components/ui/icons/IconChatAI";
 import { useChatStore, MessageRole } from "@/lib/store/use-chat-store";
 import ReactMarkdown from "react-markdown";
 
@@ -70,7 +71,7 @@ export function ChatWidget() {
           >
             {/* Soft pulse background */}
             <div className="absolute inset-0 bg-[#E5B6B9]/20 animate-pulse rounded-full" />
-            <Sparkle className="w-5 h-5 z-10" weight="fill" />
+            <IconChatAI className="w-8 h-8 z-10" />
             
             {/* Tooltip hint on hover (desktop only) */}
             <div className="absolute -top-10 right-0 bg-white text-[#2A2424] text-xs font-bold px-3 py-1.5 rounded-lg shadow-md whitespace-nowrap opacity-0 md:hover:opacity-100 transition-opacity pointer-events-none">
@@ -94,7 +95,7 @@ export function ChatWidget() {
             <div className="bg-[#2A2424] px-5 py-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-[#E5B6B9]/20 flex items-center justify-center">
-                  <Sparkle className="w-4 h-4 text-[#E5B6B9]" weight="fill" />
+                  <IconChatAI className="w-5 h-5 text-[#E5B6B9]" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-white">Assistant The Welfare</h3>
@@ -143,7 +144,7 @@ export function ChatWidget() {
                 >
                   {msg.role === "assistant" && (
                     <div className="w-6 h-6 rounded-full bg-[#E5B6B9]/20 flex items-center justify-center shrink-0 mr-2 mt-auto border border-[#E5B6B9]/40">
-                      <Sparkle className="w-3 h-3 text-[#C2164A]" weight="fill" />
+                      <IconChatAI className="w-4 h-4 text-[#C2164A]" />
                     </div>
                   )}
                   <div 
@@ -164,7 +165,7 @@ export function ChatWidget() {
                   className="flex justify-start"
                 >
                   <div className="w-6 h-6 rounded-full bg-[#E5B6B9]/20 flex items-center justify-center shrink-0 mr-2 border border-[#E5B6B9]/40">
-                    <Sparkle className="w-3 h-3 text-[#C2164A]" weight="fill" />
+                    <IconChatAI className="w-4 h-4 text-[#C2164A]" />
                   </div>
                   <div className="px-4 py-3 rounded-2xl bg-white border border-[#EDE0E0] rounded-bl-sm flex items-center gap-1.5 shadow-sm">
                     <div className="w-1.5 h-1.5 bg-[#2A2424]/40 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />

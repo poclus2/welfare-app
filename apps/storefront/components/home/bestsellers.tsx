@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { ArrowRight, ShoppingBag, Star, Heart } from "@phosphor-icons/react";
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n-context";
 
 const products = [
   {
@@ -83,6 +84,7 @@ const products = [
 ];
 
 export function BestSellers({ products: customProducts }: { products?: any[] }) {
+  const { t } = useI18n();
   const displayProducts = customProducts && customProducts.length > 0 ? customProducts : products;
 
   return (
@@ -93,17 +95,17 @@ export function BestSellers({ products: customProducts }: { products?: any[] }) 
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
           <div className="max-w-xl">
             <h2 className="text-[2.5rem] md:text-[3.5rem] leading-[1.1] font-medium tracking-tight text-[#2A2424] mb-4">
-              Meilleures ventes
+              {t("Meilleures ventes")}
             </h2>
             <p className="text-[#2A2424]/60 text-lg">
-              Découvrez nos formules de soins coréens les plus recherchées qui ont transformé des milliers de routines.
+              {t("Découvrez nos formules de soins coréens les plus recherchées qui ont transformé des milliers de routines.")}
             </p>
           </div>
           <Link 
             href="/shop" 
             className="flex items-center gap-2 text-[#2A2424] font-medium hover:opacity-70 transition-opacity"
           >
-            Voir toutes les meilleures ventes
+            {t("Voir toutes les meilleures ventes")}
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -142,7 +144,7 @@ export function BestSellers({ products: customProducts }: { products?: any[] }) 
                       onClick={(e) => e.preventDefault()}
                       className="w-full py-2 md:py-3.5 bg-[#2A2424] text-white rounded-full text-[10px] md:text-sm font-semibold tracking-wide hover:bg-black transition-colors shadow-lg flex items-center justify-center gap-2"
                     >
-                      <span>Ajouter au panier</span>
+                      <span>{t("Ajouter au panier")}</span>
                     </button>
                   </div>
                 </div>
@@ -169,7 +171,7 @@ export function BestSellers({ products: customProducts }: { products?: any[] }) 
                       className="bg-[#E51D5A] text-white w-8 h-8 md:w-auto md:h-auto md:px-4 md:py-2 rounded-full flex items-center justify-center gap-1.5 md:gap-2 text-[10px] md:text-xs font-bold hover:bg-[#C2164A] transition-colors shrink-0 shadow-md shadow-[#E51D5A]/20"
                     >
                       <ShoppingBag className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                      <span className="hidden md:inline">Ajouter</span>
+                      <span className="hidden md:inline">{t("Ajouter")}</span>
                     </button>
                   </div>
                 </div>

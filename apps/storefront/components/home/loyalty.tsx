@@ -13,6 +13,7 @@ import {
   Seal,
 } from "@phosphor-icons/react";
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n-context";
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 24 },
@@ -90,7 +91,8 @@ const stats = [
   { value: "7 jours", label: "Délai de paiement", icon: <CurrencyDollar className="w-4 h-4" /> },
 ];
 
-function TikTokCard({ t, delay }: { t: typeof tiktoks[0]; delay: number }) {
+function TikTokCard({ tiktok, delay }: { tiktok: typeof tiktoks[0]; delay: number }) {
+  const { t } = useI18n();
   return (
     <motion.div
       {...fadeUp(delay)}
@@ -99,8 +101,8 @@ function TikTokCard({ t, delay }: { t: typeof tiktoks[0]; delay: number }) {
       {/* Thumbnail */}
       <div className="relative aspect-[9/16] w-full overflow-hidden">
         <img
-          src={t.thumbnail}
-          alt={t.caption}
+          src={tiktok.thumbnail}
+          alt={tiktok.caption}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
         />
         {/* Dark gradient overlay */}
@@ -116,34 +118,34 @@ function TikTokCard({ t, delay }: { t: typeof tiktoks[0]; delay: number }) {
         {/* Views badge */}
         <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full">
           <TrendUp className="w-3 h-3 text-[#E5B6B9]" />
-          <span className="text-white text-xs font-medium">{t.views} vues</span>
+          <span className="text-white text-xs font-medium">{tiktok.views} {t("vues")}</span>
         </div>
 
         {/* Bottom content */}
         <div className="absolute bottom-0 left-0 right-0 p-4">
           {/* Creator info */}
           <div className="flex items-center gap-2 mb-3">
-            <img src={t.avatar} alt={t.creator} className="w-8 h-8 rounded-full object-cover border-2 border-white/30" />
+            <img src={tiktok.avatar} alt={tiktok.creator} className="w-8 h-8 rounded-full object-cover border-2 border-white/30" />
             <div>
               <div className="flex items-center gap-1">
-                <span className="text-white text-sm font-semibold">{t.creator}</span>
-                {t.verified && <Seal className="w-3.5 h-3.5 text-[#E5B6B9] fill-[#E5B6B9]" />}
+                <span className="text-white text-sm font-semibold">{tiktok.creator}</span>
+                {tiktok.verified && <Seal className="w-3.5 h-3.5 text-[#E5B6B9] fill-[#E5B6B9]" />}
               </div>
-              <span className="text-white/60 text-xs">{t.followers} abonnés</span>
+              <span className="text-white/60 text-xs">{tiktok.followers} {t("abonnés")}</span>
             </div>
           </div>
 
-          <p className="text-white/80 text-xs leading-relaxed line-clamp-2 mb-3">{t.caption}</p>
+          <p className="text-white/80 text-xs leading-relaxed line-clamp-2 mb-3">{t(tiktok.caption)}</p>
 
           {/* Earnings pill */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-              <span className="text-xs text-white/60">{t.likes} likes</span>
+              <span className="text-xs text-white/60">{tiktok.likes} likes</span>
             </div>
             <div className="flex items-center gap-1.5 bg-[#E5B6B9]/20 border border-[#E5B6B9]/40 px-2.5 py-1 rounded-full">
               <CurrencyDollar className="w-3 h-3 text-[#E5B6B9]" />
-              <span className="text-xs font-bold text-[#E5B6B9]">{t.earnings} gagnés</span>
+              <span className="text-xs font-bold text-[#E5B6B9]">{tiktok.earnings} {t("gagnés")}</span>
             </div>
           </div>
         </div>
@@ -153,6 +155,7 @@ function TikTokCard({ t, delay }: { t: typeof tiktoks[0]; delay: number }) {
 }
 
 export function LoyaltyProgram() {
+  const { t } = useI18n();
   return (
     <section className="w-full bg-[#FFFFFF] py-16 md:py-24 lg:py-32 overflow-hidden relative">
       {/* Cherry blossom background */}
@@ -167,15 +170,15 @@ export function LoyaltyProgram() {
           <div className="max-w-2xl">
 
             <h2 className="text-[2.5rem] md:text-[3.5rem] leading-[1.1] font-medium tracking-tight text-[#2A2424]">
-              Gagne de l'argent en<br />
-              <em className="font-serif not-italic text-[#E5B6B9]">partageant ce que tu aimes</em>
+              {t("Gagne de l'argent en")}<br />
+              <em className="font-serif not-italic text-[#E5B6B9]">{t("partageant ce que tu aimes")}</em>
             </h2>
           </div>
           <Link
             href="/influenceurs"
             className="flex items-center gap-2 bg-[#2A2424] text-white px-6 py-3 rounded-full font-medium hover:bg-black transition-all duration-300 w-fit text-sm shrink-0"
           >
-            Rejoindre le programme
+            {t("Rejoindre le programme")}
             <ArrowUpRight className="w-4 h-4" />
           </Link>
         </motion.div>
@@ -198,38 +201,38 @@ export function LoyaltyProgram() {
                 <CurrencyDollar className="w-6 h-6 text-[#E5B6B9]" />
               </div>
               <h3 className="text-2xl font-medium text-white leading-tight mb-3">
-                Jusqu'à <span className="text-[#E5B6B9]">15%</span> de commission sur chaque vente
+                {t("Jusqu'à")} <span className="text-[#E5B6B9]">15%</span> {t("de commission sur chaque vente")}
               </h3>
               <p className="text-white/50 text-sm leading-relaxed">
-                Partage ton lien unique, tes abonnés achètent, tu encaisses. C'est aussi simple que ça.
+                {t("Partage ton lien unique, tes abonnés achètent, tu encaisses. C'est aussi simple que ça.")}
               </p>
             </div>
 
             {/* Fake earnings counter */}
             <div className="relative z-10">
-              <p className="text-white/40 text-xs uppercase tracking-widest mb-2">Tes gains potentiels / mois</p>
+              <p className="text-white/40 text-xs uppercase tracking-widest mb-2">{t("Tes gains potentiels / mois")}</p>
               <p className="text-3xl font-bold text-white mb-5">150 000 FCFA</p>
               <Link
                 href="/influenceurs"
                 className="flex items-center justify-center gap-2 bg-white text-[#2A2424] hover:bg-[#F4EAEB] transition-colors font-semibold py-3 px-5 rounded-full text-sm w-full"
               >
-                Je commence maintenant
+                {t("Je commence maintenant")}
                 <CaretRight className="w-4 h-4" />
               </Link>
             </div>
           </motion.div>
 
           {/* ── TikTok cards — each col-span-1 row-span-2 ── */}
-          {tiktoks.map((t, i) => (
+          {tiktoks.map((tiktok, i) => (
             <motion.div
-              key={t.id}
+              key={tiktok.id}
               {...fadeUp(0.1 + i * 0.1)}
               className="md:col-span-1 md:row-span-2 rounded-[1.5rem] overflow-hidden group relative bg-[#1A1616]"
             >
               <div className="relative h-full w-full">
                 <img
-                  src={t.thumbnail}
-                  alt={t.caption}
+                  src={tiktok.thumbnail}
+                  alt={tiktok.caption}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/40" />
@@ -244,26 +247,26 @@ export function LoyaltyProgram() {
                 {/* Views */}
                 <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full">
                   <TrendUp className="w-3 h-3 text-[#E5B6B9]" />
-                  <span className="text-white text-xs font-medium">{t.views}</span>
+                  <span className="text-white text-xs font-medium">{tiktok.views}</span>
                 </div>
 
                 {/* Bottom */}
                 <div className="absolute bottom-0 left-0 right-0 p-5">
                   <div className="flex items-center gap-2 mb-2">
-                    <img src={t.avatar} alt={t.creator} className="w-8 h-8 rounded-full object-cover border-2 border-white/30" />
+                    <img src={tiktok.avatar} alt={tiktok.creator} className="w-8 h-8 rounded-full object-cover border-2 border-white/30" />
                     <div>
                       <div className="flex items-center gap-1">
-                        <span className="text-white text-sm font-semibold">{t.creator}</span>
-                        {t.verified && <Seal className="w-3.5 h-3.5 text-[#E5B6B9] fill-[#E5B6B9]" />}
+                        <span className="text-white text-sm font-semibold">{tiktok.creator}</span>
+                        {tiktok.verified && <Seal className="w-3.5 h-3.5 text-[#E5B6B9] fill-[#E5B6B9]" />}
                       </div>
-                      <span className="text-white/55 text-xs">{t.followers} abonnés</span>
+                      <span className="text-white/55 text-xs">{tiktok.followers} {t("abonnés")}</span>
                     </div>
                   </div>
-                  <p className="text-white/75 text-xs leading-relaxed line-clamp-2 mb-3">{t.caption}</p>
+                  <p className="text-white/75 text-xs leading-relaxed line-clamp-2 mb-3">{t(tiktok.caption)}</p>
                   <div className="flex items-center justify-between">
-                    <span className="text-white/50 text-xs">❤️ {t.likes}</span>
+                    <span className="text-white/50 text-xs">❤️ {tiktok.likes}</span>
                     <div className="flex items-center gap-1.5 bg-[#E5B6B9]/20 border border-[#E5B6B9]/40 px-2.5 py-1 rounded-full">
-                      <span className="text-xs font-bold text-[#E5B6B9]">{t.earnings}</span>
+                      <span className="text-xs font-bold text-[#E5B6B9]">{tiktok.earnings}</span>
                     </div>
                   </div>
                 </div>
@@ -291,23 +294,23 @@ export function LoyaltyProgram() {
                     </div>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-[#2A2424] text-base mb-1.5">{step.title}</h4>
-                    <p className="text-[#2A2424]/55 text-sm leading-relaxed">{step.desc}</p>
+                    <h4 className="font-semibold text-[#2A2424] text-base mb-1.5">{t(step.title)}</h4>
+                    <p className="text-[#2A2424]/55 text-sm leading-relaxed">{t(step.desc)}</p>
                   </div>
                 </motion.div>
               ))}
 
               {/* Stats panel */}
               <div className="flex-shrink-0 w-72 px-8 py-7 bg-[#2A2424] flex flex-col justify-between">
-                <p className="text-white/50 text-xs uppercase tracking-widest mb-4">Notre communauté</p>
+                <p className="text-white/50 text-xs uppercase tracking-widest mb-4">{t("Notre communauté")}</p>
                 <div className="flex flex-col gap-4">
                   {stats.map((s) => (
                     <div key={s.label} className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-white/60 text-xs">
                         {s.icon}
-                        {s.label}
+                        {t(s.label)}
                       </div>
-                      <span className="text-white font-bold text-sm">{s.value}</span>
+                      <span className="text-white font-bold text-sm">{t(s.value)}</span>
                     </div>
                   ))}
                 </div>
@@ -315,7 +318,7 @@ export function LoyaltyProgram() {
                   href="/influenceurs"
                   className="flex items-center justify-center gap-2 bg-white text-[#2A2424] hover:bg-[#F4EAEB] transition-colors font-semibold py-2.5 px-4 rounded-full text-xs mt-4"
                 >
-                  Devenir ambassadeur <ArrowUpRight className="w-3 h-3" />
+                  {t("Devenir ambassadeur")} <ArrowUpRight className="w-3 h-3" />
                 </Link>
               </div>
             </div>
@@ -336,16 +339,16 @@ export function LoyaltyProgram() {
               <CurrencyDollar className="w-5 h-5 text-[#E5B6B9]" />
             </div>
             <h3 className="text-2xl font-medium text-white leading-tight mb-2">
-              Gagne jusqu'à <span className="text-[#E5B6B9]">15%</span> par vente
+              {t("Gagne jusqu'à")} <span className="text-[#E5B6B9]">15%</span> {t("par vente")}
             </h3>
             <p className="text-white/50 text-sm mb-6 leading-relaxed">
-              Partage ton lien, tes abonnés achètent, tu encaisses chaque semaine par Mobile Money.
+              {t("Partage ton lien, tes abonnés achètent, tu encaisses chaque semaine par Mobile Money.")}
             </p>
             <Link
               href="/influenceurs"
               className="flex items-center justify-center gap-2 bg-white text-[#2A2424] font-semibold py-3.5 rounded-full text-sm"
             >
-              Rejoindre le programme <CaretRight className="w-4 h-4" />
+              {t("Rejoindre le programme")} <CaretRight className="w-4 h-4" />
             </Link>
           </motion.div>
 
@@ -353,24 +356,24 @@ export function LoyaltyProgram() {
           <motion.div {...fadeUp(0.1)} className="grid grid-cols-3 gap-2">
             {stats.map((s) => (
               <div key={s.label} className="rounded-[1rem] bg-[#F4EAEB] p-4 flex flex-col items-center text-center gap-1">
-                <span className="font-bold text-[#2A2424] text-lg">{s.value}</span>
-                <span className="text-[#2A2424]/55 text-[10px] leading-tight">{s.label}</span>
+                <span className="font-bold text-[#2A2424] text-lg">{t(s.value)}</span>
+                <span className="text-[#2A2424]/55 text-[10px] leading-tight">{t(s.label)}</span>
               </div>
             ))}
           </motion.div>
 
           {/* TikTok horizontal scroll */}
           <div>
-            <p className="text-xs font-semibold tracking-[0.15em] uppercase text-[#2A2424]/50 mb-3">Nos créateurs</p>
+            <p className="text-xs font-semibold tracking-[0.15em] uppercase text-[#2A2424]/50 mb-3">{t("Nos créateurs")}</p>
             <div className="-mx-5 px-5 overflow-x-auto no-scrollbar">
               <div className="flex gap-3 pb-2" style={{ width: "max-content" }}>
-                {tiktoks.map((t, i) => (
+                {tiktoks.map((tiktok, i) => (
                   <motion.div
-                    key={t.id}
+                    key={tiktok.id}
                     {...fadeUp(i * 0.07)}
                     className="relative rounded-[1.25rem] overflow-hidden bg-[#1A1616] flex-shrink-0 w-[190px] h-[310px] group"
                   >
-                    <img src={t.thumbnail} alt={t.caption} className="w-full h-full object-cover" />
+                    <img src={tiktok.thumbnail} alt={tiktok.caption} className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-black/30" />
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="w-11 h-11 rounded-full bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center">
@@ -379,15 +382,15 @@ export function LoyaltyProgram() {
                     </div>
                     <div className="absolute top-3 left-3 flex items-center gap-1 bg-black/40 backdrop-blur-md px-2 py-1 rounded-full">
                       <TrendUp className="w-2.5 h-2.5 text-[#E5B6B9]" />
-                      <span className="text-white text-[10px] font-medium">{t.views}</span>
+                      <span className="text-white text-[10px] font-medium">{tiktok.views}</span>
                     </div>
                     <div className="absolute bottom-0 left-0 right-0 p-4">
                       <div className="flex items-center gap-1.5 mb-2">
-                        <img src={t.avatar} alt={t.creator} className="w-7 h-7 rounded-full object-cover border border-white/30" />
-                        <span className="text-white text-xs font-semibold truncate">{t.creator}</span>
+                        <img src={tiktok.avatar} alt={tiktok.creator} className="w-7 h-7 rounded-full object-cover border border-white/30" />
+                        <span className="text-white text-xs font-semibold truncate">{tiktok.creator}</span>
                       </div>
                       <div className="flex items-center gap-1 bg-[#E5B6B9]/20 border border-[#E5B6B9]/40 px-2 py-1 rounded-full w-fit">
-                        <span className="text-[10px] font-bold text-[#E5B6B9]">{t.earnings}</span>
+                        <span className="text-[10px] font-bold text-[#E5B6B9]">{tiktok.earnings}</span>
                       </div>
                     </div>
                   </motion.div>
@@ -398,7 +401,7 @@ export function LoyaltyProgram() {
 
           {/* How it works */}
           <div className="flex flex-col gap-3">
-            <p className="text-xs font-semibold tracking-[0.15em] uppercase text-[#2A2424]/50">Comment ça marche</p>
+            <p className="text-xs font-semibold tracking-[0.15em] uppercase text-[#2A2424]/50">{t("Comment ça marche")}</p>
             {steps.map((step, i) => (
               <motion.div
                 key={step.num}
@@ -412,8 +415,8 @@ export function LoyaltyProgram() {
                   </div>
                 </div>
                 <div>
-                  <h4 className="font-semibold text-[#2A2424] text-sm mb-1">{step.title}</h4>
-                  <p className="text-[#2A2424]/55 text-xs leading-relaxed">{step.desc}</p>
+                  <h4 className="font-semibold text-[#2A2424] text-sm mb-1">{t(step.title)}</h4>
+                  <p className="text-[#2A2424]/55 text-xs leading-relaxed">{t(step.desc)}</p>
                 </div>
               </motion.div>
             ))}
@@ -423,7 +426,7 @@ export function LoyaltyProgram() {
             href="/influenceurs"
             className="flex items-center justify-center gap-2 bg-[#2A2424] text-white font-semibold py-4 rounded-full text-sm"
           >
-            Devenir ambassadeur <ArrowUpRight className="w-4 h-4" />
+            {t("Devenir ambassadeur")} <ArrowUpRight className="w-4 h-4" />
           </Link>
 
         </div>

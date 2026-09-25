@@ -6,7 +6,7 @@ import { useState } from "react";
 import {
   LayoutDashboard, ShoppingBag, Package, Users,
   Store, BarChart2, Tag, Settings, LogOut,
-  Bell, Search, ChevronDown, Menu, X, Bot, Truck
+  Bell, Search, ChevronDown, Menu, X, Bot, Truck, FileText
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -20,6 +20,8 @@ const NAV_ITEMS = [
   { href: "/dashboard/promotions", label: "Promotions", icon: Tag },
   { href: "/dashboard/skin-scans", label: "Skin Scans", icon: Search },
   { href: "/dashboard/skin-coach", label: "Skin Coach IA", icon: Bot },
+  { href: "/dashboard/ambassadrices", label: "Ambassadrices", icon: Users },
+  { href: "/dashboard/blog", label: "Blog / Articles", icon: FileText },
   { href: "/dashboard/delivery", label: "Livraison", icon: Truck },
   { href: "/dashboard/settings", label: "Paramètres", icon: Settings },
 ];

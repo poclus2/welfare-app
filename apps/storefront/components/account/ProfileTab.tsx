@@ -5,8 +5,10 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, MapPin, Plus, PencilSimple, Trash, CheckCircle, WarningCircle, X } from "@phosphor-icons/react";
 import { sdk } from "@/lib/medusa";
+import { useI18n } from "@/lib/i18n-context";
 
 export default function ProfileTab({ customer, onUpdate }: { customer: any, onUpdate: () => void }) {
+  const { t } = useI18n();
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [formData, setFormData] = useState({
     first_name: customer?.first_name || "",
@@ -40,11 +42,11 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
         last_name: formData.last_name,
         phone: formData.phone,
       });
-      setMessage({ type: "success", text: "Informations mises à jour." });
+      setMessage({ type: "success", text: t("Informations mises à jour.") });
       setIsEditingInfo(false);
       onUpdate();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "Une erreur est survenue." });
+      setMessage({ type: "error", text: err.message || t("Une erreur est survenue.") });
     } finally {
       setLoading(false);
       setTimeout(() => setMessage(null), 4000);
@@ -58,16 +60,16 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
     try {
       if (editingAddressId) {
         await sdk.store.customer.updateAddress(editingAddressId, addressForm);
-        setMessage({ type: "success", text: "Adresse modifiée." });
+        setMessage({ type: "success", text: t("Adresse modifiée.") });
       } else {
         await sdk.store.customer.createAddress(addressForm);
-        setMessage({ type: "success", text: "Nouvelle adresse ajoutée." });
+        setMessage({ type: "success", text: t("Nouvelle adresse ajoutée.") });
       }
       setIsAddingAddress(false);
       setEditingAddressId(null);
       onUpdate();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "Erreur." });
+      setMessage({ type: "error", text: err.message || t("Erreur.") });
     } finally {
       setLoading(false);
       setTimeout(() => setMessage(null), 4000);
@@ -75,14 +77,14 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
   };
 
   const handleDeleteAddress = async (id: string) => {
-    if (!confirm("Voulez-vous supprimer cette adresse ?")) return;
+    if (!confirm(t("Voulez-vous supprimer cette adresse ?"))) return;
     setLoading(true);
     try {
       await sdk.store.customer.deleteAddress(id);
-      setMessage({ type: "success", text: "Adresse supprimée." });
+      setMessage({ type: "success", text: t("Adresse supprimée.") });
       onUpdate();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "Erreur lors de la suppression." });
+      setMessage({ type: "error", text: err.message || t("Erreur lors de la suppression.") });
     } finally {
       setLoading(false);
       setTimeout(() => setMessage(null), 4000);
@@ -150,14 +152,14 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
               <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-b from-white to-gray-50/50 shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),_0_4px_8px_rgba(201,124,133,0.15)] border border-gray-100">
                 <User weight="fill" className="w-5 h-5 text-[#C97C85]" />
               </div>
-              <h3 className="text-xl font-semibold text-[#2A2424]">Mes Informations</h3>
+              <h3 className="text-xl font-semibold text-[#2A2424]">{t("Mes Informations")}</h3>
             </div>
             {!isEditingInfo && (
               <button 
                 onClick={() => setIsEditingInfo(true)}
                 className="text-sm font-medium text-gray-500 hover:text-[#C97C85] transition-colors flex items-center gap-1.5"
               >
-                <PencilSimple weight="bold" /> Modifier
+                <PencilSimple weight="bold" /> {t("Modifier")}
               </button>
             )}
           </div>
@@ -166,25 +168,25 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Prénom</p>
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t("Prénom")}</p>
                   <p className="text-sm font-medium text-[#2A2424]">{customer?.first_name || "-"}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Nom</p>
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t("Nom")}</p>
                   <p className="text-sm font-medium text-[#2A2424]">{customer?.last_name || "-"}</p>
                 </div>
               </div>
               <div>
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Email</p>
+                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t("Email")}</p>
                 <p className="text-sm font-medium text-[#2A2424]">{customer?.email}</p>
               </div>
               <div className="grid grid-cols-2 gap-4 mt-4">
                 <div>
-                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Téléphone</p>
-                  <p className="text-sm font-medium text-[#2A2424]">{customer?.phone || "Non renseigné"}</p>
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t("Téléphone")}</p>
+                  <p className="text-sm font-medium text-[#2A2424]">{customer?.phone || t("Non renseigné")}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">Points Fidélité</p>
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t("Points Fidélité")}</p>
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm font-bold text-[#C97C85] bg-[#C97C85]/10 px-2 py-0.5 rounded-md">
                       {customer?.metadata?.loyalty_points || 0} pts
@@ -196,18 +198,18 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
           ) : (
             <form onSubmit={handleUpdateInfo} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <InputField label="Prénom" value={formData.first_name} onChange={(e: any) => setFormData({...formData, first_name: e.target.value})} required />
-                <InputField label="Nom" value={formData.last_name} onChange={(e: any) => setFormData({...formData, last_name: e.target.value})} required />
+                <InputField label={t("Prénom")} value={formData.first_name} onChange={(e: any) => setFormData({...formData, first_name: e.target.value})} required />
+                <InputField label={t("Nom")} value={formData.last_name} onChange={(e: any) => setFormData({...formData, last_name: e.target.value})} required />
               </div>
-              <InputField label="Email (Lecture seule)" value={customer?.email} disabled />
-              <InputField label="Téléphone" type="tel" value={formData.phone} onChange={(e: any) => setFormData({...formData, phone: e.target.value})} />
+              <InputField label={t("Email (Lecture seule)")} value={customer?.email} disabled />
+              <InputField label={t("Téléphone")} type="tel" value={formData.phone} onChange={(e: any) => setFormData({...formData, phone: e.target.value})} />
               
               <div className="pt-4 flex items-center gap-3">
                 <button type="submit" disabled={loading} className="px-6 py-2.5 bg-[#C97C85] text-white text-sm font-semibold rounded-xl hover:bg-[#b0656e] transition-all shadow-[0_4px_14px_0_rgba(201,124,133,0.39)] hover:shadow-[0_6px_20px_rgba(201,124,133,0.23)] hover:-translate-y-[1px] disabled:opacity-70">
-                  {loading ? "Enregistrement..." : "Enregistrer"}
+                  {loading ? t("Enregistrement...") : t("Enregistrer")}
                 </button>
                 <button type="button" onClick={() => setIsEditingInfo(false)} className="px-6 py-2.5 text-gray-500 text-sm font-medium hover:text-[#2A2424] transition-colors">
-                  Annuler
+                  {t("Annuler")}
                 </button>
               </div>
             </form>
@@ -221,7 +223,7 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
               <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-b from-white to-gray-50/50 shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),_0_4px_8px_rgba(139,92,246,0.15)] border border-gray-100">
                 <MapPin weight="fill" className="w-5 h-5 text-[#8B5CF6]" />
               </div>
-              <h3 className="text-xl font-semibold text-[#2A2424]">Carnet d'adresses</h3>
+              <h3 className="text-xl font-semibold text-[#2A2424]">{t("Carnet d'adresses")}</h3>
             </div>
             {!isAddingAddress && (
               <button 
@@ -232,7 +234,7 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
                 }}
                 className="text-sm font-medium text-[#8B5CF6] hover:text-[#7c3aed] transition-colors flex items-center gap-1.5"
               >
-                <Plus weight="bold" /> Ajouter
+                <Plus weight="bold" /> {t("Ajouter")}
               </button>
             )}
           </div>
@@ -240,28 +242,28 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
           {isAddingAddress ? (
             <form onSubmit={handleSaveAddress} className="space-y-4">
               <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
-                <h4 className="font-semibold text-[#2A2424]">{editingAddressId ? "Modifier l'adresse" : "Nouvelle adresse"}</h4>
+                <h4 className="font-semibold text-[#2A2424]">{editingAddressId ? t("Modifier l'adresse") : t("Nouvelle adresse")}</h4>
                 <button type="button" onClick={() => setIsAddingAddress(false)} className="text-gray-400 hover:text-[#2A2424] transition-colors"><X className="w-5 h-5" /></button>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
-                <InputField label="Prénom" value={addressForm.first_name} onChange={(e: any) => setAddressForm({...addressForm, first_name: e.target.value})} required />
-                <InputField label="Nom" value={addressForm.last_name} onChange={(e: any) => setAddressForm({...addressForm, last_name: e.target.value})} required />
+                <InputField label={t("Prénom")} value={addressForm.first_name} onChange={(e: any) => setAddressForm({...addressForm, first_name: e.target.value})} required />
+                <InputField label={t("Nom")} value={addressForm.last_name} onChange={(e: any) => setAddressForm({...addressForm, last_name: e.target.value})} required />
               </div>
               
-              <InputField label="Adresse" value={addressForm.address_1} onChange={(e: any) => setAddressForm({...addressForm, address_1: e.target.value})} required />
-              <InputField label="Complément (Optionnel)" value={addressForm.address_2} onChange={(e: any) => setAddressForm({...addressForm, address_2: e.target.value})} />
+              <InputField label={t("Adresse")} value={addressForm.address_1} onChange={(e: any) => setAddressForm({...addressForm, address_1: e.target.value})} required />
+              <InputField label={t("Complément (Optionnel)")} value={addressForm.address_2} onChange={(e: any) => setAddressForm({...addressForm, address_2: e.target.value})} />
               
               <div className="grid grid-cols-2 gap-4">
-                <InputField label="Code Postal" value={addressForm.postal_code} onChange={(e: any) => setAddressForm({...addressForm, postal_code: e.target.value})} required />
-                <InputField label="Ville" value={addressForm.city} onChange={(e: any) => setAddressForm({...addressForm, city: e.target.value})} required />
+                <InputField label={t("Code Postal")} value={addressForm.postal_code} onChange={(e: any) => setAddressForm({...addressForm, postal_code: e.target.value})} required />
+                <InputField label={t("Ville")} value={addressForm.city} onChange={(e: any) => setAddressForm({...addressForm, city: e.target.value})} required />
               </div>
               
-              <InputField label="Téléphone (Optionnel)" value={addressForm.phone} onChange={(e: any) => setAddressForm({...addressForm, phone: e.target.value})} />
+              <InputField label={t("Téléphone (Optionnel)")} value={addressForm.phone} onChange={(e: any) => setAddressForm({...addressForm, phone: e.target.value})} />
 
               <div className="pt-4 flex items-center gap-3">
                 <button type="submit" disabled={loading} className="px-6 py-2.5 bg-[#8B5CF6] text-white text-sm font-semibold rounded-xl hover:bg-[#7c3aed] transition-all shadow-[0_4px_14px_0_rgba(139,92,246,0.39)] hover:shadow-[0_6px_20px_rgba(139,92,246,0.23)] hover:-translate-y-[1px] disabled:opacity-70">
-                  {loading ? "Enregistrement..." : "Enregistrer"}
+                  {loading ? t("Enregistrement...") : t("Enregistrer")}
                 </button>
               </div>
             </form>
@@ -278,15 +280,15 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
                     </p>
                     
                     <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => openEditAddress(addr)} className="p-1.5 text-gray-400 hover:text-[#8B5CF6] hover:bg-purple-50 rounded-lg transition-colors" title="Modifier"><PencilSimple className="w-4 h-4" /></button>
-                      <button onClick={() => handleDeleteAddress(addr.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Supprimer"><Trash className="w-4 h-4" /></button>
+                      <button onClick={() => openEditAddress(addr)} className="p-1.5 text-gray-400 hover:text-[#8B5CF6] hover:bg-purple-50 rounded-lg transition-colors" title={t("Modifier")}><PencilSimple className="w-4 h-4" /></button>
+                      <button onClick={() => handleDeleteAddress(addr.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title={t("Supprimer")}><Trash className="w-4 h-4" /></button>
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="text-center py-10 bg-white/40 rounded-2xl border border-white border-dashed">
                   <MapPin className="w-8 h-8 text-gray-300 mx-auto mb-3" />
-                  <p className="text-sm text-gray-500 font-medium">Aucune adresse enregistrée.</p>
+                  <p className="text-sm text-gray-500 font-medium">{t("Aucune adresse enregistrée.")}</p>
                 </div>
               )}
             </div>

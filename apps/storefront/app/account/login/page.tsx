@@ -4,8 +4,10 @@ import { useState } from "react";
 import { sdk } from "@/lib/medusa";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Envelope, LockKey, ArrowRight, Sparkle, Star, ShoppingBag, Gift } from "@phosphor-icons/react";
+import { Envelope, LockKey, ArrowRight, Star, ShoppingBag, Gift } from "@phosphor-icons/react";
 import Link from "next/link";
+import { IconIA } from "@/components/ui/icons/IconIA";
+import { useI18n } from "@/lib/i18n-context";
 
 const benefits = [
   { icon: Star, text: "Cumulez des points à chaque achat" },
@@ -14,6 +16,7 @@ const benefits = [
 ];
 
 export default function LoginPage() {
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -32,7 +35,7 @@ export default function LoginPage() {
       router.push(redirectUrl);
       router.refresh();
     } catch (err: any) {
-      setError("Identifiants incorrects. Veuillez réessayer.");
+      setError(t("Identifiants incorrects. Veuillez réessayer."));
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -71,7 +74,7 @@ export default function LoginPage() {
         <div className="relative z-10">
           <Link href="/">
             <div className="flex items-center gap-2">
-              <Sparkle weight="fill" className="w-8 h-8 text-[#F4EAEB]" />
+              <IconIA className="w-8 h-8 text-[#F4EAEB]" />
               <span className="text-[#F4EAEB] text-xl font-semibold tracking-tight">The Welfare Shop</span>
             </div>
           </Link>
@@ -81,11 +84,11 @@ export default function LoginPage() {
         <div className="relative z-10 space-y-8">
           <div>
             <h1 className="text-4xl font-light text-[#F4EAEB] leading-tight tracking-tight" style={{ letterSpacing: "-0.02em" }}>
-              Votre espace beauté<br />
-              <span className="text-[#c97c85]">personnalisé</span>
+              {t("Votre espace beauté")}<br />
+              <span className="text-[#c97c85]">{t("personnalisé")}</span>
             </h1>
             <p className="mt-4 text-[#F4EAEB]/60 text-base leading-relaxed max-w-sm">
-              Connectez-vous pour accéder à votre programme de fidélité et à toutes vos commandes.
+              {t("Connectez-vous pour accéder à votre programme de fidélité et à toutes vos commandes.")}
             </p>
           </div>
 
@@ -101,7 +104,7 @@ export default function LoginPage() {
                 <div className="w-8 h-8 rounded-full bg-[#F4EAEB]/10 flex items-center justify-center flex-shrink-0">
                   <benefit.icon weight="light" className="w-4 h-4 text-[#c97c85]" />
                 </div>
-                <span className="text-[#F4EAEB]/80 text-sm">{benefit.text}</span>
+                <span className="text-[#F4EAEB]/80 text-sm">{t(benefit.text)}</span>
               </motion.div>
             ))}
           </div>
@@ -110,7 +113,7 @@ export default function LoginPage() {
         {/* Bottom quote */}
         <div className="relative z-10">
           <p className="text-[#F4EAEB]/40 text-xs">
-            © {new Date().getFullYear()} The Welfare Shop · Programme Fidélité
+            © {new Date().getFullYear()} The Welfare Shop · {t("Programme Fidélité")}
           </p>
         </div>
       </div>
@@ -120,7 +123,7 @@ export default function LoginPage() {
         {/* Mobile logo */}
         <div className="lg:hidden mb-10">
           <Link href="/" className="flex items-center gap-2">
-            <Sparkle weight="fill" className="w-7 h-7 text-[#2A2424]" />
+            <IconIA className="w-7 h-7 text-[#2A2424]" />
             <span className="text-[#2A2424] text-lg font-semibold">The Welfare Shop</span>
           </Link>
         </div>
@@ -133,12 +136,12 @@ export default function LoginPage() {
         >
           <div className="mb-8">
             <h2 className="text-3xl font-semibold text-[#2A2424]" style={{ letterSpacing: "-0.02em" }}>
-              Connexion
+              {t("Connexion")}
             </h2>
             <p className="mt-2 text-gray-500 text-sm">
-              Pas encore de compte ?{" "}
+              {t("Pas encore de compte ?")}{" "}
               <Link href="/account/register" className="text-[#2A2424] font-medium underline underline-offset-4 hover:text-[#c97c85] transition-colors">
-                Créer un compte
+                {t("Créer un compte")}
               </Link>
             </p>
           </div>
@@ -157,7 +160,7 @@ export default function LoginPage() {
             {/* Email */}
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-[#2A2424]">
-                Adresse e-mail
+                {t("Adresse e-mail")}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
@@ -170,7 +173,7 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="block w-full pl-10 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-sm text-[#2A2424] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2A2424]/20 focus:border-[#2A2424] transition-all"
                   style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
-                  placeholder="vous@email.com"
+                  placeholder={t("vous@email.com")}
                 />
               </div>
             </div>
@@ -179,13 +182,13 @@ export default function LoginPage() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="block text-sm font-medium text-[#2A2424]">
-                  Mot de passe
+                  {t("Mot de passe")}
                 </label>
                 <Link
                   href="/account/reset-password"
                   className="text-xs text-gray-500 hover:text-[#2A2424] transition-colors"
                 >
-                  Mot de passe oublié ?
+                  {t("Mot de passe oublié ?")}
                 </Link>
               </div>
               <div className="relative">
@@ -229,11 +232,11 @@ export default function LoginPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  Connexion en cours...
+                  {t("Connexion en cours...")}
                 </span>
               ) : (
                 <>
-                  Se connecter
+                  {t("Se connecter")}
                   <ArrowRight weight="bold" className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </>
               )}
@@ -248,7 +251,7 @@ export default function LoginPage() {
                   <div className="w-7 h-7 rounded-full bg-[#F4EAEB] flex items-center justify-center flex-shrink-0">
                     <benefit.icon weight="light" className="w-3.5 h-3.5 text-[#c97c85]" />
                   </div>
-                  <span className="text-gray-600 text-xs">{benefit.text}</span>
+                  <span className="text-gray-600 text-xs">{t(benefit.text)}</span>
                 </div>
               ))}
             </div>

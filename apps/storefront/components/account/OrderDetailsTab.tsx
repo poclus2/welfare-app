@@ -1,7 +1,10 @@
 
+"use client";
+
 import React from "react";
 import { Package, Truck, House, CheckCircle, DownloadSimple, ArrowCounterClockwise, MapPin, Receipt, WarningCircle, Headset, ArrowLeft, ArrowUpRight } from "@phosphor-icons/react";
 import Image from "next/image";
+import { useI18n } from "@/lib/i18n-context";
 
 const formatPrice = (amount: number, currencyCode: string) => {
   const noDecimal = ['xaf', 'xof', 'jpy', 'krw'].includes(currencyCode?.toLowerCase());
@@ -14,6 +17,7 @@ const getOrderCode = (displayId: number) => {
 };
 
 export const OrderDetailsTab = ({ order, onBack }: { order: any, onBack: () => void }) => {
+  const { t } = useI18n();
   if (!order) return null;
 
   const isCompleted = order.status === "completed";
@@ -36,26 +40,26 @@ export const OrderDetailsTab = ({ order, onBack }: { order: any, onBack: () => v
           className="flex items-center gap-2 text-xs font-bold tracking-widest uppercase text-gray-400 hover:text-[#cd858d] transition-colors mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
-          Retour aux commandes
+          {t("Retour aux commandes")}
         </button>
         
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl text-[#2A2424] mb-2">
-              Commande {getOrderCode(order.display_id)}
+              {t("Commande")} {getOrderCode(order.display_id)}
             </h1>
             <p className="text-sm text-gray-500">
-              Passée le {orderDate} à {orderTime} • {isCompleted ? 'Livrée' : 'Livraison estimée : Bientôt'}
+              {t("Passée le")} {orderDate} {t("à")} {orderTime} • {isCompleted ? t("Livrée") : t("Livraison estimée : Bientôt")}
             </p>
           </div>
           <div className="flex items-center gap-3">
             <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-[#2A2424] rounded-xl text-xs font-semibold hover:bg-gray-50 transition-colors shadow-sm">
               <DownloadSimple weight="bold" className="w-4 h-4" />
-              Facture PDF
+              {t("Facture PDF")}
             </button>
             <button className="flex items-center gap-2 px-4 py-2 bg-[#2A4B3A] text-white rounded-xl text-xs font-semibold hover:bg-[#1f382b] transition-colors shadow-sm">
               <ArrowCounterClockwise weight="bold" className="w-4 h-4" />
-              Recommander
+              {t("Recommander")}
             </button>
           </div>
         </div>
@@ -66,14 +70,14 @@ export const OrderDetailsTab = ({ order, onBack }: { order: any, onBack: () => v
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
             <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-lg ${isCompleted ? 'bg-[#E6F4EA] text-[#1E7E34]' : 'bg-[#e8f5e9] text-[#2A4B3A]'}`}>
-              {isCompleted ? 'Colis Livré' : 'Colis en cours d\'acheminement'}
+              {isCompleted ? t("Colis Livré") : t("Colis en cours d'acheminement")}
             </span>
             <span className="text-sm text-gray-500 font-medium hidden md:inline-block">
-              N° Suivi: <span className="text-[#2A2424]">WF{order.id.substring(order.id.length - 8).toUpperCase()}</span>
+              {t("N° Suivi :")} <span className="text-[#2A2424]">WF{order.id.substring(order.id.length - 8).toUpperCase()}</span>
             </span>
           </div>
           <button className="text-xs font-bold tracking-widest uppercase text-[#cd858d] hover:text-[#b5737a] transition-colors flex items-center gap-1">
-            Portail transporteur <ArrowUpRight className="w-4 h-4" />
+            {t("Portail transporteur")} <ArrowUpRight className="w-4 h-4" />
           </button>
         </div>
 
@@ -90,7 +94,7 @@ export const OrderDetailsTab = ({ order, onBack }: { order: any, onBack: () => v
               <div className="w-12 h-12 rounded-full bg-[#cd858d] text-white flex items-center justify-center mb-3 shadow-[0_0_0_6px_white]">
                 <CheckCircle weight="bold" className="w-6 h-6" />
               </div>
-              <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-[#cd858d] text-center">Validée</p>
+              <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-[#cd858d] text-center">{t("Validée")}</p>
               <p className="text-[10px] text-gray-400 mt-1 text-center hidden md:block">{orderDate}</p>
             </div>
             
@@ -99,7 +103,7 @@ export const OrderDetailsTab = ({ order, onBack }: { order: any, onBack: () => v
               <div className="w-12 h-12 rounded-full bg-[#cd858d] text-white flex items-center justify-center mb-3 shadow-[0_0_0_6px_white]">
                 <CheckCircle weight="bold" className="w-6 h-6" />
               </div>
-              <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-[#cd858d] text-center">Préparée</p>
+              <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-[#cd858d] text-center">{t("Préparée")}</p>
             </div>
             
             {/* Pris en charge */}
@@ -107,7 +111,7 @@ export const OrderDetailsTab = ({ order, onBack }: { order: any, onBack: () => v
               <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 shadow-[0_0_0_6px_white] ${isShipped || isCompleted ? 'bg-[#cd858d] text-white' : 'bg-[#FAF5F0] text-[#cd858d]'}`}>
                 <Truck weight="fill" className="w-6 h-6" />
               </div>
-              <p className={`text-[10px] md:text-xs font-bold uppercase tracking-wider text-center ${isShipped || isCompleted ? 'text-[#cd858d]' : 'text-[#cd858d]/50'}`}>Pris en charge</p>
+              <p className={`text-[10px] md:text-xs font-bold uppercase tracking-wider text-center ${isShipped || isCompleted ? 'text-[#cd858d]' : 'text-[#cd858d]/50'}`}>{t("Pris en charge")}</p>
             </div>
             
             {/* Livraison */}
@@ -115,7 +119,7 @@ export const OrderDetailsTab = ({ order, onBack }: { order: any, onBack: () => v
               <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 shadow-[0_0_0_6px_white] ${isCompleted ? 'bg-[#cd858d] text-white' : 'bg-[#FAF5F0] text-gray-400'}`}>
                 <House weight="fill" className="w-6 h-6" />
               </div>
-              <p className={`text-[10px] md:text-xs font-bold uppercase tracking-wider text-center ${isCompleted ? 'text-[#cd858d]' : 'text-gray-400'}`}>Livraison</p>
+              <p className={`text-[10px] md:text-xs font-bold uppercase tracking-wider text-center ${isCompleted ? 'text-[#cd858d]' : 'text-gray-400'}`}>{t("Livraison")}</p>
             </div>
           </div>
         </div>
@@ -124,10 +128,10 @@ export const OrderDetailsTab = ({ order, onBack }: { order: any, onBack: () => v
         <div className="bg-[#FAF5F0] rounded-2xl p-4 flex items-center gap-3">
           <MapPin weight="fill" className="w-5 h-5 text-[#cd858d]" />
           <p className="text-xs text-[#2A2424]">
-            <span className="font-semibold text-[#cd858d]">Dernier événement :</span> Votre commande est en cours de traitement logistique.
+            <span className="font-semibold text-[#cd858d]">{t("Dernier événement :")}</span> {t("Votre commande est en cours de traitement logistique.")}
           </p>
           <span className="ml-auto text-[10px] font-bold tracking-widest uppercase text-[#cd858d] hidden md:block">
-            Remise contre signature
+            {t("Remise contre signature")}
           </span>
         </div>
       </div>
@@ -135,7 +139,7 @@ export const OrderDetailsTab = ({ order, onBack }: { order: any, onBack: () => v
       {/* Articles */}
       <div className="bg-white rounded-3xl border border-gray-100 p-6 md:p-8 shadow-sm mb-8">
         <div className="flex items-center justify-between mb-6 pb-6 border-b border-gray-100">
-          <h2 className="text-xl text-[#2A2424]">Articles du Rituel <span className="text-xs font-sans text-gray-400 ml-2 tracking-widest uppercase">({order.items?.length || 0} PRODUITS)</span></h2>
+          <h2 className="text-xl text-[#2A2424]">{t("Articles du Rituel")} <span className="text-xs font-sans text-gray-400 ml-2 tracking-widest uppercase">({order.items?.length || 0} {t("PRODUITS")})</span></h2>
         </div>
 
         <div className="space-y-6 mb-8">
@@ -151,13 +155,13 @@ export const OrderDetailsTab = ({ order, onBack }: { order: any, onBack: () => v
                 )}
               </div>
               <div className="flex-1 flex flex-col justify-center">
-                <p className="text-[10px] font-bold tracking-widest uppercase text-[#cd858d] mb-1">Soins et Beauté</p>
+                <p className="text-[10px] font-bold tracking-widest uppercase text-[#cd858d] mb-1">{t("Soins et Beauté")}</p>
                 <h4 className="text-sm md:text-base font-semibold text-[#2A2424]">{item.title}</h4>
-                <p className="text-xs text-gray-500 mt-1">Quantité : {item.quantity}</p>
+                <p className="text-xs text-gray-500 mt-1">{t("Quantité :")} {item.quantity}</p>
               </div>
               <div className="flex flex-col justify-center items-end text-right shrink-0">
                 <p className="text-base md:text-lg font-semibold text-[#2A2424]">{formatPrice(item.total, order.currency_code)}</p>
-                <p className="text-[10px] text-gray-400 mt-1">TVA incluse</p>
+                <p className="text-[10px] text-gray-400 mt-1">{t("TVA incluse")}</p>
               </div>
             </div>
           ))}
@@ -167,31 +171,31 @@ export const OrderDetailsTab = ({ order, onBack }: { order: any, onBack: () => v
         <div className="bg-[#FAF5F0] border border-[#F1E5D8] rounded-2xl p-4 mb-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Package weight="fill" className="w-5 h-5 text-[#cd858d]" />
-            <p className="text-xs font-semibold text-[#2A2424]">ÉCHANTILLONS DÉCOUVERTE OFFERTS</p>
+            <p className="text-xs font-semibold text-[#2A2424]">{t("ÉCHANTILLONS DÉCOUVERTE OFFERTS")}</p>
           </div>
-          <span className="text-xs font-semibold text-[#cd858d]">Offert</span>
+          <span className="text-xs font-semibold text-[#cd858d]">{t("Offert")}</span>
         </div>
 
         {/* Totals */}
         <div className="bg-gray-50 rounded-2xl p-6 md:p-8">
           <div className="space-y-3 mb-6">
             <div className="flex justify-between text-sm text-gray-600">
-              <span>Sous-total articles</span>
+              <span>{t("Sous-total articles")}</span>
               <span>{formatPrice(subtotal, order.currency_code)}</span>
             </div>
             <div className="flex justify-between text-sm text-gray-600">
-              <span className="flex items-center gap-2">Livraison Standard <span className="px-2 py-0.5 bg-[#E6F4EA] text-[#1E7E34] text-[10px] font-bold tracking-widest uppercase rounded">Offerte</span></span>
-              <span>{shippingTotal > 0 ? formatPrice(shippingTotal, order.currency_code) : 'Gratuit'}</span>
+              <span className="flex items-center gap-2">{t("Livraison Standard")} <span className="px-2 py-0.5 bg-[#E6F4EA] text-[#1E7E34] text-[10px] font-bold tracking-widest uppercase rounded">{t("Offerte")}</span></span>
+              <span>{shippingTotal > 0 ? formatPrice(shippingTotal, order.currency_code) : t("Gratuit")}</span>
             </div>
             <div className="flex justify-between text-sm text-gray-600">
-              <span>Échantillons & Pochette cadeau</span>
-              <span>Gratuit</span>
+              <span>{t("Échantillons & Pochette cadeau")}</span>
+              <span>{t("Gratuit")}</span>
             </div>
           </div>
           <div className="flex justify-between items-end pt-6 border-t border-gray-200">
             <div>
-              <p className="text-lg text-[#2A2424]">Total payé</p>
-              <p className="text-[10px] text-gray-400 mt-1">TVA incluse</p>
+              <p className="text-lg text-[#2A2424]">{t("Total payé")}</p>
+              <p className="text-[10px] text-gray-400 mt-1">{t("TVA incluse")}</p>
             </div>
             <p className="text-2xl font-semibold text-[#2A2424]">{formatPrice(total, order.currency_code)}</p>
           </div>
@@ -204,7 +208,7 @@ export const OrderDetailsTab = ({ order, onBack }: { order: any, onBack: () => v
         <div className="bg-white rounded-3xl border border-gray-100 p-6 md:p-8 shadow-sm">
           <div className="flex items-center gap-2 mb-6">
             <Truck weight="bold" className="w-5 h-5 text-[#cd858d]" />
-            <h3 className="text-base font-bold text-[#2A2424]">Adresse de livraison</h3>
+            <h3 className="text-base font-bold text-[#2A2424]">{t("Adresse de livraison")}</h3>
           </div>
           <div className="text-sm text-gray-600 space-y-1 mb-6 leading-relaxed">
             <p className="font-semibold text-[#2A2424]">{order.shipping_address?.first_name} {order.shipping_address?.last_name}</p>
@@ -217,7 +221,7 @@ export const OrderDetailsTab = ({ order, onBack }: { order: any, onBack: () => v
           <div className="bg-[#FAF5F0] p-4 rounded-xl flex items-start gap-3">
             <WarningCircle weight="fill" className="w-4 h-4 text-[#cd858d] shrink-0 mt-0.5" />
             <p className="text-[11px] text-gray-600 leading-relaxed">
-              Instruction livreur : Si absent, merci de déposer le colis chez le gardien.
+              {t("Instruction livreur : Si absent, merci de déposer le colis chez le gardien.")}
             </p>
           </div>
         </div>
@@ -227,26 +231,26 @@ export const OrderDetailsTab = ({ order, onBack }: { order: any, onBack: () => v
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <Receipt weight="bold" className="w-5 h-5 text-[#cd858d]" />
-              <h3 className="text-base font-bold text-[#2A2424]">Facturation & Paiement</h3>
+              <h3 className="text-base font-bold text-[#2A2424]">{t("Facturation & Paiement")}</h3>
             </div>
-            <span className="px-3 py-1 bg-[#E6F4EA] text-[#1E7E34] text-[10px] font-bold uppercase tracking-widest rounded-lg">Payée</span>
+            <span className="px-3 py-1 bg-[#E6F4EA] text-[#1E7E34] text-[10px] font-bold uppercase tracking-widest rounded-lg">{t("Payée")}</span>
           </div>
           
           <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-xl mb-6 border border-gray-100">
             <div className="px-3 py-1.5 bg-white border border-gray-200 rounded font-bold text-xs shadow-sm">CB</div>
             <div className="text-xs text-gray-600">
-              <p className="font-semibold text-[#2A2424]">Carte Bancaire sécurisée</p>
-              <p>Paiement validé</p>
+              <p className="font-semibold text-[#2A2424]">{t("Carte Bancaire sécurisée")}</p>
+              <p>{t("Paiement validé")}</p>
             </div>
           </div>
 
           <p className="text-sm text-gray-500 mb-auto">
-            L&apos;adresse de facturation est identique à l'adresse de livraison.
+            {t("L'adresse de facturation est identique à l'adresse de livraison.")}
           </p>
 
           <button className="w-full mt-6 flex items-center justify-center gap-2 py-3 bg-[#FAF5F0] text-[#cd858d] font-semibold text-xs rounded-xl hover:bg-[#F4EAEB] transition-colors">
             <DownloadSimple weight="bold" className="w-4 h-4" />
-            Télécharger le duplicata
+            {t("Télécharger le duplicata")}
           </button>
         </div>
       </div>
@@ -257,16 +261,16 @@ export const OrderDetailsTab = ({ order, onBack }: { order: any, onBack: () => v
           <Headset weight="fill" className="w-8 h-8" />
         </div>
         <div className="text-center md:text-left flex-1">
-          <p className="text-[10px] font-bold tracking-widest uppercase text-[#cd858d] mb-1">Support The Welfare</p>
-          <h4 className="text-base font-bold text-[#2A2424] mb-1">Une question sur votre expédition ?</h4>
-          <p className="text-xs text-gray-500">Notre équipe est à votre écoute pour vous accompagner.</p>
+          <p className="text-[10px] font-bold tracking-widest uppercase text-[#cd858d] mb-1">{t("Support The Welfare")}</p>
+          <h4 className="text-base font-bold text-[#2A2424] mb-1">{t("Une question sur votre expédition ?")}</h4>
+          <p className="text-xs text-gray-500">{t("Notre équipe est à votre écoute pour vous accompagner.")}</p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <button className="px-6 py-3 bg-[#2A4B3A] text-white text-xs font-semibold rounded-xl hover:bg-[#1f382b] transition-colors">
-            Nous Contacter
+            {t("Nous Contacter")}
           </button>
           <button className="px-6 py-3 bg-white text-[#2A2424] text-xs font-semibold rounded-xl hover:bg-gray-50 transition-colors shadow-sm">
-            FAQ Livraison
+            {t("FAQ Livraison")}
           </button>
         </div>
       </div>
