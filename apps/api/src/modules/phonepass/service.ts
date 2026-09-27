@@ -1,5 +1,5 @@
 import { AbstractAuthModuleProvider, isString, MedusaError } from "@medusajs/framework/utils"
-import { isPresent } from "@medusajs/utils"
+import { isPresent } from "@medusajs/framework/utils"
 import scrypt from "scrypt-kdf"
 
 type PhonePassOptions = {
