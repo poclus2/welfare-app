@@ -4,7 +4,7 @@ import { useState } from "react";
 import { sdk } from "@/lib/medusa";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Envelope, LockKey, ArrowRight, Star, ShoppingBag, Gift } from "@phosphor-icons/react";
+import { Phone, LockKey, ArrowRight, Star, ShoppingBag, Gift } from "@phosphor-icons/react";
 import Link from "next/link";
 import { IconIA } from "@/components/ui/icons/IconIA";
 import { useI18n } from "@/lib/i18n-context";
@@ -17,13 +17,16 @@ const benefits = [
 
 export default function LoginPage() {
   const { t } = useI18n();
-  const [email, setEmail] = useState("");
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get("redirect") || "/account";
+  const phoneParam = searchParams.get("phone") || "";
+  const hint = searchParams.get("hint");
+
+  const [phone, setPhone] = useState(phoneParam);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get("redirect") || "/account";
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +34,7 @@ export default function LoginPage() {
     setError("");
 
     try {
-      await sdk.auth.login("customer", "emailpass", { email, password });
+      await sdk.auth.login("customer", "phonepass", { phone, password });
       router.push(redirectUrl);
       router.refresh();
     } catch (err: any) {
@@ -147,6 +150,15 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
+            {hint === "exists" && !error && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-blue-50 border border-blue-100 text-blue-700 p-4 rounded-xl text-sm"
+              >
+                {t("Un compte existe déjà avec ce numéro. Connectez-vous ci-dessous pour accéder à vos résultats.")}
+              </motion.div>
+            )}
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -8 }}
@@ -157,23 +169,23 @@ export default function LoginPage() {
               </motion.div>
             )}
 
-            {/* Email */}
+            {/* Téléphone */}
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-[#2A2424]">
-                {t("Adresse e-mail")}
+                {t("Numéro de téléphone")}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
-                  <Envelope weight="light" className="w-4 h-4" />
+                  <Phone weight="light" className="w-4 h-4" />
                 </div>
                 <input
-                  type="email"
+                  type="tel"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
                   className="block w-full pl-10 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-sm text-[#2A2424] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2A2424]/20 focus:border-[#2A2424] transition-all"
                   style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
-                  placeholder={t("vous@email.com")}
+                  placeholder={t("+237 6XX XXX XXX")}
                 />
               </div>
             </div>

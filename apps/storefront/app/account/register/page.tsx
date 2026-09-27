@@ -4,7 +4,7 @@ import { useState, Suspense } from "react";
 import { sdk } from "@/lib/medusa";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Envelope, LockKey, ArrowRight, Star, ShoppingBag, Gift, User } from "@phosphor-icons/react";
+import { Phone, Envelope, LockKey, ArrowRight, Star, ShoppingBag, Gift, User } from "@phosphor-icons/react";
 import Link from "next/link";
 import { IconIA } from "@/components/ui/icons/IconIA";
 import { useI18n } from "@/lib/i18n-context";
@@ -18,9 +18,10 @@ const benefits = [
 function RegisterForm() {
   const { t } = useI18n();
   const searchParams = useSearchParams();
-  const emailParam = searchParams.get("email");
+  const phoneParam = searchParams.get("phone");
 
-  const [email, setEmail] = useState(emailParam || "");
+  const [phone, setPhone] = useState(phoneParam || "");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -36,15 +37,23 @@ function RegisterForm() {
 
     try {
       // Medusa v2 Registration flow: 1. Create Auth Identity
-      const token = await sdk.auth.register("customer", "emailpass", {
-        email,
+      const token = await sdk.auth.register("customer", "phonepass", {
+        phone,
         password,
       });
 
-      // 2. Create Customer using the auth token
+      // 2. Create Customer using the auth token (email is optional/secondary).
+      // Medusa's core createCustomerAccountWorkflow hard-requires an email
+      // (see validateCustomerAccountCreation), so when the customer doesn't
+      // provide one we generate a non-guessable placeholder tied to their
+      // phone number instead of blocking registration.
+      const customerEmail =
+        email.trim() || `${phone.replace(/[^\d]/g, "")}@phone.thewelfarecm.com`;
+
       await sdk.store.customer.create(
         {
-          email,
+          phone,
+          email: customerEmail,
           first_name: firstName,
           last_name: lastName,
         },
@@ -53,8 +62,8 @@ function RegisterForm() {
       );
 
       // 3. Login to get the persistent session token
-      await sdk.auth.login("customer", "emailpass", {
-        email,
+      await sdk.auth.login("customer", "phonepass", {
+        phone,
         password,
       });
 
@@ -62,7 +71,20 @@ function RegisterForm() {
       router.refresh();
     } catch (err: any) {
       console.error(err);
-      setError(t("Une erreur est survenue lors de la création du compte. Peut-être que cet e-mail existe déjà ?"));
+      // Check if the error is "phone already exists" (401 from Medusa)
+      const errMsg = err?.message || JSON.stringify(err) || "";
+      const isPhoneExists =
+        errMsg.toLowerCase().includes("already exists") ||
+        errMsg.toLowerCase().includes("identity") ||
+        err?.status === 401;
+
+      if (isPhoneExists) {
+        // Redirect to login with the phone pre-filled and a helpful banner
+        const loginUrl = `/account/login?phone=${encodeURIComponent(phone)}&redirect=${encodeURIComponent(redirectUrl)}&hint=exists`;
+        router.push(loginUrl);
+      } else {
+        setError(t("Une erreur est survenue lors de la création du compte. Veuillez réessayer."));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -124,10 +146,31 @@ function RegisterForm() {
         </div>
       </div>
 
-      {/* Email */}
+      {/* Téléphone */}
       <div className="space-y-1.5">
         <label className="block text-sm font-medium text-[#2A2424]">
-          {t("Adresse e-mail")}
+          {t("Numéro de téléphone")}
+        </label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+            <Phone weight="light" className="w-4 h-4" />
+          </div>
+          <input
+            type="tel"
+            required
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="block w-full pl-10 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-sm text-[#2A2424] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2A2424]/20 focus:border-[#2A2424] transition-all"
+            style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
+            placeholder={t("+237 6XX XXX XXX")}
+          />
+        </div>
+      </div>
+
+      {/* Email (optionnel) */}
+      <div className="space-y-1.5">
+        <label className="block text-sm font-medium text-[#2A2424]">
+          {t("Adresse e-mail")} <span className="text-gray-400 font-normal">({t("optionnel")})</span>
         </label>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
@@ -135,7 +178,6 @@ function RegisterForm() {
           </div>
           <input
             type="email"
-            required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="block w-full pl-10 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-sm text-[#2A2424] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2A2424]/20 focus:border-[#2A2424] transition-all"

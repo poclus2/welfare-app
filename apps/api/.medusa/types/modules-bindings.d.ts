@@ -29,6 +29,7 @@ import type Meilisearch from '@rokmohar/medusa-plugin-meilisearch'
 import type SkinScan from '../../src/modules/skin_scan'
 import type SearchAnalytics from '../../src/modules/search_analytics'
 import type AmbassadorApplication from '../../src/modules/ambassador_application'
+import type CreatorPartner from '../../src/modules/creator_partner'
 
 declare module '@medusajs/framework/types' {
   interface ModuleImplementations {
@@ -62,6 +63,7 @@ declare module '@medusajs/framework/types' {
     'meilisearch': InstanceType<(typeof Meilisearch)['service']>,
     'skin_scan': InstanceType<(typeof SkinScan)['service']>,
     'search_analytics': InstanceType<(typeof SearchAnalytics)['service']>,
-    'ambassador_application': InstanceType<(typeof AmbassadorApplication)['service']>
+    'ambassador_application': InstanceType<(typeof AmbassadorApplication)['service']>,
+    'creator_partner': InstanceType<(typeof CreatorPartner)['service']>
   }
 }

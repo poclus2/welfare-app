@@ -125,9 +125,9 @@ const STEPS = [
 const PERKS = [
   { icon: <TrendUp className="w-5 h-5" />, title: "Commissions progressives (jusqu'à 6%)", sub: "Sur chaque vente, sans plafond" },
   { icon: <ChartLineUp className="w-5 h-5" />, title: "Dashboard temps réel", sub: "Clics, ventes, commissions live" },
-  { icon: <Gift className="w-5 h-5" />, title: "Produits offerts", sub: "Top 10 mensuel = cadeaux exclusifs" },
+  { icon: <Gift className="w-5 h-5" />, title: "Produits offerts", sub: "Panier de base offert à la sélection" },
   { icon: <Crown className="w-5 h-5" />, title: "Classement créatrices partenaires", sub: "Challenges et récompenses mensuelles" },
-  { icon: <Heart className="w-5 h-5" />, title: "-20% sur vos achats", sub: "Dès 5 ventes réalisées / mois" },
+  { icon: <Heart className="w-5 h-5" />, title: "-15% sur vos achats", sub: "Sur tous vos achats personnels" },
   { icon: <ShareNetwork className="w-5 h-5" />, title: "Support dédié", sub: "Équipe disponible 7j/7" },
 ];
 
@@ -136,7 +136,7 @@ const FAQ = [
   { q: "Combien de followers faut-il avoir ?", a: "Aucun minimum. Nano-créatrice (500 abonnés) ou macro-influenceuse (500K+), toutes sont les bienvenues. L'authenticité prime sur la taille de l'audience." },
   { q: "Comment sont calculées les commissions ?", a: "Vous gagnez jusqu'à 6% sur le montant net HT de chaque commande passée via votre lien ou code. Vos commissions s'accumulent en temps réel dans votre tableau de bord personnel." },
   { q: "Quels types de contenus fonctionnent le mieux ?", a: "Les revues sincères, routines morning/evening filmées, hauls mensuels et comparatifs avant/après. L'authenticité génère 3x plus de conversions que le contenu sponsorisé générique." },
-  { q: "Puis-je bénéficier de produits offerts ?", a: "À partir de 5 ventes/mois, vous avez -20% sur vos achats. Le Top 10 mensuel reçoit des produits en avant-première, avant même leur sortie officielle sur le site." },
+  { q: "Puis-je bénéficier de produits offerts ?", a: "Si vous êtes sélectionné(e), vous recevrez un panier de produits skincare de base. Ensuite, vous bénéficierez de 15% de réduction sur tous vos achats personnels." },
 ];
 
 /* ─── PLATFORM ICON ─────────────────────────────────────────── */

@@ -14,8 +14,21 @@ import enDict from "@/dictionaries/en.json";
 import { I18nProvider } from "@/lib/i18n-context";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://thewelfarecm.com"),
   title: "The Welfare Shop - K-Beauty & Skincare",
   description: "Reveal your natural glow with pure skincare blends.",
+  icons: {
+    icon: "/icon.webp",
+  },
+  openGraph: {
+    title: "The Welfare Shop - K-Beauty & Skincare",
+    description: "Reveal your natural glow with pure skincare blends.",
+    images: [{ url: "/opengraph-image.jpg", width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/twitter-image.png"],
+  },
 };
 
 export default async function RootLayout({
@@ -28,11 +41,9 @@ export default async function RootLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet" />
-      </head>
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet" />
       <body className="font-sans bg-background text-foreground antialiased flex flex-col min-h-screen" style={{ fontFamily: '"Plus Jakarta Sans", sans-serif' }}>
         <PostHogProvider>
           <I18nProvider initialLocale={locale} dictionaries={dictionaries}>

@@ -4,15 +4,15 @@ import { useState, Suspense } from "react";
 import { sdk } from "@/lib/medusa";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Envelope, LockKey, ArrowRight, CheckCircle } from "@phosphor-icons/react";
+import { Phone, LockKey, ArrowRight, CheckCircle } from "@phosphor-icons/react";
 import Link from "next/link";
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
-  const emailParam = searchParams.get("email");
+  const phoneParam = searchParams.get("phone");
 
-  const [email, setEmail] = useState(emailParam || "");
+  const [phone, setPhone] = useState(phoneParam || "");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -25,16 +25,16 @@ function ResetPasswordForm() {
 
     try {
       // For requesting a reset
-      await sdk.auth.resetPassword("customer", "emailpass", {
-        identifier: email,
+      await sdk.auth.resetPassword("customer", "phonepass", {
+        identifier: phone,
       });
       setStatus("success");
-      setMessage("Si cet e-mail existe, un lien de r�initialisation vous a �t� envoy�.");
+      setMessage("Si ce numéro existe, un code de réinitialisation vous a été envoyé.");
     } catch (err: any) {
       console.error(err);
-      // Don't leak if email exists or not, just show success
+      // Don't leak if the phone number exists or not, just show success
       setStatus("success");
-      setMessage("Si cet e-mail existe, un lien de r�initialisation vous a �t� envoy�.");
+      setMessage("Si ce numéro existe, un code de réinitialisation vous a été envoyé.");
     }
   };
 
@@ -45,13 +45,13 @@ function ResetPasswordForm() {
 
     try {
       // For setting the new password using the token
-      await sdk.auth.updateProvider("customer", "emailpass", {
+      await sdk.auth.updateProvider("customer", "phonepass", {
         password: password,
       }, token as string);
-      
+
       // Auto login after reset
-      await sdk.auth.login("customer", "emailpass", {
-        email,
+      await sdk.auth.login("customer", "phonepass", {
+        phone,
         password,
       });
       
@@ -73,7 +73,7 @@ function ResetPasswordForm() {
         <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
           <CheckCircle className="h-6 w-6 text-green-600" />
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">E-mail envoy�</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Code envoyé</h3>
         <p className="text-sm text-gray-500 mb-6">{message}</p>
         <Link href="/account/login" className="text-sm font-medium text-[#2A2424] hover:underline">
           Retour � la connexion
@@ -129,18 +129,18 @@ function ResetPasswordForm() {
   return (
     <form className="space-y-6" onSubmit={handleRequestReset}>
       <div>
-        <label className="block text-sm font-medium text-gray-700">Adresse e-mail</label>
+        <label className="block text-sm font-medium text-gray-700">Numéro de téléphone</label>
         <div className="mt-1 relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-            <Envelope weight="light" className="w-5 h-5" />
+            <Phone weight="light" className="w-5 h-5" />
           </div>
           <input
-            type="email"
+            type="tel"
             required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
             className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#2A2424] focus:border-[#2A2424] sm:text-sm transition-colors"
-            placeholder="vous@email.com"
+            placeholder="+237 6XX XXX XXX"
           />
         </div>
       </div>
@@ -175,7 +175,7 @@ export default function ResetPasswordPage() {
           Mot de passe
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Entrez votre e-mail pour recevoir un lien d'activation, ou choisissez votre nouveau mot de passe si vous avez re�u un e-mail.
+          Entrez votre numéro de téléphone pour recevoir un code de réinitialisation, ou choisissez votre nouveau mot de passe si vous en avez déjà un.
         </p>
       </div>
 

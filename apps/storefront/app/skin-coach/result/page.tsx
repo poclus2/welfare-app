@@ -130,7 +130,6 @@ export default function SkinCoachResultPage() {
 
             <div className="space-y-4">
               <Link href="/account/register?redirect=/skin-coach/result" className="group relative w-full flex items-center justify-center gap-2 bg-[#2A2424] text-[#F9F6F0] px-6 py-4 rounded-xl hover:bg-[#1A1616] transition-colors duration-300 font-medium">
-                <IconIA className="text-[#E8C0C6]" />
                 <span>Dévoiler mes résultats</span>
                 <ArrowRight className="w-4 h-4 opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300" />
               </Link>

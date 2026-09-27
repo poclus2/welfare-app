@@ -20,6 +20,21 @@ module.exports = defineConfig({
   },
   modules: [
     {
+      resolve: "@medusajs/auth",
+      options: {
+        providers: [
+          {
+            resolve: "@medusajs/auth-emailpass",
+            id: "emailpass",
+          },
+          {
+            resolve: "./src/modules/phonepass",
+            id: "phonepass",
+          },
+        ],
+      },
+    },
+    {
       resolve: './src/modules/welfare_delivery',
     },
     {
