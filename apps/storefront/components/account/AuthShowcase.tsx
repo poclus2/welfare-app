@@ -30,13 +30,16 @@ export function AuthShowcase({
         <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-[#c97c85] opacity-20 blur-[80px]"></div>
         
         <div className="relative z-10">
-          <Link href="/" className="mb-8 inline-block">
+          <Link 
+            href="/" 
+            className="mb-8 inline-flex h-24 w-24 items-center justify-center rounded-full bg-white p-3 shadow-lg transition-transform hover:scale-105"
+          >
             <Image 
               src="/logo.webp" 
               alt="The Welfare Shop" 
               width={160} 
               height={160} 
-              className="h-12 w-auto object-contain" 
+              className="h-full w-full object-contain" 
               priority
             />
           </Link>
@@ -57,13 +60,16 @@ export function AuthShowcase({
 
       {/* Top: Logo */}
       <div className="relative z-10">
-        <Link href="/" className="inline-block transition-opacity hover:opacity-80">
+        <Link 
+          href="/" 
+          className="inline-flex h-32 w-32 items-center justify-center rounded-full bg-white p-4 shadow-xl transition-transform hover:scale-105"
+        >
           <Image 
             src="/logo.webp" 
             alt="The Welfare Shop" 
             width={200} 
             height={200} 
-            className="h-16 w-auto object-contain" 
+            className="h-full w-full object-contain" 
             priority
           />
         </Link>
