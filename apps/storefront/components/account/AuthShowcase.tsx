@@ -34,9 +34,9 @@ export function AuthShowcase({
             <Image 
               src="/logo.webp" 
               alt="The Welfare Shop" 
-              width={180} 
-              height={45} 
-              className="h-9 w-auto brightness-0 invert" 
+              width={160} 
+              height={160} 
+              className="h-12 w-auto object-contain" 
               priority
             />
           </Link>
@@ -62,8 +62,8 @@ export function AuthShowcase({
             src="/logo.webp" 
             alt="The Welfare Shop" 
             width={200} 
-            height={50} 
-            className="h-10 w-auto brightness-0 invert" 
+            height={200} 
+            className="h-16 w-auto object-contain" 
             priority
           />
         </Link>
