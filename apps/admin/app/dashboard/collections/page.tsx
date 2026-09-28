@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 export default async function CollectionsPage() {
   const cookieStore = await cookies();
-  const token = cookieStore.get("medusa_admin_token")?.value;
+  const token = cookieStore.get("admin_token")?.value;
 
   if (!token) {
     redirect("/login");
