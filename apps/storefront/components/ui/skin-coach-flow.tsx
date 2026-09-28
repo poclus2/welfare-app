@@ -148,9 +148,9 @@ const DECISION_TREE: QuestionNode[] = [
     text: "Dernière question ! Pour que je puisse adapter mes recommandations de produits à vos attentes, quel budget souhaitez-vous idéalement allouer à votre routine soin ?",
     type: "choice",
     options: [
-      { label: "Découverte (Abordable, essentiel) < 25 000F", nextQuestionId: "q_finish" },
-      { label: "Intermédiaire (Bon rapport qualité/prix) ~ 40 000F", nextQuestionId: "q_finish" },
-      { label: "Premium (Le meilleur, peu importe le prix)", nextQuestionId: "q_finish" }
+      { label: "Essentiel (25k - 35k FCFA)", nextQuestionId: "q_finish" },
+      { label: "Intermédiaire (35k - 45k FCFA)", nextQuestionId: "q_finish" },
+      { label: "Premium (50k+ FCFA)", nextQuestionId: "q_finish" }
     ]
   }
 ];

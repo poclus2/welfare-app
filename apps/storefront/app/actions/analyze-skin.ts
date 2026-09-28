@@ -442,7 +442,7 @@ ${miniCatalogText}
 
 RÈGLE DE PRIORISATION (The Welfare Strategy) & BUDGET :
 - BUDGET (RÈGLE STRICTE) : Vérifie le budget souhaité par la cliente dans le questionnaire. La somme totale des prix des produits recommandés NE DOIT SOUS AUCUN PRÉTEXTE dépasser ce budget.
-  - Si le budget est limité (ex: 40 000 FCFA), tu DOIS impérativement supprimer des étapes (par exemple, retirer le toner ou le sérum) pour ne garder que l'essentiel (ex: Nettoyant + Hydratant/Solaire) afin de rester strictement sous le budget. Le respect du budget est ABSOLU et prioritaire sur le fait d'avoir une routine longue.
+  - Si le budget est limité (ex: 25k-35k FCFA), tu DOIS impérativement supprimer des étapes (par exemple, retirer le toner ou le sérum) pour ne garder que l'essentiel (ex: Nettoyant + Hydratant/Solaire) afin de rester strictement sous le budget. Le respect du budget est ABSOLU et prioritaire sur le fait d'avoir une routine longue.
 - En cas d'hésitation entre deux produits cutanément équivalents et qui respectent le budget, donne TOUJOURS la priorité au produit avec le stock le plus élevé (indiqué entre parenthèses après "stock:").
 - Si le mode est "Sélection éditoriale manuelle", ces produits ont été choisis par notre équipe : leur recommandation est FORTEMENT encouragée si pertinente au budget.
 - Pour chaque étape, copie EXACTEMENT le medusa_product_id du produit choisi.
@@ -491,7 +491,7 @@ RÈGLES D'EXPERTISE K-BEAUTY — THE WELFARE
    RÈGLE ABSOLUE : Tu ne DOIS SOUS AUCUN PRÉTEXTE dépasser le budget de la cliente, même si cela implique de ne recommander que 2 produits.
    Le tableau "routine_steps" doit contenir MAXIMUM ${aiConfig.max_routine_steps} éléments.
    Ne surcharge JAMAIS la routine. Le respect strict du budget passe avant tout.
-   Si le budget ne permet que 2 produits (ex: 30 000 FCFA), propose uniquement 2 produits. Qualité et respect du budget > Quantité.
+   Si le budget ne permet que 2 ou 3 produits (ex: 25k-35k FCFA), propose uniquement 2 produits. Qualité et respect du budget > Quantité.
 
 🚨 CAS CLINIQUES SÉVÈRES (Acné grave, pathologies) :
    Si le diagnostic révèle une pathologie cutanée poussée (acné kystique sévère, rosacée, dermatite, etc.), propose une routine EXTRÊMEMENT minimaliste (apaisement et barrière uniquement) et recommande IMPÉRATIVEMENT dans ton 'empathetic_message' de consulter un spécialiste ou un dermatologue. Ne joue pas au médecin.
@@ -595,11 +595,12 @@ FORMAT JSON ATTENDU :
       // ─── FILTRAGE BUDGET STRICT EN TYPESCRIPT ───
       try {
         let maxBudget = Infinity;
-        const budgetQuestion = userResponses.find(r => r.answer && typeof r.answer === 'string' && r.answer.includes("000F"));
+        const budgetQuestion = userResponses.find(r => r.answer && typeof r.answer === 'string' && r.answer.includes("FCFA"));
         if (budgetQuestion) {
           const ans = String(budgetQuestion.answer);
-          if (ans.includes("25 000F")) maxBudget = 25000;
-          else if (ans.includes("40 000F")) maxBudget = 40000;
+          if (ans.includes("25k")) maxBudget = 35000;
+          else if (ans.includes("35k")) maxBudget = 45000;
+          else if (ans.includes("50k")) maxBudget = Infinity;
         }
 
         if (maxBudget < Infinity && routineSteps.length > 0) {
