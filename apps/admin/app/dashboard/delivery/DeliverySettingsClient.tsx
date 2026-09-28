@@ -16,10 +16,10 @@ export function DeliverySettingsClient({ token }: { token: string }) {
     try {
       const headers = { "Authorization": `Bearer ${token}` };
       const [citiesRes, settingsRes, pointsRes, rulesRes] = await Promise.all([
-        fetch("https://api.thewelfare.store/admin/delivery/cities", { headers }),
-        fetch("https://api.thewelfare.store/admin/delivery/settings", { headers }),
-        fetch("https://api.thewelfare.store/admin/delivery/pickup-points", { headers }),
-        fetch("https://api.thewelfare.store/admin/delivery/weight-rules", { headers })
+        fetch("https://api.thewelfarecm.com/admin/delivery/cities", { headers }),
+        fetch("https://api.thewelfarecm.com/admin/delivery/settings", { headers }),
+        fetch("https://api.thewelfarecm.com/admin/delivery/pickup-points", { headers }),
+        fetch("https://api.thewelfarecm.com/admin/delivery/weight-rules", { headers })
       ]);
       const citiesData = await citiesRes.json();
       const settingsData = await settingsRes.json();
@@ -42,7 +42,7 @@ export function DeliverySettingsClient({ token }: { token: string }) {
   }, [token]);
 
   const apiCall = async (path: string, method: string, body?: any) => {
-    const res = await fetch(`https://api.thewelfare.store/admin/delivery/${path}`, {
+    const res = await fetch(`https://api.thewelfarecm.com/admin/delivery/${path}`, {
       method,
       headers: {
         "Content-Type": "application/json",

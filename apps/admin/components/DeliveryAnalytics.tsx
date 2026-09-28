@@ -11,7 +11,7 @@ export function DeliveryAnalytics({ token }: { token: string }) {
   useEffect(() => {
     async function fetchOrders() {
       try {
-        const res = await fetch("https://api.thewelfare.store/admin/orders?limit=100", {
+        const res = await fetch("https://api.thewelfarecm.com/admin/orders?limit=100", {
           headers: { "Authorization": `Bearer ${token}` }
         });
         const json = await res.json();

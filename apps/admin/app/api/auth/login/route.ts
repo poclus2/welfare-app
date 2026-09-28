@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const MEDUSA_URL = process.env.MEDUSA_BACKEND_URL || "https://api.thewelfare.store";
+const MEDUSA_URL = process.env.MEDUSA_BACKEND_URL || "https://api.thewelfarecm.com";
 
 export async function POST(req: NextRequest) {
   try {

@@ -1,6 +1,6 @@
 // Medusa Admin API client — server-side utility (NO "use server" directive)
 
-const MEDUSA_URL = process.env.MEDUSA_BACKEND_URL || "https://api.thewelfare.store";
+const MEDUSA_URL = process.env.MEDUSA_BACKEND_URL || "https://api.thewelfarecm.com";
 
 export async function loginAdmin(email: string, password: string): Promise<string> {
   const res = await fetch(`${MEDUSA_URL}/auth/user/emailpass`, {

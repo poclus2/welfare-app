@@ -62,7 +62,7 @@ services:
       context: .
       dockerfile: apps/storefront/Dockerfile
       args:
-        NEXT_PUBLIC_MEDUSA_BACKEND_URL: https://api.thewelfare.store
+        NEXT_PUBLIC_MEDUSA_BACKEND_URL: https://api.thewelfarecm.com
         NEXT_PUBLIC_MEILISEARCH_HOST: https://thewelfare.store/meili
         NEXT_PUBLIC_MEILISEARCH_API_KEY: ${MEILISEARCH_API_KEY:-meilisearch_master_key}
         NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${MEDUSA_PUBLISHABLE_KEY:-pk_a444d1be79f71d0d6530d64a99c9639cf892b40452874ecefa30ff900404e489}
@@ -90,7 +90,7 @@ services:
       - medusa-api
     environment:
       - NODE_ENV=production
-      - MEDUSA_BACKEND_URL=https://api.thewelfare.store
+      - MEDUSA_BACKEND_URL=https://api.thewelfarecm.com
     ports:
       - "3006:3000" # Exposes 3006 to host for Nginx to route to (admin.thewelfare.store)
     restart: unless-stopped
