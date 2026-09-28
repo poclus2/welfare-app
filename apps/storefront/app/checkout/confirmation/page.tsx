@@ -107,7 +107,7 @@ function ConfirmationContent() {
         {/* Payment instructions */}
         <div className="bg-[#F4EAEB]/50 border border-[#EDE0E0] rounded-2xl p-5 mb-4">
           <p className="text-[10px] font-bold uppercase tracking-widest text-[#C08A8E] mb-3">
-            📱 Instructions de paiement
+             Instructions de paiement
           </p>
           <ol className="space-y-3 text-sm text-[#2A2424]/70 leading-relaxed">
             <li className="flex gap-2">
@@ -159,7 +159,7 @@ function ConfirmationContent() {
             {order.delivery?.mode === "retrait" ? (
               <div className="flex items-start gap-3">
                 <span className="text-2xl">
-                  {order.delivery.store === "hippodrome" ? "🏇" : "🛍️"}
+                  {order.delivery.store === "hippodrome" ? "🏇" : ""}
                 </span>
                 <div>
                   <p className="text-sm font-bold text-[#2A2424]">
