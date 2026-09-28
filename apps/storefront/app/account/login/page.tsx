@@ -4,7 +4,7 @@ import { useState } from "react";
 import { sdk } from "@/lib/medusa";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, LockKey, ArrowRight, Star, ShoppingBag, Gift, Eye, EyeSlash, WarningCircle, Info } from "@phosphor-icons/react";
+import { ArrowRight, Star, ShoppingBag, Gift, Eye, EyeSlash, WarningCircle, Info } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n-context";
 import { AuthShowcase } from "@/components/account/AuthShowcase";
@@ -47,8 +47,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#fdf8f8] lg:flex-row">
-      {/* Mobile showcase band */}
+    <div className="flex min-h-screen flex-col bg-white lg:flex-row">
       <div className="lg:hidden">
         <AuthShowcase
           variant="mobile"
@@ -59,7 +58,6 @@ export default function LoginPage() {
         />
       </div>
 
-      {/* Desktop showcase panel */}
       <AuthShowcase
         variant="desktop"
         headline="Votre espace beauté"
@@ -69,21 +67,21 @@ export default function LoginPage() {
       />
 
       {/* Form panel */}
-      <div className="relative -mt-8 flex flex-1 flex-col justify-center rounded-t-[2rem] bg-[#fdf8f8] px-6 py-10 sm:px-12 lg:mt-0 lg:rounded-none lg:px-16">
-        <div className="mx-auto w-full max-w-md">
-          <div className="mb-8">
-            <h2 className="text-3xl font-semibold text-[#2A2424]" style={{ letterSpacing: "-0.02em" }}>
+      <div className="flex flex-1 flex-col justify-center px-6 py-12 sm:px-12 lg:px-24 xl:px-32">
+        <div className="mx-auto w-full max-w-[380px]">
+          <div className="mb-10 text-center lg:text-left">
+            <h2 className="text-3xl font-semibold tracking-tight text-gray-900">
               {t("Connexion")}
             </h2>
             <p className="mt-2 text-sm text-gray-500">
               {t("Pas encore de compte ?")}{" "}
-              <Link href="/account/register" className="font-medium text-[#2A2424] underline underline-offset-4 transition-colors hover:text-[#c97c85]">
+              <Link href="/account/register" className="font-medium text-gray-900 underline underline-offset-4 transition-colors hover:text-[#c97c85]">
                 {t("Créer un compte")}
               </Link>
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-6">
             <AnimatePresence mode="wait">
               {hint === "exists" && !error && (
                 <motion.div
@@ -91,10 +89,10 @@ export default function LoginPage() {
                   initial={{ opacity: 0, y: -8, height: 0 }}
                   animate={{ opacity: 1, y: 0, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="flex items-start gap-2.5 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-700"
+                  className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50/50 p-4 text-sm text-blue-700"
                 >
-                  <Info weight="fill" className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                  {t("Un compte existe déjà avec ce numéro. Connectez-vous ci-dessous pour accéder à vos résultats.")}
+                  <Info weight="fill" className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+                  <span className="leading-relaxed">{t("Un compte existe déjà avec ce numéro. Connectez-vous ci-dessous.")}</span>
                 </motion.div>
               )}
               {error && (
@@ -103,65 +101,55 @@ export default function LoginPage() {
                   initial={{ opacity: 0, y: -8, height: 0 }}
                   animate={{ opacity: 1, y: 0, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="flex items-start gap-2.5 rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-600"
+                  className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50/50 p-4 text-sm text-red-600"
                 >
-                  <WarningCircle weight="fill" className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                  {error}
+                  <WarningCircle weight="fill" className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+                  <span className="leading-relaxed">{error}</span>
                 </motion.div>
               )}
             </AnimatePresence>
 
             {/* Téléphone */}
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-[#2A2424]">
+            <div className="space-y-2">
+              <label className="block text-[13px] font-medium text-gray-700">
                 {t("Numéro de téléphone")}
               </label>
-              <div className="group relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 transition-colors group-focus-within:text-[#c97c85]">
-                  <Phone weight="light" className="h-4 w-4" />
-                </div>
-                <input
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="block w-full rounded-xl border border-gray-200 bg-white py-3.5 pl-10 pr-4 text-sm text-[#2A2424] placeholder-gray-400 transition-all focus:border-[#2A2424] focus:outline-none focus:ring-2 focus:ring-[#2A2424]/20"
-                  style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
-                  placeholder={t("+237 6XX XXX XXX")}
-                />
-              </div>
+              <input
+                type="tel"
+                required
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="block w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-black focus:bg-white focus:outline-none focus:ring-1 focus:ring-black"
+                placeholder={t("+237 6XX XXX XXX")}
+              />
             </div>
 
             {/* Password */}
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="block text-sm font-medium text-[#2A2424]">
+                <label className="block text-[13px] font-medium text-gray-700">
                   {t("Mot de passe")}
                 </label>
                 <Link
                   href="/account/reset-password"
-                  className="text-xs text-gray-500 transition-colors hover:text-[#2A2424]"
+                  className="text-[13px] text-gray-500 transition-colors hover:text-black"
                 >
                   {t("Mot de passe oublié ?")}
                 </Link>
               </div>
-              <div className="group relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 transition-colors group-focus-within:text-[#c97c85]">
-                  <LockKey weight="light" className="h-4 w-4" />
-                </div>
+              <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full rounded-xl border border-gray-200 bg-white py-3.5 pl-10 pr-11 text-sm text-[#2A2424] placeholder-gray-400 transition-all focus:border-[#2A2424] focus:outline-none focus:ring-2 focus:ring-[#2A2424]/20"
-                  style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
+                  className="block w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 pr-11 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-black focus:bg-white focus:outline-none focus:ring-1 focus:ring-black"
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400 transition-colors hover:text-[#2A2424]"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 transition-colors hover:text-gray-700"
                   aria-label={showPassword ? t("Masquer le mot de passe") : t("Afficher le mot de passe")}
                 >
                   {showPassword ? <EyeSlash weight="light" className="h-4 w-4" /> : <Eye weight="light" className="h-4 w-4" />}
@@ -174,8 +162,7 @@ export default function LoginPage() {
               type="submit"
               disabled={isLoading}
               whileTap={{ scale: 0.98 }}
-              className="auth-shimmer-btn group flex w-full items-center justify-center gap-2 rounded-xl bg-[#2A2424] px-6 py-3.5 text-sm font-semibold text-white transition-shadow duration-200 disabled:opacity-60"
-              style={{ boxShadow: "0 4px 6px rgba(42,36,36,0.15), 0 1px 3px rgba(0,0,0,0.1)" }}
+              className="group mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-black px-6 py-3.5 text-sm font-medium text-white shadow-[0_4px_12px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(0,0,0,0.15)] hover:bg-[#1a1a1a] disabled:pointer-events-none disabled:opacity-50"
             >
               {isLoading ? (
                 <span className="flex items-center gap-2">
@@ -183,7 +170,7 @@ export default function LoginPage() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
-                  {t("Connexion en cours...")}
+                  {t("Connexion...")}
                 </span>
               ) : (
                 <>
@@ -195,14 +182,14 @@ export default function LoginPage() {
           </form>
 
           {/* Mobile benefits */}
-          <div className="mt-8 border-t border-gray-100 pt-8 lg:hidden">
-            <div className="space-y-3">
+          <div className="mt-12 border-t border-gray-100 pt-8 lg:hidden">
+            <div className="space-y-4">
               {benefits.map((benefit, i) => (
                 <div key={i} className="flex items-center gap-3">
-                  <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#F4EAEB]">
-                    <benefit.icon weight="light" className="h-3.5 w-3.5 text-[#c97c85]" />
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fdf8f8]">
+                    <benefit.icon weight="light" className="h-4 w-4 text-[#c97c85]" />
                   </div>
-                  <span className="text-xs text-gray-600">{t(benefit.text)}</span>
+                  <span className="text-[13px] text-gray-600">{t(benefit.text)}</span>
                 </div>
               ))}
             </div>
