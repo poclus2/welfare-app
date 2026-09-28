@@ -181,6 +181,19 @@ export function DeliverySettingsClient({ token }: { token: string }) {
 
       {activeTab === "cities" && (
         <div className="space-y-6">
+          <div className="flex justify-end mb-4">
+            <button 
+              onClick={() => apiCall("cities", "POST", { name: "Nouvelle Ville" }).then(fetchDeliveryData)} 
+              className="flex items-center gap-1 text-sm bg-black text-white px-3 py-1.5 rounded-lg"
+            >
+              <Plus className="w-4 h-4"/> Ajouter une ville
+            </button>
+          </div>
+          {cities.length === 0 && (
+            <div className="text-center p-8 bg-white rounded-xl border border-dashed border-gray-300">
+              <p className="text-gray-500">Aucune ville n'est encore configurée.</p>
+            </div>
+          )}
           {cities.map(city => (
             <div key={city.id} className={`bg-white p-6 rounded-xl border shadow-sm ${!city.is_active ? 'opacity-70 bg-gray-50 border-gray-200' : 'border-gray-100'}`}>
               <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
