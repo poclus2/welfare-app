@@ -3,11 +3,12 @@
 import { useState, Suspense } from "react";
 import { sdk } from "@/lib/medusa";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
-import { Phone, Envelope, LockKey, ArrowRight, Star, ShoppingBag, Gift, User } from "@phosphor-icons/react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Phone, Envelope, LockKey, ArrowRight, Star, ShoppingBag, Gift, User, Eye, EyeSlash, WarningCircle } from "@phosphor-icons/react";
 import Link from "next/link";
 import { IconIA } from "@/components/ui/icons/IconIA";
 import { useI18n } from "@/lib/i18n-context";
+import { AuthShowcase } from "@/components/account/AuthShowcase";
 
 const benefits = [
   { icon: Star, text: "Cumulez des points à chaque achat" },
@@ -23,6 +24,7 @@ function RegisterForm() {
   const [phone, setPhone] = useState(phoneParam || "");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [error, setError] = useState("");
@@ -92,32 +94,34 @@ function RegisterForm() {
 
   return (
     <form onSubmit={handleRegister} className="space-y-5">
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-xl text-sm"
-        >
-          {error}
-        </motion.div>
-      )}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex items-start gap-2.5 rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-600"
+          >
+            <WarningCircle weight="fill" className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            {error}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="grid grid-cols-2 gap-4">
         {/* Prénom */}
         <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-[#2A2424]">
-            {t("Prénom")}
-          </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
-              <User weight="light" className="w-4 h-4" />
+          <label className="block text-sm font-medium text-[#2A2424]">{t("Prénom")}</label>
+          <div className="group relative">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 transition-colors group-focus-within:text-[#c97c85]">
+              <User weight="light" className="h-4 w-4" />
             </div>
             <input
               type="text"
               required
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              className="block w-full pl-10 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-sm text-[#2A2424] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2A2424]/20 focus:border-[#2A2424] transition-all"
+              className="block w-full rounded-xl border border-gray-200 bg-white py-3.5 pl-10 pr-4 text-sm text-[#2A2424] placeholder-gray-400 transition-all focus:border-[#2A2424] focus:outline-none focus:ring-2 focus:ring-[#2A2424]/20"
               style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
               placeholder={t("Prénom")}
             />
@@ -126,19 +130,17 @@ function RegisterForm() {
 
         {/* Nom */}
         <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-[#2A2424]">
-            {t("Nom")}
-          </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
-              <User weight="light" className="w-4 h-4" />
+          <label className="block text-sm font-medium text-[#2A2424]">{t("Nom")}</label>
+          <div className="group relative">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 transition-colors group-focus-within:text-[#c97c85]">
+              <User weight="light" className="h-4 w-4" />
             </div>
             <input
               type="text"
               required
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-              className="block w-full pl-10 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-sm text-[#2A2424] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2A2424]/20 focus:border-[#2A2424] transition-all"
+              className="block w-full rounded-xl border border-gray-200 bg-white py-3.5 pl-10 pr-4 text-sm text-[#2A2424] placeholder-gray-400 transition-all focus:border-[#2A2424] focus:outline-none focus:ring-2 focus:ring-[#2A2424]/20"
               style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
               placeholder={t("Nom")}
             />
@@ -148,19 +150,17 @@ function RegisterForm() {
 
       {/* Téléphone */}
       <div className="space-y-1.5">
-        <label className="block text-sm font-medium text-[#2A2424]">
-          {t("Numéro de téléphone")}
-        </label>
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
-            <Phone weight="light" className="w-4 h-4" />
+        <label className="block text-sm font-medium text-[#2A2424]">{t("Numéro de téléphone")}</label>
+        <div className="group relative">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 transition-colors group-focus-within:text-[#c97c85]">
+            <Phone weight="light" className="h-4 w-4" />
           </div>
           <input
             type="tel"
             required
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            className="block w-full pl-10 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-sm text-[#2A2424] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2A2424]/20 focus:border-[#2A2424] transition-all"
+            className="block w-full rounded-xl border border-gray-200 bg-white py-3.5 pl-10 pr-4 text-sm text-[#2A2424] placeholder-gray-400 transition-all focus:border-[#2A2424] focus:outline-none focus:ring-2 focus:ring-[#2A2424]/20"
             style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
             placeholder={t("+237 6XX XXX XXX")}
           />
@@ -170,17 +170,17 @@ function RegisterForm() {
       {/* Email (optionnel) */}
       <div className="space-y-1.5">
         <label className="block text-sm font-medium text-[#2A2424]">
-          {t("Adresse e-mail")} <span className="text-gray-400 font-normal">({t("optionnel")})</span>
+          {t("Adresse e-mail")} <span className="font-normal text-gray-400">({t("optionnel")})</span>
         </label>
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
-            <Envelope weight="light" className="w-4 h-4" />
+        <div className="group relative">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 transition-colors group-focus-within:text-[#c97c85]">
+            <Envelope weight="light" className="h-4 w-4" />
           </div>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="block w-full pl-10 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-sm text-[#2A2424] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2A2424]/20 focus:border-[#2A2424] transition-all"
+            className="block w-full rounded-xl border border-gray-200 bg-white py-3.5 pl-10 pr-4 text-sm text-[#2A2424] placeholder-gray-400 transition-all focus:border-[#2A2424] focus:outline-none focus:ring-2 focus:ring-[#2A2424]/20"
             style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
             placeholder={t("vous@email.com")}
           />
@@ -189,47 +189,42 @@ function RegisterForm() {
 
       {/* Password */}
       <div className="space-y-1.5">
-        <label className="block text-sm font-medium text-[#2A2424]">
-          {t("Mot de passe")}
-        </label>
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
-            <LockKey weight="light" className="w-4 h-4" />
+        <label className="block text-sm font-medium text-[#2A2424]">{t("Mot de passe")}</label>
+        <div className="group relative">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400 transition-colors group-focus-within:text-[#c97c85]">
+            <LockKey weight="light" className="h-4 w-4" />
           </div>
           <input
-            type="password"
+            type={showPassword ? "text" : "password"}
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="block w-full pl-10 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-sm text-[#2A2424] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#2A2424]/20 focus:border-[#2A2424] transition-all"
+            className="block w-full rounded-xl border border-gray-200 bg-white py-3.5 pl-10 pr-11 text-sm text-[#2A2424] placeholder-gray-400 transition-all focus:border-[#2A2424] focus:outline-none focus:ring-2 focus:ring-[#2A2424]/20"
             style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
             placeholder="••••••••"
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-400 transition-colors hover:text-[#2A2424]"
+            aria-label={showPassword ? t("Masquer le mot de passe") : t("Afficher le mot de passe")}
+          >
+            {showPassword ? <EyeSlash weight="light" className="h-4 w-4" /> : <Eye weight="light" className="h-4 w-4" />}
+          </button>
         </div>
       </div>
 
       {/* Submit */}
-      <button
+      <motion.button
         type="submit"
         disabled={isLoading}
-        className="group w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl text-sm font-semibold text-white bg-[#2A2424] disabled:opacity-60 transition-all duration-200"
-        style={{
-          boxShadow: "0 4px 6px rgba(42,36,36,0.15), 0 1px 3px rgba(0,0,0,0.1)",
-        }}
-        onMouseOver={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.boxShadow =
-            "0 7px 14px rgba(42,36,36,0.15), 0 3px 6px rgba(0,0,0,0.1)";
-          (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)";
-        }}
-        onMouseOut={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.boxShadow =
-            "0 4px 6px rgba(42,36,36,0.15), 0 1px 3px rgba(0,0,0,0.1)";
-          (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-        }}
+        whileTap={{ scale: 0.98 }}
+        className="auth-shimmer-btn group flex w-full items-center justify-center gap-2 rounded-xl bg-[#2A2424] px-6 py-3.5 text-sm font-semibold text-white transition-shadow duration-200 disabled:opacity-60"
+        style={{ boxShadow: "0 4px 6px rgba(42,36,36,0.15), 0 1px 3px rgba(0,0,0,0.1)" }}
       >
         {isLoading ? (
           <span className="flex items-center gap-2">
-            <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
@@ -238,10 +233,10 @@ function RegisterForm() {
         ) : (
           <>
             {t("Activer mon compte fidélité")}
-            <ArrowRight weight="bold" className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            <ArrowRight weight="bold" className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </>
         )}
-      </button>
+      </motion.button>
     </form>
   );
 }
@@ -250,131 +245,66 @@ export default function RegisterPage() {
   const { t } = useI18n();
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left panel — branding */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-[#2A2424] flex-col justify-between p-12">
-        {/* Animated gradient orbs */}
-        <div
-          className="absolute top-[-100px] left-[-100px] w-[500px] h-[500px] rounded-full opacity-20"
-          style={{
-            background: "radial-gradient(circle, #c97c85 0%, transparent 70%)",
-            animation: "float 10s ease-in-out infinite",
-          }}
+    <div className="flex min-h-screen flex-col bg-[#fdf8f8] lg:flex-row">
+      {/* Mobile showcase band */}
+      <div className="lg:hidden">
+        <AuthShowcase
+          variant="mobile"
+          headline="Rejoignez notre programme"
+          headlineAccent="de fidélité"
+          subtitle="Créez votre compte pour cumuler des points."
+          benefits={benefits}
         />
-        <div
-          className="absolute bottom-[-100px] right-[-100px] w-[400px] h-[400px] rounded-full opacity-15"
-          style={{
-            background: "radial-gradient(circle, #e8a4ac 0%, transparent 70%)",
-            animation: "float 14s ease-in-out infinite reverse",
-          }}
-        />
-
-        <style>{`
-          @keyframes float {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            33% { transform: translate(30px, -50px) scale(1.1); }
-            66% { transform: translate(-20px, 20px) scale(0.95); }
-          }
-        `}</style>
-
-        {/* Logo */}
-        <div className="relative z-10">
-          <Link href="/">
-            <div className="flex items-center gap-2">
-              <IconIA className="w-8 h-8 text-[#F4EAEB]" />
-              <span className="text-[#F4EAEB] text-xl font-semibold tracking-tight">The Welfare Shop</span>
-            </div>
-          </Link>
-        </div>
-
-        {/* Center content */}
-        <div className="relative z-10 space-y-8">
-          <div>
-            <h1 className="text-4xl font-light text-[#F4EAEB] leading-tight tracking-tight" style={{ letterSpacing: "-0.02em" }}>
-              {t("Rejoignez notre programme")}<br />
-              <span className="text-[#c97c85]">{t("de fidélité")}</span>
-            </h1>
-            <p className="mt-4 text-[#F4EAEB]/60 text-base leading-relaxed max-w-sm">
-              {t("Créez votre compte pour cumuler des points, suivre vos commandes et accéder à des offres exclusives.")}
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            {benefits.map((benefit, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 + i * 0.15 }}
-                className="flex items-center gap-3"
-              >
-                <div className="w-8 h-8 rounded-full bg-[#F4EAEB]/10 flex items-center justify-center flex-shrink-0">
-                  <benefit.icon weight="light" className="w-4 h-4 text-[#c97c85]" />
-                </div>
-                <span className="text-[#F4EAEB]/80 text-sm">{t(benefit.text)}</span>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-
-        {/* Bottom quote */}
-        <div className="relative z-10">
-          <p className="text-[#F4EAEB]/40 text-xs">
-            © {new Date().getFullYear()} The Welfare Shop · {t("Programme Fidélité")}
-          </p>
-        </div>
       </div>
 
-      {/* Right panel — form */}
-      <div className="flex-1 flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-16 bg-[#fdf8f8] overflow-y-auto">
-        {/* Mobile logo */}
-        <div className="lg:hidden mb-10">
-          <Link href="/" className="flex items-center gap-2">
-            <IconIA className="w-7 h-7 text-[#2A2424]" />
-            <span className="text-[#2A2424] text-lg font-semibold">The Welfare Shop</span>
-          </Link>
-        </div>
+      {/* Desktop showcase panel */}
+      <AuthShowcase
+        variant="desktop"
+        headline="Rejoignez notre programme"
+        headlineAccent="de fidélité"
+        subtitle="Créez votre compte pour cumuler des points, suivre vos commandes et accéder à des offres exclusives."
+        benefits={benefits}
+      />
 
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md mx-auto"
-        >
+      {/* Form panel */}
+      <div className="relative -mt-8 flex flex-1 flex-col justify-center overflow-y-auto rounded-t-[2rem] bg-[#fdf8f8] px-6 py-10 sm:px-12 lg:mt-0 lg:rounded-none lg:px-16">
+        <div className="mx-auto w-full max-w-md">
           <div className="mb-8">
             <h2 className="text-3xl font-semibold text-[#2A2424]" style={{ letterSpacing: "-0.02em" }}>
               {t("Inscription")}
             </h2>
-            <p className="mt-2 text-gray-500 text-sm">
+            <p className="mt-2 text-sm text-gray-500">
               {t("Vous avez déjà un compte ?")}{" "}
-              <Link href="/account/login" className="text-[#2A2424] font-medium underline underline-offset-4 hover:text-[#c97c85] transition-colors">
+              <Link href="/account/login" className="font-medium text-[#2A2424] underline underline-offset-4 transition-colors hover:text-[#c97c85]">
                 {t("Connectez-vous")}
               </Link>
             </p>
           </div>
 
-          <Suspense fallback={
-            <div className="flex justify-center p-8">
-              <IconIA className="w-8 h-8 text-[#2A2424] animate-pulse" />
-            </div>
-          }>
+          <Suspense
+            fallback={
+              <div className="flex justify-center p-8">
+                <IconIA className="h-8 w-8 animate-pulse text-[#2A2424]" />
+              </div>
+            }
+          >
             <RegisterForm />
           </Suspense>
 
           {/* Mobile benefits */}
-          <div className="mt-8 lg:hidden pt-8 border-t border-gray-100">
+          <div className="mt-8 border-t border-gray-100 pt-8 lg:hidden">
             <div className="space-y-3">
               {benefits.map((benefit, i) => (
                 <div key={i} className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-full bg-[#F4EAEB] flex items-center justify-center flex-shrink-0">
-                    <benefit.icon weight="light" className="w-3.5 h-3.5 text-[#c97c85]" />
+                  <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#F4EAEB]">
+                    <benefit.icon weight="light" className="h-3.5 w-3.5 text-[#c97c85]" />
                   </div>
-                  <span className="text-gray-600 text-xs">{t(benefit.text)}</span>
+                  <span className="text-xs text-gray-600">{t(benefit.text)}</span>
                 </div>
               ))}
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

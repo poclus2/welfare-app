@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import "./globals.css";
-import { Navbar } from "@/components/ui/navbar";
-import { AnnouncementBar } from "@/components/ui/announcement-bar";
+import { SiteChrome } from "@/components/layout/SiteChrome";
 import { CartProvider } from "@/lib/cart-context";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { PageProgress } from "@/components/ui/page-progress";
@@ -53,10 +52,7 @@ export default async function RootLayout({
                 <PageProgress />
               </Suspense>
               <CartDrawer />
-              <AnnouncementBar />
-              <div className="sticky top-0 z-[100]">
-                <Navbar />
-              </div>
+              <SiteChrome />
               <div className="flex-1 flex flex-col w-full">
                 {children}
               </div>
