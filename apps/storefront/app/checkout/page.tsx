@@ -740,7 +740,7 @@ useEffect(() => {
                       
                       <div className="flex-1">
                         <p className="text-sm font-bold text-[#2A2424]">{t("Paiement automatisé (+3%)")}</p>
-                        <p className="text-xs text-[#2A2424]/50">{t("Mobile Money direct (Wave, Orange, MTN...)")}</p>
+                        <p className="text-xs text-[#2A2424]/50">{t("Mobile Money direct (Orange, MTN...)")}</p>
                       </div>
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${paymentMode === "pawapay" ? "border-[#2A2424] bg-[#2A2424]" : "border-[#EDE0E0]"}`}>
                         {paymentMode === "pawapay" && <Check className="w-3 h-3 text-white" />}
