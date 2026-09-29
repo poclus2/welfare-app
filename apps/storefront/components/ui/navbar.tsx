@@ -51,7 +51,7 @@ export function Navbar({ dict }: { dict?: any }) {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="hidden md:flex items-center justify-between px-6 lg:px-12 py-3 w-full bg-white relative z-50 border-b border-[#2A2424]/5"
+        className="hidden xl:flex items-center justify-between px-6 lg:px-12 py-3 w-full bg-white relative z-50 border-b border-[#2A2424]/5"
       >
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 text-[#2A2424] font-bold text-lg tracking-wide hover:opacity-80 transition-opacity">
@@ -177,7 +177,7 @@ export function Navbar({ dict }: { dict?: any }) {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="flex md:hidden items-center justify-between px-5 py-2 w-full bg-[#FDFDFC] relative z-50 border-b border-[#F4EAEB]"
+        className="flex xl:hidden items-center justify-between px-5 py-2 w-full bg-[#FDFDFC] relative z-50 border-b border-[#F4EAEB]"
       >
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 text-[#2A2424] font-bold text-lg tracking-wide hover:opacity-80 transition-opacity">
@@ -218,14 +218,14 @@ export function Navbar({ dict }: { dict?: any }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileMenuOpen(false)}
-              className="fixed inset-0 bg-black/40 z-[60] lg:hidden backdrop-blur-sm"
+              className="fixed inset-0 bg-black/40 z-[60] xl:hidden backdrop-blur-sm"
             />
             <motion.div 
               initial={{ x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 bottom-0 w-[85%] max-w-[360px] bg-[#FDFDFC] shadow-2xl z-[70] lg:hidden flex flex-col overflow-y-auto"
+              className="fixed top-0 right-0 bottom-0 w-[85%] max-w-[360px] bg-[#FDFDFC] shadow-2xl z-[70] xl:hidden flex flex-col overflow-y-auto"
             >
               <div className="flex items-center justify-between p-6 border-b border-[#F4EAEB]">
                 <img src="/logo.webp" alt="The Welfare Shop" className="h-14 w-auto object-contain scale-125 origin-left" />
