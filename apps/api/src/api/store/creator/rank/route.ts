@@ -13,13 +13,13 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   if (!creators.length) return res.status(404).json({ error: "Creator not found" })
   
   const now = new Date()
-  const summaries = await service.listCreatorMonthlySummarys(
+  const summaries = await service.listCreatorMonthlySummaries(
     { creator_id: creators[0].id, year: now.getFullYear(), month: now.getMonth() + 1 },
     {}
   )
   
   // Total active creators this month
-  const allSummaries = await service.listCreatorMonthlySummarys(
+  const allSummaries = await service.listCreatorMonthlySummaries(
     { year: now.getFullYear(), month: now.getMonth() + 1 },
     {}
   )

@@ -32,16 +32,16 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     const now = new Date()
     const year = now.getFullYear()
     const month = now.getMonth() + 1
-    const existing = await service.listCreatorMonthlySummarys(
+    const existing = await service.listCreatorMonthlySummaries(
       { creator_id: creator.id, year, month }, {}
     )
     if (existing.length > 0) {
-      await service.updateCreatorMonthlySummarys({
+      await service.updateCreatorMonthlySummaries({
         id: existing[0].id,
         total_clicks: (existing[0].total_clicks || 0) + 1
       })
     } else {
-      await service.createCreatorMonthlySummarys({
+      await service.createCreatorMonthlySummaries({
         creator_id: creator.id, year, month, total_clicks: 1
       })
     }

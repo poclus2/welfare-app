@@ -318,7 +318,7 @@ export function LoyaltyProgram() {
                   href="/influenceurs"
                   className="flex items-center justify-center gap-2 bg-white text-[#2A2424] hover:bg-[#F4EAEB] transition-colors font-semibold py-2.5 px-4 rounded-full text-xs mt-4"
                 >
-                  {t("Devenir ambassadeur")} <ArrowUpRight className="w-3 h-3" />
+                  {t("Devenir créateur partenaire")} <ArrowUpRight className="w-3 h-3" />
                 </Link>
               </div>
             </div>
@@ -426,7 +426,7 @@ export function LoyaltyProgram() {
             href="/influenceurs"
             className="flex items-center justify-center gap-2 bg-[#2A2424] text-white font-semibold py-4 rounded-full text-sm"
           >
-            {t("Devenir ambassadeur")} <ArrowUpRight className="w-4 h-4" />
+            {t("Devenir créateur partenaire")} <ArrowUpRight className="w-4 h-4" />
           </Link>
 
         </div>

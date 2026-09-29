@@ -9,7 +9,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   
   // Fetch monthly summary for current month
   const now = new Date()
-  const summaries = await service.listCreatorMonthlySummarys(
+  const summaries = await service.listCreatorMonthlySummaries(
     { creator_id: creator.id, year: now.getFullYear(), month: now.getMonth() + 1 },
     {}
   )

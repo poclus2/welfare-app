@@ -13,7 +13,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   if (!creators.length) return res.status(404).json({ error: "Creator not found" })
   
   const creator = creators[0]
-  const history = await service.listCreatorMonthlySummarys(
+  const history = await service.listCreatorMonthlySummaries(
     { creator_id: creator.id },
     { order: { year: "DESC", month: "DESC" }, take: 24 }
   )

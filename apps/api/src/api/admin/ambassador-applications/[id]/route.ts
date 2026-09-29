@@ -28,11 +28,33 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       })
       const customerId = customers?.length > 0 ? customers[0].id : app.email
 
-      // 2. Generate a code
-      const cleanName = app.first_name.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Z]/g, "");
-      const code = `${cleanName}5`;
+      const cpService = req.scope.resolve(CREATOR_PARTNER_MODULE) as any
 
-      // 3. Create Promotion
+      // 2. Read the configurable defaults instead of hardcoding 5%/10%
+      const configs = await cpService.listProgramConfigs({}, {})
+      const configMap: Record<string, string> = {}
+      for (const c of configs) { configMap[c.key] = c.value }
+
+      let newCustomerDiscount = 5
+      try { if (configMap.new_customer_discount_pct) newCustomerDiscount = Number(JSON.parse(configMap.new_customer_discount_pct)) } catch {}
+
+      let tiers = [{ min: 0, max: 599999, rate: 3 }, { min: 600000, max: 999999, rate: 4 }, { min: 1000000, max: null, rate: 6 }]
+      try { if (configMap.commission_tiers) tiers = JSON.parse(configMap.commission_tiers) } catch {}
+      const startingCommissionRate = [...tiers].sort((a: any, b: any) => a.min - b.min)[0]?.rate ?? 3
+
+      // 3. Generate a code, checking for collisions against existing creators
+      const cleanName = app.first_name.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Z]/g, "");
+      let code = `${cleanName}${newCustomerDiscount}`;
+      let suffix = 1
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const collision = await cpService.listCreatorPartners({ code }, {})
+        if (!collision.length) break
+        suffix += 1
+        code = `${cleanName}${newCustomerDiscount}${suffix}`
+      }
+
+      // 4. Create Promotion
       try {
         await createPromotionsWorkflow(req.scope).run({
           input: {
@@ -43,22 +65,21 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
               application_method: {
                 type: "percentage",
                 target_type: "order",
-                value: 5
+                value: newCustomerDiscount
               },
               // @ts-ignore
               metadata: {
                 is_influencer: true,
                 is_creator_partner: true,
                 influencer_id: customerId,
-                commission_rate: 10
+                commission_rate: startingCommissionRate
               }
             } as any]
           }
         });
-        
+
         // Create CreatorPartner entry
-        const cpService = req.scope.resolve(CREATOR_PARTNER_MODULE) as any
-        const storeUrl = process.env.STORE_URL || process.env.NEXT_PUBLIC_STORE_URL || "https://thewelfare.store"
+        const storeUrl = process.env.STORE_URL || process.env.NEXT_PUBLIC_STORE_URL || "https://thewelfarecm.com"
         await cpService.createCreatorPartners({
           application_id: req.params.id,
           customer_id: customerId,
@@ -73,7 +94,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
           youtube: app.youtube,
           other_link: app.other_link,
         })
-        
+
       } catch (err) {
         console.error("Workflow create error:", err);
       }
@@ -84,16 +105,16 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         await resend.emails.send({
           from: "The Welfare <contact@thewelfare.store>",
           to: app.email,
-          subject: "Bienvenue dans l équipe des Ambassadrices The Welfare !",
+          subject: "Bienvenue dans le programme Créateurs Partenaires The Welfare !",
           html: `
             <div style="font-family: sans-serif; max-w-2xl; margin: 0 auto; padding: 20px;">
               <h2>Bonjour ${app.first_name},</h2>
-              <p>Félicitations ! Votre candidature pour devenir ambassadrice The Welfare a été <strong>approuvée</strong>.</p>
+              <p>Félicitations ! Votre candidature pour devenir Créateur/Créatrice Partenaire The Welfare a été <strong>approuvée</strong>.</p>
               <p>Voici votre code promo personnel que vous pouvez partager avec votre communauté :</p>
               <div style="padding: 15px; background-color: #f4f4f4; border-radius: 8px; display: inline-block; font-size: 20px; font-weight: bold; color: #2A2424; margin: 15px 0;">
                 ${code}
               </div>
-              <p>Ce code offre <strong>5% de réduction</strong> sur notre boutique, et vous génère une commission de 10% sur chaque vente associée.</p>
+              <p>Ce code offre <strong>${newCustomerDiscount}% de réduction</strong> sur notre boutique, et vous génère une commission de ${startingCommissionRate}% sur chaque vente associée (paliers progressifs selon vos ventes du mois).</p>
               <p>Si vous avez des questions, n hésitez pas à nous contacter.</p>
               <p>À très vite !<br><strong>L équipe The Welfare</strong></p>
             </div>

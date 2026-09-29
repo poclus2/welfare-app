@@ -101,20 +101,28 @@ export default async function creatorOrderPlacedHandler({
     const month = now.getMonth() + 1
     
     // Get existing monthly summary
-    const existingSummaries = await service.listCreatorMonthlySummarys(
+    const existingSummaries = await service.listCreatorMonthlySummaries(
       { creator_id: creator.id, year, month }, {}
     )
-    const currentRevenue = (existingSummaries[0]?.total_eligible_revenue || 0) + eligibleRevenue
-    
-    // Retroactive rate
+
+    // Option B (non-retroactive): the rate for THIS order is determined by
+    // the revenue accumulated BEFORE this order — crossing a threshold only
+    // changes the rate for sales that come after it, never for past/current
+    // orders already placed this month.
+    const revenueBeforeThisOrder = existingSummaries[0]?.total_eligible_revenue || 0
+
     const sortedTiers = [...tiers].sort((a: any, b: any) => a.min - b.min)
-    let commissionRate = sortedTiers[0]?.rate || 3
-    for (const tier of sortedTiers) {
-      if (currentRevenue >= tier.min && (tier.max === null || currentRevenue <= tier.max)) {
-        commissionRate = tier.rate
+    const rateForRevenue = (revenue: number) => {
+      let rate = sortedTiers[0]?.rate || 3
+      for (const tier of sortedTiers) {
+        if (revenue >= tier.min && (tier.max === null || revenue <= tier.max)) {
+          rate = tier.rate
+        }
       }
+      return rate
     }
-    
+
+    const commissionRate = rateForRevenue(revenueBeforeThisOrder)
     const commissionAmount = eligibleRevenue * (commissionRate / 100)
     
     // Save creator_order
@@ -135,27 +143,33 @@ export default async function creatorOrderPlacedHandler({
       month,
     })
     
-    // Upsert monthly summary
-    const newTotal = (existingSummaries[0]?.total_eligible_revenue || 0) + eligibleRevenue
+    // Upsert monthly summary — additive only. total_commission accumulates the
+    // commission_amount already fixed per order (never recomputed at a single
+    // blanket rate), so past orders keep the rate they were placed at.
+    const newTotal = revenueBeforeThisOrder + eligibleRevenue
     const newOrders = (existingSummaries[0]?.total_orders || 0) + 1
     const newCustomers = (existingSummaries[0]?.total_new_customers || 0) + (isNewCustomer ? 1 : 0)
-    const newCommission = newTotal * (commissionRate / 100) // Retroactive: recalc on total
-    
+    const newCommission = (existingSummaries[0]?.total_commission || 0) + commissionAmount
+
+    // The rate shown as "current" on the dashboard is forward-looking: the
+    // tier the creator has now reached, which will apply to their NEXT sale.
+    const currentDisplayRate = rateForRevenue(newTotal)
+
     const summaryData = {
       creator_id: creator.id,
       year,
       month,
       total_eligible_revenue: Math.round(newTotal),
-      commission_rate: commissionRate,
+      commission_rate: currentDisplayRate,
       total_commission: Math.round(newCommission),
       total_orders: newOrders,
       total_new_customers: newCustomers,
     }
     
     if (existingSummaries.length > 0) {
-      await service.updateCreatorMonthlySummarys({ id: existingSummaries[0].id, ...summaryData })
+      await service.updateCreatorMonthlySummaries({ id: existingSummaries[0].id, ...summaryData })
     } else {
-      await service.createCreatorMonthlySummarys(summaryData)
+      await service.createCreatorMonthlySummaries(summaryData)
     }
     
     console.log(`[CreatorPartner] Order ${orderId} attributed to ${creator.code}. Eligible: ${Math.round(eligibleRevenue)} FCFA. Commission: ${commissionRate}%.`)

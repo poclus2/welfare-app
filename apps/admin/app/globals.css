@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+@layer utilities {
+  .admin-input {
+    width: 100%;
+    background-color: #F8F5F2;
+    border: none;
+    border-radius: 0.75rem;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    color: #2A2424;
+    outline: none;
+  }
+  .admin-input:focus {
+    box-shadow: 0 0 0 2px rgba(42, 36, 36, 0.5);
+  }
+}
+
 :root {
   --font-sans: "Plus Jakarta Sans", sans-serif;
   

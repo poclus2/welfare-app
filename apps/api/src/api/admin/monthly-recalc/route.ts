@@ -41,10 +41,16 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     const validOrders = orders.filter((o: any) => !['cancelled'].includes(o.order_status))
     const totalEligible = validOrders.reduce((sum: number, o: any) => sum + (o.eligible_revenue + o.refund_adjustment), 0)
     const newCustomers = validOrders.filter((o: any) => o.is_new_customer).length
-    
-    // Retroactive rate calculation (Option A)
+
+    // Consolidation only (Option B, non-retroactive): each creator_order already
+    // carries the commission_rate/commission_amount it was placed at (fixed by
+    // the subscriber at order time, based on revenue accumulated before it).
+    // This job re-sums those already-fixed amounts from source rows — it never
+    // re-prices past orders at a single blanket month-end rate.
+    const totalCommission = validOrders.reduce((sum: number, o: any) => sum + o.commission_amount, 0)
+    // Display-only: the tier the creator has now reached, which will apply to
+    // their next sale — not applied retroactively to totalCommission above.
     const commissionRate = getCommissionRate(Math.max(0, totalEligible), tiers)
-    const totalCommission = Math.max(0, totalEligible) * (commissionRate / 100)
     
     // Get clicks
     const clickStart = new Date(year, month - 1, 1)
@@ -57,7 +63,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     }).length
     
     // Upsert summary
-    const existing = await service.listCreatorMonthlySummarys(
+    const existing = await service.listCreatorMonthlySummaries(
       { creator_id: creator.id, year, month }, {}
     )
     
@@ -74,9 +80,9 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     }
     
     if (existing.length > 0) {
-      await service.updateCreatorMonthlySummarys({ id: existing[0].id, ...summaryData })
+      await service.updateCreatorMonthlySummaries({ id: existing[0].id, ...summaryData })
     } else {
-      await service.createCreatorMonthlySummarys(summaryData)
+      await service.createCreatorMonthlySummaries(summaryData)
     }
     
     results.push({ creator_id: creator.id, code: creator.code, ...summaryData })
@@ -85,11 +91,11 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   // Update ranks
   results.sort((a, b) => b.total_eligible_revenue - a.total_eligible_revenue)
   for (let i = 0; i < results.length; i++) {
-    const summaries = await service.listCreatorMonthlySummarys(
+    const summaries = await service.listCreatorMonthlySummaries(
       { creator_id: results[i].creator_id, year, month }, {}
     )
     if (summaries.length > 0) {
-      await service.updateCreatorMonthlySummarys({ id: summaries[0].id, rank: i + 1 })
+      await service.updateCreatorMonthlySummaries({ id: summaries[0].id, rank: i + 1 })
     }
   }
   

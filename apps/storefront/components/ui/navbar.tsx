@@ -150,7 +150,7 @@ export function Navbar({ dict }: { dict?: any }) {
             <IconIA className="w-6 h-6 text-[#C97C85]" /> {t("Skin Coach")}
           </Link>
           <Link href="/marques" className="text-[#2A2424] hover:opacity-70 transition-opacity">{t("Marques")}</Link>
-          <Link href="/ambassadrices" className="text-[#2A2424] hover:opacity-70 transition-opacity">{t("Ambassadrices")}</Link>
+          <Link href="/ambassadrices" className="text-[#2A2424] hover:opacity-70 transition-opacity">{t("Créateurs Partenaires")}</Link>
           
           <div className="w-px h-5 bg-[#2A2424]/10 mx-1" />
 
@@ -325,7 +325,7 @@ export function Navbar({ dict }: { dict?: any }) {
                 </Link>
 
                 <Link href="/ambassadrices" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-medium text-[#2A2424]">
-                  {t("Devenir Ambassadrice")}
+                  {t("Devenir Créateur Partenaire")}
                 </Link>
               </div>
 

@@ -24,12 +24,12 @@ export default async function creatorOrderCancelledHandler({
     })
     
     // Update monthly summary (subtract)
-    const summaries = await service.listCreatorMonthlySummarys(
+    const summaries = await service.listCreatorMonthlySummaries(
       { creator_id: co.creator_id, year: co.year, month: co.month }, {}
     )
     if (summaries.length > 0) {
       const s = summaries[0]
-      await service.updateCreatorMonthlySummarys({
+      await service.updateCreatorMonthlySummaries({
         id: s.id,
         total_eligible_revenue: Math.max(0, s.total_eligible_revenue - co.eligible_revenue),
         total_orders: Math.max(0, s.total_orders - 1),

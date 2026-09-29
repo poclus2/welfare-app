@@ -7,7 +7,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const year = parseInt((req.query.year as string) || String(now.getFullYear()))
   const month = parseInt((req.query.month as string) || String(now.getMonth() + 1))
   
-  const summaries = await service.listCreatorMonthlySummarys(
+  const summaries = await service.listCreatorMonthlySummaries(
     { year, month },
     { order: { total_eligible_revenue: "DESC" } }
   )

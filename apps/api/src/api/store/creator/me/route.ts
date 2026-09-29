@@ -28,7 +28,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const month = now.getMonth() + 1
   
   // Current month summary
-  const summaries = await service.listCreatorMonthlySummarys(
+  const summaries = await service.listCreatorMonthlySummaries(
     { creator_id: creator.id, year, month }, {}
   )
   const currentMonth = summaries[0] || {
