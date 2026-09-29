@@ -110,7 +110,7 @@ export default function CheckoutPage() {
   const { items, totalAmount, clearCart, cartId } = useCart();
   const [step, setStep] = useState<1 | 2>(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [mobileNetwork, setMobileNetwork] = useState("SEN-WAVE");
+  const [mobileNetwork, setMobileNetwork] = useState("MTN_MOMO_CMR");
   const [manualProvider, setManualProvider] = useState<"orange" | "mtn">("orange");
 
   const [paymentMode, setPaymentMode] = useState<"pawapay" | "manuel">("pawapay");
@@ -553,6 +553,7 @@ useEffect(() => {
                       )}
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${delivery.mode === "retrait" ? "bg-[#2A2424]" : "bg-[#F4EAEB]"}`}>
                         
+                      <Storefront className={`w-5 h-5 ${delivery.mode === "retrait" ? "text-white" : "text-[#C08A8E]"}`} weight="light" />
                       </div>
                       <div>
                         <p className="text-xs font-bold text-[#2A2424]">{t("Retrait")}</p>
