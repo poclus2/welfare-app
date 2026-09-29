@@ -345,7 +345,11 @@ useEffect(() => {
             payer: {
               type: "MSISDN",
               address: { value: identity.phone.startsWith("237") ? identity.phone : (identity.phone.startsWith("+237") ? identity.phone.replace("+", "") : "237" + identity.phone) }
-            }
+            },
+            amount: total.toString(),
+            currency: "XAF",
+            depositId: cartId + "_" + Date.now().toString(),
+            statementDescription: "The Welfare Paiement"  
           }
         });
 
