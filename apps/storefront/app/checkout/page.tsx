@@ -338,8 +338,13 @@ useEffect(() => {
       // 3. Initiate Payment Session
       const { cart } = await sdk.store.cart.retrieve(cartId);
       await sdk.store.payment.initiatePaymentSession(cart as any, {
-        provider_id: paymentMode === "pawapay" ? "pp_pawapay_pawapay" : "pp_system_default"
-      });
+          provider_id: paymentMode === "pawapay" ? "pp_pawapay_pawapay" : "pp_system_default",
+          data: {
+            mobile_network: paymentMode === "pawapay" ? mobileNetwork : null,
+            correspondent: paymentMode === "pawapay" ? mobileNetwork : null,
+            phone: identity.phone
+          }
+        });
 
       // 4. Complete Checkout
       const response = await sdk.store.cart.complete(cartId);
