@@ -342,7 +342,10 @@ useEffect(() => {
           data: {
             mobile_network: paymentMode === "pawapay" ? mobileNetwork : null,
             correspondent: paymentMode === "pawapay" ? mobileNetwork : null,
-            phone: identity.phone
+            payer: {
+              type: "MSISDN",
+              address: { value: identity.phone.startsWith("237") ? identity.phone : (identity.phone.startsWith("+237") ? identity.phone.replace("+", "") : "237" + identity.phone) }
+            }
           }
         });
 
