@@ -744,19 +744,14 @@ useEffect(() => {
                           className="overflow-hidden px-1"
                         >
                           <div className="pt-1 pb-3">
-                            <select 
-                              value={mobileNetwork}
-                              onChange={(e) => setMobileNetwork(e.target.value)}
-                              className="w-full text-xs px-3 py-2.5 rounded-xl border border-[#EDE0E0] bg-white outline-none focus:border-[#C08A8E]"
-                            >
-                              <option value="SEN-WAVE">{t("Wave Sénégal")}</option>
-                              <option value="SEN-ORANGE_MONEY">{t("Orange Money Sénégal")}</option>
-                              <option value="SEN-FREE_MONEY">{t("Free Money Sénégal")}</option>
-                              <option value="CMR-MTN_MOMO">{t("MTN MoMo Cameroun")}</option>
-                              <option value="CMR-ORANGE_MONEY">{t("Orange Money Cameroun")}</option>
-                              <option value="CIV-WAVE">{t("Wave Côte d'Ivoire")}</option>
-                              <option value="CIV-ORANGE_MONEY">{t("Orange Money Côte d'Ivoire")}</option>
-                            </select>
+                                                          <select 
+                                value={mobileNetwork}
+                                onChange={(e) => setMobileNetwork(e.target.value)}
+                                className="w-full text-xs px-3 py-2.5 rounded-xl border border-[#EDE0E0] bg-white outline-none focus:border-[#C08A8E]"
+                              >
+                                <option value="MTN_MOMO_CMR">{t("MTN MoMo Cameroun")}</option>
+                                <option value="ORANGE_CEW_CMR">{t("Orange Money Cameroun")}</option>
+                              </select>
                             <p className="text-[11px] text-[#2A2424]/50 mt-2 leading-relaxed">
                               {t("Vous recevrez une notification (Push USSD) sur votre téléphone après confirmation pour valider le paiement.")}
                             </p>
