@@ -53,6 +53,7 @@ services:
       - AUTH_CORS=${STORE_URL},${ADMIN_URL}
       - JWT_SECRET=${JWT_SECRET:-super_secret}
       - COOKIE_SECRET=${COOKIE_SECRET:-super_secret}
+      - PAWAPAY_API_KEY=${PAWAPAY_API_KEY}
     ports:
       - "9005:9000" # Exposes 9005 to host for Nginx to route to
     restart: unless-stopped
@@ -91,6 +92,8 @@ services:
     environment:
       - NODE_ENV=production
       - MEDUSA_BACKEND_URL=https://api.thewelfarecm.com
+      - POSTHOG_PERSONAL_API_KEY=${POSTHOG_PERSONAL_API_KEY}
+      - POSTHOG_PROJECT_ID=${POSTHOG_PROJECT_ID:-616113}
     ports:
       - "3006:3000" # Exposes 3006 to host for Nginx to route to (admin.thewelfare.store)
     restart: unless-stopped

@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  const POSTHOG_API_KEY = "***REMOVED-POSTHOG-PERSONAL-KEY***";
-  const PROJECT_ID = "616113";
+  const POSTHOG_API_KEY = process.env.POSTHOG_PERSONAL_API_KEY;
+  const PROJECT_ID = process.env.POSTHOG_PROJECT_ID || "616113";
+
+  if (!POSTHOG_API_KEY) {
+    return NextResponse.json({ error: "POSTHOG_PERSONAL_API_KEY is not configured" }, { status: 500 });
+  }
   
   async function runHogQL(query: string) {
     const res = await fetch(`https://us.posthog.com/api/projects/${PROJECT_ID}/query/`, {
