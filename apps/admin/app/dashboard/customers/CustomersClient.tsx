@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Search, ChevronRight, Eye, Phone, Mail, ShoppingBag, Download, X } from "lucide-react";
+import Link from "next/link";
+import { Search, ChevronRight, Eye, Phone, Mail, ShoppingBag, Download, X, MapPin, Megaphone, Sparkle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 function formatPrice(n: number) {
@@ -24,9 +25,33 @@ function StatusBadge({ status }: { status: string }) {
 
 type Order = {
   id: string;
+  rawId: string;
   amount: number;
   status: string;
   date: string;
+};
+
+type Address = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  address1: string;
+  address2: string;
+  city: string;
+  province: string;
+  postalCode: string;
+  countryCode: string;
+  phone: string;
+  isDefaultShipping: boolean;
+  isDefaultBilling: boolean;
+};
+
+type LoyaltyTier = { name: string; min: number; max: number; color: string };
+
+type CreatorPartnerInfo = {
+  code: string;
+  status: string;
+  isCreatorOfMonth: boolean;
 };
 
 export type Customer = {
@@ -36,9 +61,14 @@ export type Customer = {
   phone: string;
   ordersCount: number;
   totalSpent: number;
+  aov: number;
+  loyaltyPoints: number;
+  loyaltyTier: LoyaltyTier;
   hasAccount: boolean;
   date: string;
-  recentOrders: Order[];
+  orders: Order[];
+  addresses: Address[];
+  creatorPartner: CreatorPartnerInfo | null;
 };
 
 export default function CustomersClient({ initialCustomers, totalCount }: { initialCustomers: Customer[]; totalCount: number }) {
@@ -229,6 +259,81 @@ export default function CustomersClient({ initialCustomers, totalCount }: { init
                     <p className="text-[10px] font-bold uppercase tracking-widest text-[#2A2424]/40 mb-1">Dépensé</p>
                     <p className="text-lg font-bold text-[#C08A8E]">{formatPrice(selectedCustomer.totalSpent)} <span className="text-[10px]">F</span></p>
                   </div>
+                  <div className="bg-white border border-[#EDE0E0] rounded-xl p-4 shadow-sm">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#2A2424]/40 mb-1">Panier moyen</p>
+                    <p className="text-lg font-bold text-[#2A2424]">{formatPrice(selectedCustomer.aov)} <span className="text-[10px]">F</span></p>
+                  </div>
+                  <div className="bg-white border border-[#EDE0E0] rounded-xl p-4 shadow-sm">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#2A2424]/40 mb-1">Fidélité</p>
+                    <p className="text-lg font-bold" style={{ color: selectedCustomer.loyaltyTier.color }}>
+                      {selectedCustomer.loyaltyTier.name}
+                    </p>
+                    <p className="text-[10px] text-[#2A2424]/40">{selectedCustomer.loyaltyPoints.toLocaleString("fr-FR")} pts</p>
+                  </div>
+                </div>
+
+                {/* Creator partner cross-link */}
+                {selectedCustomer.creatorPartner && (
+                  <div className="space-y-3">
+                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#2A2424]/40">Programme créateurs</h3>
+                    <Link
+                      href="/dashboard/createurs"
+                      className="block bg-[#F5F0EB] rounded-xl p-4 hover:bg-[#EDE0E0]/60 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-[#C08A8E] shrink-0">
+                            <Megaphone className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-[#2A2424] font-mono">{selectedCustomer.creatorPartner.code}</p>
+                            <p className="text-[10px] text-[#2A2424]/40">
+                              {selectedCustomer.creatorPartner.status === "active" ? "Actif" :
+                                selectedCustomer.creatorPartner.status === "suspended" ? "Suspendu" :
+                                selectedCustomer.creatorPartner.status === "ambassador" ? "Ambassadeur" :
+                                selectedCustomer.creatorPartner.status}
+                            </p>
+                          </div>
+                        </div>
+                        {selectedCustomer.creatorPartner.isCreatorOfMonth && (
+                          <span className="flex items-center gap-1 text-[9px] font-bold px-2 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200 whitespace-nowrap">
+                            <Sparkle className="w-3 h-3" /> Créatrice du mois
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  </div>
+                )}
+
+                {/* Addresses */}
+                <div className="space-y-3">
+                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#2A2424]/40">Adresses</h3>
+                  {selectedCustomer.addresses.length === 0 ? (
+                    <p className="text-xs text-[#2A2424]/40">Aucune adresse enregistrée.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedCustomer.addresses.map((addr) => (
+                        <div key={addr.id} className="bg-[#F5F0EB] rounded-xl p-4 flex items-start gap-3">
+                          <MapPin className="w-4 h-4 text-[#2A2424]/40 mt-0.5 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-xs font-bold text-[#2A2424]">{addr.firstName} {addr.lastName}</p>
+                              {addr.isDefaultShipping && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-600">Par défaut</span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-[#2A2424]/60 mt-0.5">
+                              {addr.address1}{addr.address2 ? `, ${addr.address2}` : ""}
+                            </p>
+                            <p className="text-[11px] text-[#2A2424]/60">
+                              {[addr.city, addr.province, addr.postalCode].filter(Boolean).join(", ")}{addr.countryCode ? ` — ${addr.countryCode}` : ""}
+                            </p>
+                            {addr.phone && <p className="text-[11px] text-[#2A2424]/40 mt-0.5">{addr.phone}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions */}
@@ -244,15 +349,21 @@ export default function CustomersClient({ initialCustomers, totalCount }: { init
                   </a>
                 )}
 
-                {/* Recent Orders */}
+                {/* Order history */}
                 <div className="space-y-3">
-                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#2A2424]/40">Dernières commandes</h3>
-                  {selectedCustomer.recentOrders.length === 0 ? (
+                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#2A2424]/40">
+                    Historique des commandes {selectedCustomer.orders.length > 0 && `(${selectedCustomer.orders.length})`}
+                  </h3>
+                  {selectedCustomer.orders.length === 0 ? (
                     <p className="text-xs text-[#2A2424]/40">Aucune commande pour le moment.</p>
                   ) : (
                     <div className="space-y-2">
-                      {selectedCustomer.recentOrders.map((order) => (
-                        <div key={order.id} className="bg-white border border-[#EDE0E0] rounded-xl p-4 flex items-center justify-between hover:border-[#C08A8E] transition-colors cursor-pointer group">
+                      {selectedCustomer.orders.map((order) => (
+                        <Link
+                          key={order.id}
+                          href={`/dashboard/orders/${order.rawId}`}
+                          className="bg-white border border-[#EDE0E0] rounded-xl p-4 flex items-center justify-between hover:border-[#C08A8E] hover:shadow-sm transition-all cursor-pointer group"
+                        >
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-lg bg-[#F5F0EB] flex items-center justify-center text-[#2A2424]">
                               <ShoppingBag className="w-4 h-4" />
@@ -262,11 +373,14 @@ export default function CustomersClient({ initialCustomers, totalCount }: { init
                               <p className="text-[10px] text-[#2A2424]/40">{order.date}</p>
                             </div>
                           </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <p className="text-xs font-bold text-[#2A2424]">{formatPrice(order.amount)} F</p>
-                            <StatusBadge status={order.status} />
+                          <div className="flex items-center gap-2">
+                            <div className="flex flex-col items-end gap-1">
+                              <p className="text-xs font-bold text-[#2A2424]">{formatPrice(order.amount)} F</p>
+                              <StatusBadge status={order.status} />
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-[#2A2424]/20 group-hover:text-[#C08A8E] transition-colors" />
                           </div>
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   )}
