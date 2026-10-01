@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Robot, Scan } from "@phosphor-icons/react";
+import { ArrowRight, Scan } from "@phosphor-icons/react";
 import Link from "next/link";
 import { IconIA } from "@/components/ui/icons/IconIA";
 import { useI18n } from "@/lib/i18n-context";
@@ -92,7 +92,7 @@ export function SkinCoach() {
                   {/* AI Message */}
                   <div className="flex gap-3">
                     <div className="w-8 h-8 rounded-full bg-[#F4EAEB] flex items-center justify-center shrink-0">
-                      <Robot className="w-4 h-4 text-[#2A2424]" />
+                      <IconIA className="w-4 h-4 text-[#2A2424]" />
                     </div>
                     <div className="bg-[#FAF8F6] p-3.5 rounded-2xl rounded-tl-sm text-sm text-[#2A2424] shadow-sm">
                       {t("Analyse terminée ! J'ai détecté une légère déshydratation sur vos joues.")}
