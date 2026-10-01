@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Truck, Plus, Trash2, Save, MapPin, Store, Scale, Clock, Activity, Power, PowerOff } from "lucide-react";
-import { DeliveryAnalytics } from "../../../components/DeliveryAnalytics"; // We will create this
+import { DeliveryAnalytics } from "../../../components/DeliveryAnalytics";
+
+const MEDUSA_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000";
 
 export function DeliverySettingsClient({ token }: { token: string }) {
   const [activeTab, setActiveTab] = useState("cities");
@@ -16,10 +18,10 @@ export function DeliverySettingsClient({ token }: { token: string }) {
     try {
       const headers = { "Authorization": `Bearer ${token}` };
       const [citiesRes, settingsRes, pointsRes, rulesRes] = await Promise.all([
-        fetch("https://api.thewelfarecm.com/admin/delivery/cities", { headers }),
-        fetch("https://api.thewelfarecm.com/admin/delivery/settings", { headers }),
-        fetch("https://api.thewelfarecm.com/admin/delivery/pickup-points", { headers }),
-        fetch("https://api.thewelfarecm.com/admin/delivery/weight-rules", { headers })
+        fetch(`${MEDUSA_URL}/admin/delivery/cities`, { headers }),
+        fetch(`${MEDUSA_URL}/admin/delivery/settings`, { headers }),
+        fetch(`${MEDUSA_URL}/admin/delivery/pickup-points`, { headers }),
+        fetch(`${MEDUSA_URL}/admin/delivery/weight-rules`, { headers })
       ]);
       const citiesData = await citiesRes.json();
       const settingsData = await settingsRes.json();
@@ -42,7 +44,7 @@ export function DeliverySettingsClient({ token }: { token: string }) {
   }, [token]);
 
   const apiCall = async (path: string, method: string, body?: any) => {
-    const res = await fetch(`https://api.thewelfarecm.com/admin/delivery/${path}`, {
+    const res = await fetch(`${MEDUSA_URL}/admin/delivery/${path}`, {
       method,
       headers: {
         "Content-Type": "application/json",
@@ -160,14 +162,14 @@ export function DeliverySettingsClient({ token }: { token: string }) {
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">Frais de Paiement Ã  la Livraison (COD - FCFA)</label>
+              <label className="block text-sm text-gray-600 mb-1">Frais de Paiement à la Livraison (COD - FCFA)</label>
               <input 
                 type="number" 
                 className="w-full px-4 py-2 border rounded-lg"
                 value={settings.cod_fee}
                 onChange={(e) => setSettings({ ...settings, cod_fee: e.target.value })}
               />
-              <p className="text-xs text-gray-400 mt-1">Surcharge appliquéer Ã  la livraison.</p>
+              <p className="text-xs text-gray-400 mt-1">Surcharge appliquée à la livraison.</p>
             </div>
           </div>
           <button 
@@ -341,7 +343,7 @@ export function DeliverySettingsClient({ token }: { token: string }) {
                   <span className="text-sm">g</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm">Ã </span>
+                  <span className="text-sm">à</span>
                   <input type="number" className="w-24 border rounded px-2 py-1" placeholder="Infini" defaultValue={rule.max_weight || ""} onBlur={e => handleUpdateWeightRule(rule.id, { max_weight: e.target.value ? Number(e.target.value) : null })} />
                   <span className="text-sm">g</span>
                 </div>

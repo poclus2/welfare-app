@@ -8,7 +8,7 @@ export default async function DeliverySettingsPage() {
   const token = cookieStore.get("admin_token")?.value;
 
   if (!token) {
-    return <div className="p-8 text-red-500">Non autorisÃ©. Veuillez vous reconnecter.</div>;
+    return <div className="p-8 text-red-500">Non autorisé. Veuillez vous reconnecter.</div>;
   }
 
   return <DeliverySettingsClient token={token} />;

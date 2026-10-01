@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Activity } from "lucide-react";
 
+const MEDUSA_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000";
+
 export function DeliveryAnalytics({ token }: { token: string }) {
   const [data, setData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -11,7 +13,7 @@ export function DeliveryAnalytics({ token }: { token: string }) {
   useEffect(() => {
     async function fetchOrders() {
       try {
-        const res = await fetch("https://api.thewelfarecm.com/admin/orders?limit=100", {
+        const res = await fetch(`${MEDUSA_URL}/admin/orders?limit=100`, {
           headers: { "Authorization": `Bearer ${token}` }
         });
         const json = await res.json();
