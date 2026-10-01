@@ -40,7 +40,7 @@ class PawapayProviderService extends AbstractPaymentProvider {
     }
   }
 
-  async getPaymentStatus(input: any): Promise<{ status: PaymentSessionStatus }> {
+  async getPaymentStatus(input: any): Promise<any> {
     const status = input.data?.status as string;
     if (status === "captured" || status === "COMPLETED") return { status: PaymentSessionStatus.CAPTURED };
     if (status === "canceled" || status === "FAILED") return { status: PaymentSessionStatus.CANCELED };
