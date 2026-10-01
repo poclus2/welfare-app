@@ -32,11 +32,11 @@ class PawapayProviderService extends AbstractPaymentProvider {
     }
   }
 
-  async getPaymentStatus(input: any): Promise<PaymentSessionStatus> {
+  async getPaymentStatus(input: any): Promise<{ status: PaymentSessionStatus }> {
     const status = input.data?.status as string;
-    if (status === "captured" || status === "COMPLETED") return PaymentSessionStatus.CAPTURED;
-    if (status === "canceled" || status === "FAILED") return PaymentSessionStatus.CANCELED;
-    return PaymentSessionStatus.PENDING
+    if (status === "captured" || status === "COMPLETED") return { status: PaymentSessionStatus.CAPTURED };
+    if (status === "canceled" || status === "FAILED") return { status: PaymentSessionStatus.CANCELED };
+    return { status: PaymentSessionStatus.PENDING }
   }
 
   async authorizePayment(input: any): Promise<any> {
@@ -126,8 +126,8 @@ class PawapayProviderService extends AbstractPaymentProvider {
     }
   }
 
-  async deletePayment(input: any): Promise<void> {
-    return
+  async deletePayment(input: any): Promise<Record<string, unknown>> {
+    return {}
   }
 
   async retrievePayment(input: any): Promise<any> {

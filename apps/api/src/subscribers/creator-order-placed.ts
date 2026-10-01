@@ -16,45 +16,56 @@ export default async function creatorOrderPlacedHandler({
       entity: "order",
       fields: [
         "id", "total", "subtotal", "item_total", "shipping_total",
-        "discount_total", "created_at", "customer_id",
+        "discount_total", "created_at", "customer_id", "metadata",
         "promotions.*", "promotions.metadata",
         "items.*", "items.total"
       ],
       filters: { id: orderId }
     })
-    
+
     if (!orders || orders.length === 0) return
     const order = orders[0]
-    
-    // Check if a creator code was applied
-    const appliedPromos = order.promotions || []
-    let creatorPromo: any = null
-    
-    for (const promo of appliedPromos) {
-      if (promo.metadata?.is_creator_partner === true) {
-        creatorPromo = promo
-        break
-      }
+
+    // Attribution: prefer the cart-metadata creator id set by /store/creator/apply-code —
+    // this still works even when a different promo (e.g. launch offer) produced the
+    // actual discount, since the creator code and the applied discount can differ.
+    let creator: any = null
+    if (order.metadata?.creator_partner_id) {
+      const byId = await service.listCreatorPartners({ id: order.metadata.creator_partner_id }, {})
+      if (byId.length) creator = byId[0]
     }
-    
-    // Also check if promo metadata has is_influencer (backward compat)
-    if (!creatorPromo) {
+
+    // Fallback (orders placed before this attribution mechanism existed): match by
+    // the applied promotion's own code/metadata.
+    if (!creator) {
+      const appliedPromos = order.promotions || []
+      let creatorPromo: any = null
+
       for (const promo of appliedPromos) {
-        if (promo.metadata?.is_influencer === true) {
+        if (promo.metadata?.is_creator_partner === true) {
           creatorPromo = promo
           break
         }
       }
+
+      if (!creatorPromo) {
+        for (const promo of appliedPromos) {
+          if (promo.metadata?.is_influencer === true) {
+            creatorPromo = promo
+            break
+          }
+        }
+      }
+
+      if (!creatorPromo) return // No creator code used
+
+      const creatorCode = creatorPromo.code
+      const creators = await service.listCreatorPartners({ code: creatorCode }, {})
+      if (!creators.length) return
+      creator = creators[0]
     }
-    
-    if (!creatorPromo) return // No creator code used
-    
-    // Find the creator by code
-    const creatorCode = creatorPromo.code
-    const creators = await service.listCreatorPartners({ code: creatorCode }, {})
-    if (!creators.length) return
-    
-    const creator = creators[0]
+
+    if (!creator) return
     
     // Get program config
     const configs = await service.listProgramConfigs({}, {})

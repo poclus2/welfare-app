@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/i18n-context";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { X, Minus, Plus, ShoppingBag, ArrowRight, Trash, Package } from "@phosphor-icons/react";
+import { PromoCodeField } from "./PromoCodeField";
 
 function formatPrice(amount: number) {
   return new Intl.NumberFormat("fr-FR").format(Math.round(amount));
@@ -12,11 +13,11 @@ function formatPrice(amount: number) {
 
 export function CartDrawer() {
   const { t } = useI18n();
-  const { isOpen, closeCart, items, removeItem, updateQuantity, totalItems, totalAmount } =
+  const { isOpen, closeCart, items, removeItem, updateQuantity, totalItems, totalAmount, discountTotal, freeShipping } =
     useCart();
 
-  const LIVRAISON = 1500;
-  const total = totalAmount + (totalAmount > 0 ? LIVRAISON : 0);
+  const LIVRAISON = freeShipping ? 0 : 1500;
+  const total = Math.max(0, totalAmount - discountTotal) + (totalAmount > 0 ? LIVRAISON : 0);
 
   return (
     <AnimatePresence>
@@ -152,15 +153,23 @@ export function CartDrawer() {
             {/* Footer */}
             {items.length > 0 && (
               <div className="border-t border-[#EDE0E0] px-6 py-5 space-y-4">
+                <PromoCodeField />
+
                 {/* Totaux */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm text-[#2A2424]/60">
                     <span>{t("Sous-total")}</span>
                     <span className="font-medium">{formatPrice(totalAmount)} FCFA</span>
                   </div>
+                  {discountTotal > 0 && (
+                    <div className="flex items-center justify-between text-sm text-[#C2164A]">
+                      <span>{t("Réduction créateur")}</span>
+                      <span className="font-medium">-{formatPrice(discountTotal)} FCFA</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between text-sm text-[#2A2424]/60">
                     <span>{t("Livraison")}</span>
-                    <span className="font-medium">{formatPrice(LIVRAISON)} FCFA</span>
+                    <span className="font-medium">{LIVRAISON > 0 ? `${formatPrice(LIVRAISON)} FCFA` : t("Gratuit")}</span>
                   </div>
                   <div className="w-full h-px bg-[#EDE0E0]" />
                   <div className="flex items-center justify-between">

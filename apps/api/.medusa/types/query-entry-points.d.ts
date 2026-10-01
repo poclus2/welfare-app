@@ -153,6 +153,7 @@ export type CreatorPartner = {
   email: Scalars['String']['output'];
   phone: Maybe<Scalars['String']['output']>;
   code: Scalars['String']['output'];
+  code_returning: Maybe<Scalars['String']['output']>;
   referral_link: Maybe<Scalars['String']['output']>;
   status: CreatorPartnerStatusEnum;
   is_creator_of_month: Scalars['Boolean']['output'];
@@ -1980,30 +1981,6 @@ export type WorkflowExecution = {
   deleted_at: Maybe<Scalars['DateTime']['output']>;
 };
 
-export type AuthIdentity = {
-  __typename?: 'AuthIdentity';
-  id: Scalars['ID']['output'];
-  provider_identities: Array<Maybe<ProviderIdentity>>;
-  app_metadata: Maybe<Scalars['JSON']['output']>;
-  created_at: Scalars['DateTime']['output'];
-  updated_at: Scalars['DateTime']['output'];
-  deleted_at: Maybe<Scalars['DateTime']['output']>;
-};
-
-export type ProviderIdentity = {
-  __typename?: 'ProviderIdentity';
-  id: Scalars['ID']['output'];
-  entity_id: Scalars['String']['output'];
-  provider: Scalars['String']['output'];
-  auth_identity_id: Scalars['String']['output'];
-  auth_identity: AuthIdentity;
-  user_metadata: Maybe<Scalars['JSON']['output']>;
-  provider_metadata: Maybe<Scalars['JSON']['output']>;
-  created_at: Scalars['DateTime']['output'];
-  updated_at: Scalars['DateTime']['output'];
-  deleted_at: Maybe<Scalars['DateTime']['output']>;
-};
-
 export type Region = {
   __typename?: 'Region';
   id: Scalars['ID']['output'];
@@ -2031,6 +2008,30 @@ export type Country = {
   region_id: Maybe<Scalars['String']['output']>;
   region: Maybe<Region>;
   metadata: Maybe<Scalars['JSON']['output']>;
+  created_at: Scalars['DateTime']['output'];
+  updated_at: Scalars['DateTime']['output'];
+  deleted_at: Maybe<Scalars['DateTime']['output']>;
+};
+
+export type AuthIdentity = {
+  __typename?: 'AuthIdentity';
+  id: Scalars['ID']['output'];
+  provider_identities: Array<Maybe<ProviderIdentity>>;
+  app_metadata: Maybe<Scalars['JSON']['output']>;
+  created_at: Scalars['DateTime']['output'];
+  updated_at: Scalars['DateTime']['output'];
+  deleted_at: Maybe<Scalars['DateTime']['output']>;
+};
+
+export type ProviderIdentity = {
+  __typename?: 'ProviderIdentity';
+  id: Scalars['ID']['output'];
+  entity_id: Scalars['String']['output'];
+  provider: Scalars['String']['output'];
+  auth_identity_id: Scalars['String']['output'];
+  auth_identity: AuthIdentity;
+  user_metadata: Maybe<Scalars['JSON']['output']>;
+  provider_metadata: Maybe<Scalars['JSON']['output']>;
   created_at: Scalars['DateTime']['output'];
   updated_at: Scalars['DateTime']['output'];
   deleted_at: Maybe<Scalars['DateTime']['output']>;
@@ -2855,14 +2856,14 @@ declare module '@medusajs/framework/types' {
     workflow_executions: WorkflowExecution
     file: any
     files: any
-    auth_identity: AuthIdentity
-    auth_identities: AuthIdentity
-    provider_identity: ProviderIdentity
-    provider_identities: ProviderIdentity
     region: Region
     regions: Region
     country: Country
     countries: Country
+    auth_identity: AuthIdentity
+    auth_identities: AuthIdentity
+    provider_identity: ProviderIdentity
+    provider_identities: ProviderIdentity
     currency: Currency
     currencies: Currency
     tax_rate: TaxRate

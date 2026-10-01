@@ -1,4 +1,6 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { createPromotionsWorkflow, updatePromotionsWorkflow } from "@medusajs/medusa/core-flows"
 import { CREATOR_PARTNER_MODULE } from "../../../modules/creator_partner"
 
 // Native JS types — GET always returns values in this same shape, whether
@@ -47,7 +49,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const results = []
   for (const [key, value] of Object.entries(updates)) {
     const strValue = typeof value === 'string' ? value : JSON.stringify(value)
-    
+
     // Upsert: check if exists
     const existing = await service.listProgramConfigs({ key }, {})
     if (existing.length > 0) {
@@ -58,6 +60,56 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       results.push(created)
     }
   }
-  
+
+  // Keep the hidden launch-promo Promotion's discount value in sync with config.
+  // The active/ends_at gating itself is read live by /store/creator/apply-code,
+  // not enforced on the Promotion object (Medusa promotions have no end date).
+  if ('launch_promo_discount_pct' in updates) {
+    try { await syncLaunchPromotion(req.scope, service) } catch (e) { console.error("Launch promo sync error:", e) }
+  }
+
   res.json({ success: true, updated: results })
+}
+
+async function syncLaunchPromotion(scope: any, service: any) {
+  const configs = await service.listProgramConfigs({}, {})
+  const configMap: Record<string, string> = {}
+  for (const c of configs) { configMap[c.key] = c.value }
+
+  let discountPct = 10
+  try { if (configMap.launch_promo_discount_pct) discountPct = Number(JSON.parse(configMap.launch_promo_discount_pct)) } catch {}
+
+  let existingCode = ''
+  try { if (configMap.launch_promo_code) existingCode = JSON.parse(configMap.launch_promo_code) } catch {}
+
+  const query = scope.resolve(ContainerRegistrationKeys.QUERY)
+
+  if (existingCode) {
+    const { data: existingPromos } = await query.graph({
+      entity: "promotion", fields: ["id", "code"], filters: { code: existingCode }
+    })
+    if (existingPromos.length > 0) {
+      await updatePromotionsWorkflow(scope).run({
+        input: { promotionsData: [{ id: existingPromos[0].id, application_method: { value: discountPct } }] }
+      })
+      return
+    }
+  }
+
+  // No promotion yet for the launch offer — provision one, code never shown to clients
+  const newCode = `LANCEMENT${Date.now().toString(36).toUpperCase()}`
+  await createPromotionsWorkflow(scope).run({
+    input: {
+      promotionsData: [{
+        code: newCode,
+        type: "standard",
+        status: "active",
+        is_automatic: false,
+        application_method: { type: "percentage", target_type: "order", value: discountPct },
+        // @ts-ignore
+        metadata: { is_launch_promo: true }
+      } as any]
+    }
+  })
+  await service.createProgramConfigs({ key: "launch_promo_code", value: JSON.stringify(newCode) })
 }

@@ -8,7 +8,8 @@ export const CreatorPartner = model.define("creator_partner", {
   last_name: model.text(),
   email: model.text(),
   phone: model.text().nullable(),
-  code: model.text(), // e.g. ALICE5
+  code: model.text(), // e.g. ALICE5 — public code, shown to the client
+  code_returning: model.text().nullable(), // internal code for the returning-customer rate, never shown
   referral_link: model.text().nullable(),
   status: model.enum(["active", "suspended", "ambassador"]).default("active"),
   is_creator_of_month: model.boolean().default(false),

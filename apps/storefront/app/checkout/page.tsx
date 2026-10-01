@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { sdk } from "@/lib/medusa";
 import Link from "next/link";
+import { PromoCodeField } from "@/components/cart/PromoCodeField";
 import {
   ArrowLeft, ShieldCheck, Truck, Package,
   CaretRight, CaretLeft, User, Phone, MapPin, Envelope, CircleNotch,
@@ -107,7 +108,7 @@ function StepIndicator({ step }: { step: 1 | 2 }) {
 export default function CheckoutPage() {
   const router = useRouter();
   const { t } = useI18n();
-  const { items, totalAmount, clearCart, cartId } = useCart();
+  const { items, totalAmount, discountTotal, freeShipping, clearCart, cartId } = useCart();
   const [step, setStep] = useState<1 | 2>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [mobileNetwork, setMobileNetwork] = useState("MTN_MOMO_CMR");
@@ -202,9 +203,11 @@ useEffect(() => {
     }
   }
 
-  const activeLivraisonFee = step === 1 ? 0 : livraisonFee;
-  const paymentFee = (paymentMode === "pawapay" && step === 2) ? Math.round((totalAmount + activeLivraisonFee) * 0.03) : 0;
-  const total = Number(totalAmount || 0) + Number(activeLivraisonFee || 0) + Number(paymentFee || 0);
+  const effectiveLivraisonFee = freeShipping ? 0 : livraisonFee;
+  const activeLivraisonFee = step === 1 ? 0 : effectiveLivraisonFee;
+  const discountedSubtotal = Math.max(0, Number(totalAmount || 0) - Number(discountTotal || 0));
+  const paymentFee = (paymentMode === "pawapay" && step === 2) ? Math.round((discountedSubtotal + activeLivraisonFee) * 0.03) : 0;
+  const total = discountedSubtotal + Number(activeLivraisonFee || 0) + Number(paymentFee || 0);
 
   // Fetch shipping options for the cart
   const fetchOptions = async () => {
@@ -370,7 +373,7 @@ useEffect(() => {
         identity,
         delivery,
         total,
-        livraisonFee,
+        livraisonFee: effectiveLivraisonFee,
         paymentMode,
         createdAt: new Date().toISOString(),
       };
@@ -891,18 +894,28 @@ useEffect(() => {
 
             <div className="w-full h-px bg-[#EDE0E0] mb-4" />
 
+            <div className="mb-4">
+              <PromoCodeField />
+            </div>
+
             <div className="space-y-2.5 mb-5">
               <div className="flex justify-between text-sm text-[#2A2424]/60">
                 <span>{t("Sous-total")}</span>
                 <span>{formatPrice(totalAmount)} FCFA</span>
               </div>
+              {discountTotal > 0 && (
+                <div className="flex justify-between text-sm text-[#C2164A]">
+                  <span>{t("Réduction créateur")}</span>
+                  <span>-{formatPrice(discountTotal)} FCFA</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm text-[#2A2424]/60">
                 <span className="flex items-center gap-1.5">
-                  
+
                   {delivery.mode === "retrait" ? t("Retrait magasin") : t("Livraison")}
                 </span>
-                <span className={delivery.mode === "retrait" && step === 2 ? "text-emerald-600 font-semibold" : ""}>
-                  {step === 1 ? t("à calculer") : (delivery.mode === "retrait" ? t("Gratuit") : `${livraisonFee > 0 ? `+${formatPrice(livraisonFee)} FCFA` : t("Gratuit")}`)}
+                <span className={(delivery.mode === "retrait" || freeShipping) && step === 2 ? "text-emerald-600 font-semibold" : ""}>
+                  {step === 1 ? t("à calculer") : (delivery.mode === "retrait" ? t("Gratuit") : `${effectiveLivraisonFee > 0 ? `+${formatPrice(effectiveLivraisonFee)} FCFA` : t("Gratuit")}`)}
                 </span>
               </div>
               {paymentFee > 0 && step === 2 && (
