@@ -52,7 +52,10 @@ export function DeliverySettingsClient({ token }: { token: string }) {
       },
       body: body ? JSON.stringify(body) : undefined
     });
-    if (!res.ok) throw new Error("API Error");
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.message || "API Error");
+    }
     return res.json();
   };
 
@@ -72,8 +75,9 @@ export function DeliverySettingsClient({ token }: { token: string }) {
     try {
       await apiCall(`cities/${id}`, "POST", data);
       fetchDeliveryData();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      if (data.name) alert(err.message || "Impossible de renommer cette ville.");
     }
   };
 
@@ -184,8 +188,14 @@ export function DeliverySettingsClient({ token }: { token: string }) {
       {activeTab === "cities" && (
         <div className="space-y-6">
           <div className="flex justify-end mb-4">
-            <button 
-              onClick={() => apiCall("cities", "POST", { name: "Nouvelle Ville" }).then(fetchDeliveryData)} 
+            <button
+              onClick={() => {
+                const name = prompt("Nom de la nouvelle ville :")?.trim();
+                if (!name) return;
+                apiCall("cities", "POST", { name })
+                  .then(fetchDeliveryData)
+                  .catch((err) => alert(err.message || "Impossible d'ajouter cette ville."));
+              }}
               className="flex items-center gap-1 text-sm bg-black text-white px-3 py-1.5 rounded-lg"
             >
               <Plus className="w-4 h-4"/> Ajouter une ville
@@ -208,8 +218,17 @@ export function DeliverySettingsClient({ token }: { token: string }) {
                     {city.is_active ? <Power className="w-4 h-4" /> : <PowerOff className="w-4 h-4" />}
                   </button>
                   <h3 className="font-bold text-lg flex items-center gap-2">
-                    <MapPin className="w-5 h-5 text-gray-400" />
-                    {city.name}
+                    <MapPin className="w-5 h-5 text-gray-400 shrink-0" />
+                    <input
+                      type="text"
+                      className="font-bold text-lg border-b border-transparent hover:border-gray-300 focus:border-black outline-none px-0.5 w-full min-w-0"
+                      defaultValue={city.name}
+                      onBlur={(e) => {
+                        const name = e.target.value.trim();
+                        if (name && name !== city.name) handleUpdateCity(city.id, { name });
+                        else e.target.value = city.name;
+                      }}
+                    />
                   </h3>
                 </div>
                 
