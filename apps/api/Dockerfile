@@ -19,6 +19,7 @@ RUN pnpm install --frozen-lockfile || pnpm install
 
 # Build the Medusa project
 WORKDIR /app/apps/api
+ENV DISABLE_MEDUSA_ADMIN=true
 RUN pnpm run build
 
 # Production stage
