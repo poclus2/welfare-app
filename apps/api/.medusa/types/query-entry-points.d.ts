@@ -247,6 +247,24 @@ export type ProgramConfig = {
   deleted_at: Maybe<Scalars['DateTime']['output']>;
 };
 
+export type OtpCodePurposeEnum =
+  | 'signup'
+  | 'login';
+
+export type OtpCode = {
+  __typename?: 'OtpCode';
+  id: Scalars['ID']['output'];
+  phone: Scalars['String']['output'];
+  code_hash: Scalars['String']['output'];
+  purpose: OtpCodePurposeEnum;
+  expires_at: Scalars['DateTime']['output'];
+  attempts: Scalars['Int']['output'];
+  consumed_at: Maybe<Scalars['DateTime']['output']>;
+  created_at: Scalars['DateTime']['output'];
+  updated_at: Scalars['DateTime']['output'];
+  deleted_at: Maybe<Scalars['DateTime']['output']>;
+};
+
 export type StockLocationAddress = {
   __typename?: 'StockLocationAddress';
   id: Maybe<Scalars['ID']['output']>;
@@ -2727,6 +2745,8 @@ declare module '@medusajs/framework/types' {
     creator_monthly_summaries: CreatorMonthlySummary
     program_config: ProgramConfig
     program_configs: ProgramConfig
+    otp_code: OtpCode
+    otp_codes: OtpCode
     stock_location_address: StockLocationAddress
     stock_location_addresses: StockLocationAddress
     stock_location: StockLocation

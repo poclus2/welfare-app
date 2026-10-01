@@ -54,6 +54,11 @@ services:
       - JWT_SECRET=${JWT_SECRET:-super_secret}
       - COOKIE_SECRET=${COOKIE_SECRET:-super_secret}
       - PAWAPAY_API_KEY=${PAWAPAY_API_KEY}
+      - WHATSAPP_ACCESS_TOKEN=${WHATSAPP_ACCESS_TOKEN}
+      - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID}
+      - WHATSAPP_OTP_TEMPLATE_NAME=${WHATSAPP_OTP_TEMPLATE_NAME:-otp_code}
+      - WHATSAPP_API_VERSION=${WHATSAPP_API_VERSION:-v21.0}
+      - WHATSAPP_DEBUG_LOG=${WHATSAPP_DEBUG_LOG:-false}
     ports:
       - "9005:9000" # Exposes 9005 to host for Nginx to route to
     restart: unless-stopped

@@ -31,6 +31,10 @@ module.exports = defineConfig({
             resolve: "./src/modules/phonepass",
             id: "phonepass",
           },
+          {
+            resolve: "./src/modules/phoneotp",
+            id: "phoneotp",
+          },
         ],
       },
     },
@@ -108,6 +112,9 @@ module.exports = defineConfig({
     },
     {
       resolve: "./src/modules/creator_partner",
+    },
+    {
+      resolve: "./src/modules/otp",
     },
   ],
 });

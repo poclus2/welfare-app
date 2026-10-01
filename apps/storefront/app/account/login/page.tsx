@@ -8,6 +8,7 @@ import { ArrowRight, Star, ShoppingBag, Gift, Eye, EyeSlash, WarningCircle, Info
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n-context";
 import { AuthShowcase } from "@/components/account/AuthShowcase";
+import { OtpCodeInput } from "@/components/account/OtpCodeInput";
 
 const benefits = [
   { icon: Star, text: "Cumulez des points à chaque achat" },
@@ -22,9 +23,12 @@ export default function LoginPage() {
   const phoneParam = searchParams.get("phone") || "";
   const hint = searchParams.get("hint");
 
+  const [mode, setMode] = useState<"password" | "otp">("password");
+  const [otpStep, setOtpStep] = useState<"phone" | "code">("phone");
   const [phone, setPhone] = useState(phoneParam);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -44,6 +48,66 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const sendLoginOtp = async () => {
+    await sdk.client.fetch("/store/otp/send", {
+      method: "POST",
+      body: { phone, purpose: "login" },
+    });
+  };
+
+  const handleSendLoginCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    try {
+      await sendLoginOtp();
+      setOtpStep("code");
+    } catch (err: any) {
+      console.error(err);
+      setError(
+        err?.message?.includes("Trop de")
+          ? err.message
+          : t("Impossible d'envoyer le code. Vérifiez le numéro et réessayez.")
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyLoginCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const verifyResult: any = await sdk.client.fetch("/store/otp/verify", {
+        method: "POST",
+        body: { phone, code, purpose: "login" },
+      });
+
+      await sdk.auth.login("customer", "phoneotp", { phone, ticket: verifyResult.login_ticket });
+      router.push(redirectUrl);
+      router.refresh();
+    } catch (err: any) {
+      setError(
+        err?.message?.includes("Aucun compte")
+          ? err.message
+          : t("Code invalide ou expiré.")
+      );
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const switchMode = (next: "password" | "otp") => {
+    setMode(next);
+    setOtpStep("phone");
+    setCode("");
+    setError("");
   };
 
   return (
@@ -81,105 +145,243 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-6">
-            <AnimatePresence mode="wait">
-              {hint === "exists" && !error && (
-                <motion.div
-                  key="hint"
-                  initial={{ opacity: 0, y: -8, height: 0 }}
-                  animate={{ opacity: 1, y: 0, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50/50 p-4 text-sm text-blue-700"
-                >
-                  <Info weight="fill" className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
-                  <span className="leading-relaxed">{t("Un compte existe déjà avec ce numéro. Connectez-vous ci-dessous.")}</span>
-                </motion.div>
-              )}
-              {error && (
-                <motion.div
-                  key="error"
-                  initial={{ opacity: 0, y: -8, height: 0 }}
-                  animate={{ opacity: 1, y: 0, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50/50 p-4 text-sm text-red-600"
-                >
-                  <WarningCircle weight="fill" className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
-                  <span className="leading-relaxed">{error}</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Téléphone */}
-            <div className="space-y-2">
-              <label className="block text-[13px] font-medium text-gray-700">
-                {t("Numéro de téléphone")}
-              </label>
-              <input
-                type="tel"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="block w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-black focus:bg-white focus:outline-none focus:ring-1 focus:ring-black"
-                placeholder={t("+237 6XX XXX XXX")}
-              />
-            </div>
-
-            {/* Password */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="block text-[13px] font-medium text-gray-700">
-                  {t("Mot de passe")}
-                </label>
-                <Link
-                  href="/account/reset-password"
-                  className="text-[13px] text-gray-500 transition-colors hover:text-black"
-                >
-                  {t("Mot de passe oublié ?")}
-                </Link>
-              </div>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 pr-11 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-black focus:bg-white focus:outline-none focus:ring-1 focus:ring-black"
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 transition-colors hover:text-gray-700"
-                  aria-label={showPassword ? t("Masquer le mot de passe") : t("Afficher le mot de passe")}
-                >
-                  {showPassword ? <EyeSlash weight="light" className="h-4 w-4" /> : <Eye weight="light" className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Submit */}
-            <motion.button
-              type="submit"
-              disabled={isLoading}
-              whileTap={{ scale: 0.98 }}
-              className="group mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-black px-6 py-3.5 text-sm font-medium text-white shadow-[0_4px_12px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(0,0,0,0.15)] hover:bg-[#1a1a1a] disabled:pointer-events-none disabled:opacity-50"
+          {/* Mode toggle */}
+          <div className="mb-6 flex rounded-xl bg-gray-100 p-1">
+            <button
+              type="button"
+              onClick={() => switchMode("password")}
+              className={`flex-1 rounded-lg py-2 text-[13px] font-medium transition-all ${
+                mode === "password" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+              }`}
             >
-              {isLoading ? (
-                <span className="flex items-center gap-2">
-                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  {t("Connexion...")}
-                </span>
-              ) : (
-                <>
-                  {t("Se connecter")}
-                  <ArrowRight weight="bold" className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </>
-              )}
-            </motion.button>
-          </form>
+              {t("Mot de passe")}
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode("otp")}
+              className={`flex-1 rounded-lg py-2 text-[13px] font-medium transition-all ${
+                mode === "otp" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {t("Code WhatsApp")}
+            </button>
+          </div>
+
+          <AnimatePresence mode="wait">
+            {hint === "exists" && !error && (
+              <motion.div
+                key="hint"
+                initial={{ opacity: 0, y: -8, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mb-6 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50/50 p-4 text-sm text-blue-700"
+              >
+                <Info weight="fill" className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+                <span className="leading-relaxed">{t("Un compte existe déjà avec ce numéro. Connectez-vous ci-dessous.")}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {mode === "password" ? (
+            <form onSubmit={handleLogin} className="space-y-6">
+              <AnimatePresence>
+                {error && (
+                  <motion.div
+                    key="error"
+                    initial={{ opacity: 0, y: -8, height: 0 }}
+                    animate={{ opacity: 1, y: 0, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50/50 p-4 text-sm text-red-600"
+                  >
+                    <WarningCircle weight="fill" className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+                    <span className="leading-relaxed">{error}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Téléphone */}
+              <div className="space-y-2">
+                <label className="block text-[13px] font-medium text-gray-700">
+                  {t("Numéro de téléphone")}
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="block w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-black focus:bg-white focus:outline-none focus:ring-1 focus:ring-black"
+                  placeholder={t("+237 6XX XXX XXX")}
+                />
+              </div>
+
+              {/* Password */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[13px] font-medium text-gray-700">
+                    {t("Mot de passe")}
+                  </label>
+                  <Link
+                    href="/account/reset-password"
+                    className="text-[13px] text-gray-500 transition-colors hover:text-black"
+                  >
+                    {t("Mot de passe oublié ?")}
+                  </Link>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="block w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 pr-11 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-black focus:bg-white focus:outline-none focus:ring-1 focus:ring-black"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-400 transition-colors hover:text-gray-700"
+                    aria-label={showPassword ? t("Masquer le mot de passe") : t("Afficher le mot de passe")}
+                  >
+                    {showPassword ? <EyeSlash weight="light" className="h-4 w-4" /> : <Eye weight="light" className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Submit */}
+              <motion.button
+                type="submit"
+                disabled={isLoading}
+                whileTap={{ scale: 0.98 }}
+                className="group mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-black px-6 py-3.5 text-sm font-medium text-white shadow-[0_4px_12px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(0,0,0,0.15)] hover:bg-[#1a1a1a] disabled:pointer-events-none disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    {t("Connexion...")}
+                  </span>
+                ) : (
+                  <>
+                    {t("Se connecter")}
+                    <ArrowRight weight="bold" className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </>
+                )}
+              </motion.button>
+            </form>
+          ) : otpStep === "phone" ? (
+            <form onSubmit={handleSendLoginCode} className="space-y-6">
+              <AnimatePresence>
+                {error && (
+                  <motion.div
+                    key="error"
+                    initial={{ opacity: 0, y: -8, height: 0 }}
+                    animate={{ opacity: 1, y: 0, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50/50 p-4 text-sm text-red-600"
+                  >
+                    <WarningCircle weight="fill" className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+                    <span className="leading-relaxed">{error}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="space-y-2">
+                <label className="block text-[13px] font-medium text-gray-700">
+                  {t("Numéro de téléphone")}
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="block w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-black focus:bg-white focus:outline-none focus:ring-1 focus:ring-black"
+                  placeholder={t("+237 6XX XXX XXX")}
+                />
+              </div>
+
+              <motion.button
+                type="submit"
+                disabled={isLoading}
+                whileTap={{ scale: 0.98 }}
+                className="group mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-black px-6 py-3.5 text-sm font-medium text-white shadow-[0_4px_12px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(0,0,0,0.15)] hover:bg-[#1a1a1a] disabled:pointer-events-none disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    {t("Envoi du code...")}
+                  </span>
+                ) : (
+                  <>
+                    {t("Recevoir le code par WhatsApp")}
+                    <ArrowRight weight="bold" className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </>
+                )}
+              </motion.button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyLoginCode} className="space-y-6">
+              <AnimatePresence>
+                {error && (
+                  <motion.div
+                    key="error"
+                    initial={{ opacity: 0, y: -8, height: 0 }}
+                    animate={{ opacity: 1, y: 0, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50/50 p-4 text-sm text-red-600"
+                  >
+                    <WarningCircle weight="fill" className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+                    <span className="leading-relaxed">{error}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600">
+                  {t("Entrez le code à 6 chiffres envoyé par WhatsApp au")} <span className="font-medium text-gray-900">{phone}</span>
+                </p>
+                <OtpCodeInput value={code} onChange={setCode} onResend={sendLoginOtp} />
+              </div>
+
+              <motion.button
+                type="submit"
+                disabled={isLoading || code.length !== 6}
+                whileTap={{ scale: 0.98 }}
+                className="group mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-black px-6 py-3.5 text-sm font-medium text-white shadow-[0_4px_12px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(0,0,0,0.15)] hover:bg-[#1a1a1a] disabled:pointer-events-none disabled:opacity-50"
+              >
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    {t("Connexion...")}
+                  </span>
+                ) : (
+                  <>
+                    {t("Se connecter")}
+                    <ArrowRight weight="bold" className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </>
+                )}
+              </motion.button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setOtpStep("phone");
+                  setError("");
+                  setCode("");
+                }}
+                className="text-[13px] font-medium text-gray-500 transition-colors hover:text-black"
+              >
+                {t("Modifier le numéro")}
+              </button>
+            </form>
+          )}
 
           {/* Mobile benefits */}
           <div className="mt-12 border-t border-gray-100 pt-8 lg:hidden">

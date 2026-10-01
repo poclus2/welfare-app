@@ -9,6 +9,7 @@ import Link from "next/link";
 import { IconIA } from "@/components/ui/icons/IconIA";
 import { useI18n } from "@/lib/i18n-context";
 import { AuthShowcase } from "@/components/account/AuthShowcase";
+import { OtpCodeInput } from "@/components/account/OtpCodeInput";
 
 const benefits = [
   { icon: Star, text: "Cumulez des points à chaque achat" },
@@ -21,30 +22,64 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const phoneParam = searchParams.get("phone");
 
+  const [step, setStep] = useState<"info" | "otp">("info");
   const [phone, setPhone] = useState(phoneParam || "");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const redirectUrl = searchParams.get("redirect") || "/account";
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const sendOtp = async () => {
+    await sdk.client.fetch("/store/otp/send", {
+      method: "POST",
+      body: { phone, purpose: "signup" },
+    });
+  };
+
+  const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
 
     try {
+      await sendOtp();
+      setStep("otp");
+    } catch (err: any) {
+      console.error(err);
+      setError(
+        err?.message?.includes("Trop de")
+          ? err.message
+          : t("Impossible d'envoyer le code. Vérifiez le numéro et réessayez.")
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleConfirmAndRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    try {
+      await sdk.client.fetch("/store/otp/verify", {
+        method: "POST",
+        body: { phone, code, purpose: "signup" },
+      });
+
       const token = await sdk.auth.register("customer", "phonepass", {
         phone,
         password,
       });
 
       const customerEmail =
-        email.trim() || `${phone.replace(/[^\\d]/g, "")}@phone.thewelfarecm.com`;
+        email.trim() || `${phone.replace(/\D/g, "")}@phone.thewelfarecm.com`;
 
       await sdk.store.customer.create(
         {
@@ -75,6 +110,8 @@ function RegisterForm() {
       if (isPhoneExists) {
         const loginUrl = `/account/login?phone=${encodeURIComponent(phone)}&redirect=${encodeURIComponent(redirectUrl)}&hint=exists`;
         router.push(loginUrl);
+      } else if (errMsg.toLowerCase().includes("invalide") || errMsg.toLowerCase().includes("expiré")) {
+        setError(t("Code invalide ou expiré."));
       } else {
         setError(t("Une erreur est survenue lors de la création du compte. Veuillez réessayer."));
       }
@@ -83,8 +120,69 @@ function RegisterForm() {
     }
   };
 
+  if (step === "otp") {
+    return (
+      <form onSubmit={handleConfirmAndRegister} className="space-y-6">
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -8, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50/50 p-4 text-sm text-red-600"
+            >
+              <WarningCircle weight="fill" className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+              <span className="leading-relaxed">{error}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="space-y-2">
+          <p className="text-sm text-gray-600">
+            {t("Entrez le code à 6 chiffres envoyé par WhatsApp au")} <span className="font-medium text-gray-900">{phone}</span>
+          </p>
+          <OtpCodeInput value={code} onChange={setCode} onResend={sendOtp} />
+        </div>
+
+        <motion.button
+          type="submit"
+          disabled={isLoading || code.length !== 6}
+          whileTap={{ scale: 0.98 }}
+          className="group mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-black px-6 py-3.5 text-sm font-medium text-white shadow-[0_4px_12px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(0,0,0,0.15)] hover:bg-[#1a1a1a] disabled:pointer-events-none disabled:opacity-50"
+        >
+          {isLoading ? (
+            <span className="flex items-center gap-2">
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              {t("Création en cours...")}
+            </span>
+          ) : (
+            <>
+              {t("Vérifier et créer mon compte")}
+              <ArrowRight weight="bold" className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </>
+          )}
+        </motion.button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setStep("info");
+            setError("");
+            setCode("");
+          }}
+          className="text-[13px] font-medium text-gray-500 transition-colors hover:text-black"
+        >
+          {t("Modifier le numéro")}
+        </button>
+      </form>
+    );
+  }
+
   return (
-    <form onSubmit={handleRegister} className="space-y-6">
+    <form onSubmit={handleSendCode} className="space-y-6">
       <AnimatePresence>
         {error && (
           <motion.div
@@ -138,6 +236,7 @@ function RegisterForm() {
           className="block w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-black focus:bg-white focus:outline-none focus:ring-1 focus:ring-black"
           placeholder={t("+237 6XX XXX XXX")}
         />
+        <p className="text-[12px] text-gray-400">{t("Un code de vérification vous sera envoyé par WhatsApp.")}</p>
       </div>
 
       {/* Email (optionnel) */}
@@ -190,11 +289,11 @@ function RegisterForm() {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            {t("Création en cours...")}
+            {t("Envoi du code...")}
           </span>
         ) : (
           <>
-            {t("Créer mon compte")}
+            {t("Recevoir le code par WhatsApp")}
             <ArrowRight weight="bold" className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </>
         )}
