@@ -82,7 +82,7 @@ function CustomTooltip({ active, payload, label }: any) {
 
 export default function DashboardClient({
   salesData,
-  deliveryData,
+  paymentMethodData,
   recentOrders,
   urgentTasks,
   topProducts,
@@ -112,7 +112,7 @@ export default function DashboardClient({
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard label="CA du mois" value={`${formatPrice(kpis.revenue)} FCFA`} delta="" deltaPositive icon={ShoppingBag} sub="Commandes payées ce mois" />
         <KpiCard label="Commandes" value={kpis.orders.toString()} delta="" deltaPositive icon={Package} sub="Ce mois" />
-        <KpiCard label="Nouveaux clients" value={kpis.customers.toString()} delta="" deltaPositive icon={Users} sub="Total inscrits" />
+        <KpiCard label="Nouveaux clients" value={kpis.customers.toString()} delta="" deltaPositive icon={Users} sub="Ce mois" />
         <KpiCard label="Panier moyen" value={`${formatPrice(kpis.aov)} FCFA`} delta="" deltaPositive={false} icon={Store} sub="Moyenne ce mois" />
       </div>
 
@@ -160,17 +160,17 @@ export default function DashboardClient({
               <h2 className="text-sm font-bold text-[#2A2424]">Modes de paiement</h2>
               <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">Live</span>
             </div>
-            {deliveryData.length > 0 ? (
+            {paymentMethodData.length > 0 ? (
               <div className="flex items-center gap-4">
                 <PieChart width={90} height={90}>
-                  <Pie data={deliveryData} cx={40} cy={40} innerRadius={28} outerRadius={42} paddingAngle={3} dataKey="value" strokeWidth={0}>
-                    {deliveryData.map((entry: any, i: number) => (
+                  <Pie data={paymentMethodData} cx={40} cy={40} innerRadius={28} outerRadius={42} paddingAngle={3} dataKey="value" strokeWidth={0}>
+                    {paymentMethodData.map((entry: any, i: number) => (
                       <Cell key={i} fill={entry.color} />
                     ))}
                   </Pie>
                 </PieChart>
                 <div className="space-y-2 flex-1">
-                  {deliveryData.map((d: any) => (
+                  {paymentMethodData.map((d: any) => (
                     <div key={d.name} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: d.color === "#F4EAEB" ? "#EDE0E0" : d.color }} />

@@ -10,14 +10,16 @@ export default async function DashboardPage() {
   const token = cookieStore.get("admin_token")?.value;
   if (!token) return redirect("/login");
 
-  const [ordersRes, customersRes, productsRes] = await Promise.all([
-    fetchAdmin<{ orders: any[], count: number }>("/orders?limit=200&expand=customer,items,shipping_methods", token).catch(() => ({ orders: [], count: 0 })),
-    fetchAdmin<{ count: number }>("/customers?limit=1", token).catch(() => ({ count: 0 })),
+  const firstOfMonth = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString();
+
+  const [ordersRes, newCustomersRes, productsRes] = await Promise.all([
+    fetchAdmin<{ orders: any[], count: number }>("/orders?limit=200&fields=*customer,*items,*shipping_methods,*payment_collections.payments", token).catch(() => ({ orders: [], count: 0 })),
+    fetchAdmin<{ count: number }>(`/customers?limit=1&created_at[$gte]=${encodeURIComponent(firstOfMonth)}`, token).catch(() => ({ count: 0 })),
     fetchAdmin<{ products: any[] }>("/products?limit=100&expand=variants,collection", token).catch(() => ({ products: [] })),
   ]);
 
   const allOrders = ordersRes.orders || [];
-  const totalCustomers = customersRes.count || 0;
+  const newCustomersThisMonth = newCustomersRes.count || 0;
   const products = productsRes.products || [];
 
   // 1. KPI Calculations (Ce mois)
@@ -43,7 +45,7 @@ export default async function DashboardPage() {
   const kpis = {
     revenue: monthlyRevenue,
     orders: monthlyOrdersCount,
-    customers: totalCustomers, // using total customers since Medusa doesn't easily let us filter by date without advanced query
+    customers: newCustomersThisMonth,
     aov: aov,
   };
 
@@ -70,18 +72,16 @@ export default async function DashboardPage() {
     }
   });
 
-  // 3. Delivery Breakdown (Pie Chart)
-  // Medusa doesn't easily expose the delivery method in basic fields without shipping_methods.
-  // We'll extract it from the first shipping method if available, else fallback
-  const deliveryCounts: Record<string, number> = {};
+  // 3. Payment Method Breakdown (Pie Chart)
+  const paymentMethodCounts: Record<string, number> = {};
   allOrders.forEach(o => {
-    // try to get shipping method name, or fallback to generic
-    const method = o.shipping_methods?.[0]?.shipping_option?.name || "Standard";
-    deliveryCounts[method] = (deliveryCounts[method] || 0) + 1;
+    let method = o.payment_collections?.[0]?.payments?.[0]?.provider_id || "Non spécifié";
+    if (method === "pawapay") method = "Mobile Money (PawaPay)";
+    paymentMethodCounts[method] = (paymentMethodCounts[method] || 0) + 1;
   });
 
   const colors = ["#2A2424", "#C08A8E", "#F4EAEB", "#E5D8D8", "#A47477"];
-  const deliveryData = Object.entries(deliveryCounts).map(([name, count], i) => ({
+  const paymentMethodData = Object.entries(paymentMethodCounts).map(([name, count], i) => ({
     name,
     value: Math.round((count / Math.max(allOrders.length, 1)) * 100),
     color: colors[i % colors.length]
@@ -167,7 +167,7 @@ export default async function DashboardPage() {
   return (
     <DashboardClient 
       salesData={salesByMonth}
-      deliveryData={deliveryData}
+      paymentMethodData={paymentMethodData}
       recentOrders={recentOrders}
       urgentTasks={urgentTasks.slice(0, 5)}
       topProducts={topProducts}
