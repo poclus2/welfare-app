@@ -58,7 +58,10 @@ services:
       - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID}
       - WHATSAPP_OTP_TEMPLATE_NAME=${WHATSAPP_OTP_TEMPLATE_NAME:-otp_code}
       - WHATSAPP_API_VERSION=${WHATSAPP_API_VERSION:-v21.0}
-      - WHATSAPP_DEBUG_LOG=${WHATSAPP_DEBUG_LOG:-false}
+      # TODO: switch back to :-false once the WhatsApp Business API (WABA) is
+      # set up — until then, codes are logged by the api container instead of
+      # sent, so only someone with server log access can complete OTP signup/login.
+      - WHATSAPP_DEBUG_LOG=${WHATSAPP_DEBUG_LOG:-true}
     ports:
       - "9005:9000" # Exposes 9005 to host for Nginx to route to
     restart: unless-stopped
