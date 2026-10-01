@@ -1,6 +1,14 @@
 import { AbstractPaymentProvider } from "@medusajs/framework/utils"
-import { PaymentSessionStatus } from "@medusajs/utils"
 import crypto from "crypto"
+
+const PaymentSessionStatus = {
+  AUTHORIZED: "authorized",
+  PENDING: "pending",
+  REQUIRES_MORE: "requires_more",
+  ERROR: "error",
+  CANCELED: "canceled",
+  CAPTURED: "captured",
+}
 
 class PawapayProviderService extends AbstractPaymentProvider {
   static identifier = "pawapay"
