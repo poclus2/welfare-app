@@ -203,9 +203,12 @@ useEffect(() => {
     }
   }
 
-  const effectiveLivraisonFee = freeShipping ? 0 : livraisonFee;
-  const activeLivraisonFee = step === 1 ? 0 : effectiveLivraisonFee;
   const discountedSubtotal = Math.max(0, Number(totalAmount || 0) - Number(discountTotal || 0));
+  const freeShippingByThreshold = Boolean(
+    settingsData?.free_shipping_threshold > 0 && discountedSubtotal >= settingsData.free_shipping_threshold
+  );
+  const effectiveLivraisonFee = (freeShipping || freeShippingByThreshold) ? 0 : livraisonFee;
+  const activeLivraisonFee = step === 1 ? 0 : effectiveLivraisonFee;
   const paymentFee = (paymentMode === "pawapay" && step === 2) ? Math.round((discountedSubtotal + activeLivraisonFee) * 0.03) : 0;
   const total = discountedSubtotal + Number(activeLivraisonFee || 0) + Number(paymentFee || 0);
 
@@ -914,7 +917,7 @@ useEffect(() => {
 
                   {delivery.mode === "retrait" ? t("Retrait magasin") : t("Livraison")}
                 </span>
-                <span className={(delivery.mode === "retrait" || freeShipping) && step === 2 ? "text-emerald-600 font-semibold" : ""}>
+                <span className={(delivery.mode === "retrait" || freeShipping || freeShippingByThreshold) && step === 2 ? "text-emerald-600 font-semibold" : ""}>
                   {step === 1 ? t("à calculer") : (delivery.mode === "retrait" ? t("Gratuit") : `${effectiveLivraisonFee > 0 ? `+${formatPrice(effectiveLivraisonFee)} FCFA` : t("Gratuit")}`)}
                 </span>
               </div>
