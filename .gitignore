@@ -50,6 +50,9 @@ Odoo 16.0.20231113/
 temp_deploy/
 temp_img/
 
+# Local blog data file (production uses a mounted Docker volume at the same path)
+apps/storefront/data/
+
 # Local deploy/build debug logs and scratch files — never meant to be committed
 *.log
 *.patch

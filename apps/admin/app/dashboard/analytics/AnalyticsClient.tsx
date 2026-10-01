@@ -4,11 +4,11 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, BarChart, Bar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
+  PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from "recharts";
 import {
   ShoppingBag, Package, Store, CreditCard, Download, Activity, Target,
-  Users, Search, Truck, BrainCircuit, Heart, Map, Zap, Layers, Globe, AlertTriangle, Clock
+  Users, Search, Truck, BrainCircuit, Heart, Layers, Globe, AlertTriangle, Clock
 } from "lucide-react";
 
 function formatPrice(n: number) {
@@ -40,10 +40,9 @@ function KpiCard({ label, value, icon: Icon, sub, trend, trendColor }: any) {
 function EcommerceTab({ dailyRevenue, topProducts, kpis, ecommerceData }: any) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <KpiCard label="Chiffre d'Affaires" value={`${formatPrice(kpis.revenue30)} F`} icon={ShoppingBag} trend="" trendColor="" sub="Commandes payées" />
-        <KpiCard label="Taux de Conversion" value="3.8%" icon={Target} trend="+0.4%" trendColor="bg-emerald-50 text-emerald-600" sub="Visite -> Achat (Estimé)" />
-        <KpiCard label="Paniers Abandonnés" value="142" icon={ShoppingBag} trend="-5%" trendColor="bg-emerald-50 text-emerald-600" sub="Relances auto actives" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <KpiCard label="Chiffre d'Affaires" value={`${formatPrice(kpis.revenue30)} F`} icon={ShoppingBag} trend="" trendColor="" sub="Commandes payées (30j)" />
+        <KpiCard label="Panier Moyen" value={`${formatPrice(kpis.aov30)} F`} icon={Target} sub="30 derniers jours" />
         <KpiCard label="Précommandes Sekoria" value={ecommerceData.sekoriaPreorders.toString()} icon={Layers} sub="Produits en précommande" />
       </div>
 
@@ -68,18 +67,16 @@ function EcommerceTab({ dailyRevenue, topProducts, kpis, ecommerceData }: any) {
         </div>
 
         <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm flex flex-col">
-          <h2 className="text-sm font-bold text-[#2A2424] mb-4">Stocks Multi-Entrepôts</h2>
-          <div className="flex-1 space-y-4">
-            {ecommerceData.stockLocations.map((loc: any, i: number) => {
-              const colors = ["bg-emerald-500", "bg-amber-500", "bg-[#C08A8E]", "bg-blue-500"];
-              const color = colors[i % colors.length];
-              return (
-                <div key={i}>
-                  <div className="flex justify-between text-xs mb-1"><span className="font-semibold">{loc.name}</span><span>{loc.capacity}% cap.</span></div>
-                  <div className="w-full bg-gray-100 rounded-full h-2"><div className={`${color} h-2 rounded-full`} style={{ width: `${loc.capacity}%` }}></div></div>
-                </div>
-              );
-            })}
+          <h2 className="text-sm font-bold text-[#2A2424] mb-4">Entrepôts & Magasins</h2>
+          <div className="flex-1 space-y-2">
+            {ecommerceData.stockLocations.length > 0 ? ecommerceData.stockLocations.map((loc: any, i: number) => (
+              <div key={i} className="flex items-center gap-2 p-2.5 bg-[#F5F0EB]/50 rounded-lg">
+                <Store className="w-3.5 h-3.5 text-[#C08A8E]" />
+                <span className="text-xs font-semibold text-[#2A2424]">{loc.name}</span>
+              </div>
+            )) : (
+              <p className="text-xs text-gray-500">Aucun emplacement configuré.</p>
+            )}
           </div>
           <div className="mt-4 pt-4 border-t border-[#EDE0E0]">
             <h3 className="text-xs font-bold text-[#2A2424] mb-2">Économiseur Intelligent</h3>
@@ -120,11 +117,10 @@ function EcommerceTab({ dailyRevenue, topProducts, kpis, ecommerceData }: any) {
 function SkinCoachTab({ skinCoachData }: any) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <KpiCard label="Scans Effectués" value={skinCoachData.totalScans.toString()} icon={BrainCircuit} trend="Reel" trendColor="bg-blue-50 text-blue-600" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <KpiCard label="Scans Effectués" value={skinCoachData.totalScans.toString()} icon={BrainCircuit} trend="Réel" trendColor="bg-blue-50 text-blue-600" />
         <KpiCard label="Barrières Fragilisées" value={`${skinCoachData.barrierFragilePercentage}%`} icon={Activity} sub="Priorité Règle n°16 appliquée" />
         <KpiCard label="Détections Mélasma" value={`${skinCoachData.melasmaPercentage}%`} icon={Target} />
-        <KpiCard label="Text Bias Surveillance" value="Faible" icon={Search} trend="Optimal" trendColor="bg-emerald-50 text-emerald-600" sub="Analyse visuelle > Texte" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -150,27 +146,28 @@ function SkinCoachTab({ skinCoachData }: any) {
                 <p className="text-[10px] text-gray-500">L'IA a priorisé la réparation de la barrière cutanée avant l'exfoliation pour ces clientes.</p>
               </div>
               <div>
-                <div className="flex justify-between text-xs mb-1"><span className="font-semibold">Test des Temporalités (Text Bias)</span><span>98.2% de succès</span></div>
-                <p className="text-[10px] text-gray-500">L'IA se base sur l'image et non uniquement sur le questionnaire paresseux.</p>
-              </div>
-              <div>
-                <div className="flex justify-between text-xs mb-1"><span className="font-semibold">Marqueurs Acnéiques (Échelle GEA)</span><span>Niveaux 2 & 3 majoritaires</span></div>
+                <div className="flex justify-between text-xs mb-1"><span className="font-semibold">Méthode d'analyse</span><span>Image prioritaire</span></div>
+                <p className="text-[10px] text-gray-500">L'IA se base sur l'image et non uniquement sur le questionnaire.</p>
               </div>
             </div>
           </div>
           
           <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm">
-             <h2 className="text-sm font-bold text-[#2A2424] mb-4">Gamification & Scores de Peau (Réel)</h2>
-             <div className="flex items-center gap-4">
-               <div className="flex-1 text-center p-3 bg-amber-50 rounded-xl">
-                 <p className="text-2xl font-black text-amber-600">{skinCoachData.hydratationAvg}/100</p>
-                 <p className="text-[10px] font-bold text-amber-700">Score Hydratation Moyen</p>
+             <h2 className="text-sm font-bold text-[#2A2424] mb-4">Scores de Peau Moyens (Réel)</h2>
+             {skinCoachData.hasMetricData ? (
+               <div className="flex items-center gap-4">
+                 <div className="flex-1 text-center p-3 bg-amber-50 rounded-xl">
+                   <p className="text-2xl font-black text-amber-600">{skinCoachData.hydratationAvg ?? "—"}/100</p>
+                   <p className="text-[10px] font-bold text-amber-700">Score Hydratation Moyen</p>
+                 </div>
+                 <div className="flex-1 text-center p-3 bg-blue-50 rounded-xl">
+                   <p className="text-2xl font-black text-blue-600">{skinCoachData.sebumAvg ?? "—"}/100</p>
+                   <p className="text-[10px] font-bold text-blue-700">Taux Sébum Moyen</p>
+                 </div>
                </div>
-               <div className="flex-1 text-center p-3 bg-blue-50 rounded-xl">
-                 <p className="text-2xl font-black text-blue-600">{skinCoachData.sebumAvg}/100</p>
-                 <p className="text-[10px] font-bold text-blue-700">Taux Sébum Moyen</p>
-               </div>
-             </div>
+             ) : (
+               <p className="text-xs text-gray-500">Pas encore de scans avec métriques de peau enregistrées.</p>
+             )}
           </div>
         </div>
       </div>
@@ -204,21 +201,15 @@ function RetentionTab({ retentionData }: any) {
             </div>
          </div>
 
-         <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm">
+         <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm flex flex-col">
             <h2 className="text-sm font-bold text-[#2A2424] mb-4">Engagement Skin Diary</h2>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={[ 
-                { day: 'J+7', users: Math.floor(retentionData.skinDiaryUsersCount * 0.8) || 856 }, 
-                { day: 'J+30', users: Math.floor(retentionData.skinDiaryUsersCount * 0.6) || 642 }, 
-                { day: 'J+60', users: Math.floor(retentionData.skinDiaryUsersCount * 0.4) || 430 }, 
-                { day: 'J+90', users: Math.floor(retentionData.skinDiaryUsersCount * 0.2) || 215 } 
-              ]}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EDE0E0" />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#2A2424' }} />
-                <Tooltip cursor={{ fill: '#F5F0EB' }} contentStyle={{ borderRadius: '12px' }} />
-                <Bar dataKey="users" fill="#C08A8E" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 py-8">
+              <p className="text-3xl font-black text-[#C08A8E]">{retentionData.skinDiaryUsersCount}</p>
+              <p className="text-xs font-semibold text-[#2A2424]">utilisateurs ont fait au moins un scan</p>
+              <p className="text-[10px] text-gray-400 mt-2 max-w-[220px]">
+                Le suivi de rétention par cohorte (J+7/J+30/J+60/J+90) n'est pas encore instrumenté — à construire séparément.
+              </p>
+            </div>
          </div>
       </div>
     </motion.div>
@@ -228,11 +219,9 @@ function RetentionTab({ retentionData }: any) {
 function UxTab({ uxData }: any) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <KpiCard label="Recherches Mensuelles" value={uxData.kpis.searches.toLocaleString('fr-FR')} icon={Search} trend="Estimé" trendColor="bg-gray-100 text-gray-600" />
-        <KpiCard label="Sans Résultat" value={`${uxData.kpis.noResults}%`} icon={AlertTriangle} trend="Optimisé" trendColor="bg-emerald-50 text-emerald-600" sub="Moteur de découverte activé" />
-        <KpiCard label="Latence Edge (TTFB)" value={`${uxData.kpis.ttfb}ms`} icon={Zap} trend="-12ms" trendColor="bg-emerald-50 text-emerald-600" sub="Nœuds: Dakar, Abidjan" />
-        <KpiCard label="Vues Learning Center" value={`${(uxData.kpis.learningViews / 1000).toFixed(1)}k`} icon={BrainCircuit} sub="Trafic redirigé" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <KpiCard label="Recherches Enregistrées" value={uxData.kpis.searches.toLocaleString('fr-FR')} icon={Search} trend="Réel" trendColor="bg-emerald-50 text-emerald-600" />
+        <KpiCard label="Sans Résultat" value={`${uxData.kpis.noResults}%`} icon={AlertTriangle} sub="Part des recherches à 0 résultat" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -255,6 +244,12 @@ function UxTab({ uxData }: any) {
                 <div className="flex justify-between text-xs mb-1"><span className="font-semibold">Autres (USD/GBP)</span><span>{uxData.regionPercentages.other}%</span></div>
                 <div className="w-full bg-gray-100 rounded-full h-2"><div className="bg-gray-500 h-2 rounded-full" style={{ width: `${uxData.regionPercentages.other}%` }}></div></div>
               </div>
+              {uxData.regionPercentages.unknown > 0 && (
+                <div>
+                  <div className="flex justify-between text-xs mb-1"><span className="font-semibold text-gray-400">Non renseigné</span><span>{uxData.regionPercentages.unknown}%</span></div>
+                  <div className="w-full bg-gray-100 rounded-full h-2"><div className="bg-gray-300 h-2 rounded-full" style={{ width: `${uxData.regionPercentages.unknown}%` }}></div></div>
+                </div>
+              )}
             </div>
          </div>
          
@@ -262,12 +257,14 @@ function UxTab({ uxData }: any) {
             <div>
               <h2 className="text-sm font-bold text-[#2A2424] mb-3">Top Termes Recherchés</h2>
               <div className="space-y-2">
-                {uxData.topSearches.slice(0,5).map((s: any, i: number) => (
+                {uxData.topSearches.length > 0 ? uxData.topSearches.slice(0,5).map((s: any, i: number) => (
                   <div key={i} className="flex justify-between items-center p-2 bg-[#F5F0EB]/50 rounded-lg">
                     <span className="text-xs font-semibold text-[#2A2424] capitalize">{s.term}</span>
                     <span className="text-[10px] font-bold text-[#C08A8E]">{s.count} fois</span>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-xs text-gray-500">Aucune recherche enregistrée pour le moment.</p>
+                )}
               </div>
             </div>
             
@@ -276,14 +273,16 @@ function UxTab({ uxData }: any) {
                 <h2 className="text-sm font-bold text-[#2A2424]">Top Requêtes Perdues</h2>
                 <span className="text-[9px] px-2 py-0.5 rounded-full bg-red-50 text-red-600 font-bold">0 Résultat</span>
               </div>
-              <p className="text-[10px] text-gray-500 mb-3 leading-tight">Opportunités de sourcing. L'IA a intercepté ces recherches pour proposer un scan de peau.</p>
+              <p className="text-[10px] text-gray-500 mb-3 leading-tight">Opportunités de sourcing : termes recherchés sans résultat.</p>
               <div className="space-y-2">
-                {uxData.topLostSearches.slice(0,5).map((s: any, i: number) => (
+                {uxData.topLostSearches.length > 0 ? uxData.topLostSearches.slice(0,5).map((s: any, i: number) => (
                   <div key={i} className="flex justify-between items-center p-2 bg-red-50/50 rounded-lg border border-red-100/50">
                     <span className="text-xs font-semibold text-[#2A2424] capitalize">{s.term}</span>
                     <span className="text-[10px] font-bold text-red-500">{s.count} fois</span>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-xs text-gray-500">Aucune recherche sans résultat pour le moment.</p>
+                )}
               </div>
             </div>
          </div>
@@ -292,35 +291,35 @@ function UxTab({ uxData }: any) {
   );
 }
 
-function LogisticsTab({ paymentData }: any) {
-  const fulfillmentData = [
-    { name: 'Non Traité', value: 15, color: '#f59e0b' },
-    { name: 'En Préparation', value: 45, color: '#3b82f6' },
-    { name: 'Expédié', value: 120, color: '#10b981' },
-  ];
+function LogisticsTab({ paymentData, logisticsData }: any) {
+  const fulfillmentData = logisticsData?.fulfillmentData || [];
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <KpiCard label="Temps de Préparation" value="4h 12m" icon={Clock} trend="-45m" trendColor="bg-emerald-50 text-emerald-600" />
-        <KpiCard label="Suivi Actif (Tracking)" value="92%" icon={Map} sub="Commandes avec lien transporteur" />
-        <KpiCard label="Commandes Expédiées" value="84%" icon={Truck} sub="Sur les 7 derniers jours" />
-        <KpiCard label="Retours / Anomalies" value="1.2%" icon={AlertTriangle} trend="Stable" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <KpiCard label="Commandes Expédiées / Livrées" value={`${logisticsData?.shippedRate ?? 0}%`} icon={Truck} trend="Réel" trendColor="bg-emerald-50 text-emerald-600" sub="Sur toutes les commandes valides" />
+        <KpiCard label="Total Commandes" value={(logisticsData?.totalOrders ?? 0).toString()} icon={Package} />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
          <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm flex flex-col items-center">
             <h2 className="text-sm font-bold text-[#2A2424] mb-6 w-full text-left">Statuts de Préparation (Fulfillment)</h2>
-            <PieChart width={220} height={220}>
-              <Pie data={fulfillmentData} cx={110} cy={110} innerRadius={60} outerRadius={90} paddingAngle={2} dataKey="value" strokeWidth={0}>
-                {fulfillmentData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-              </Pie>
-              <Tooltip contentStyle={{ borderRadius: '12px', fontSize: '12px' }} />
-            </PieChart>
-            <div className="flex flex-wrap justify-center gap-4 mt-4">
-              {fulfillmentData.map(d => (
-                <div key={d.name} className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full" style={{ background: d.color }} /><span className="text-xs font-semibold">{d.name}</span></div>
-              ))}
-            </div>
+            {fulfillmentData.length > 0 ? (
+              <>
+                <PieChart width={220} height={220}>
+                  <Pie data={fulfillmentData} cx={110} cy={110} innerRadius={60} outerRadius={90} paddingAngle={2} dataKey="value" strokeWidth={0}>
+                    {fulfillmentData.map((entry: any, i: number) => <Cell key={i} fill={entry.color} />)}
+                  </Pie>
+                  <Tooltip contentStyle={{ borderRadius: '12px', fontSize: '12px' }} />
+                </PieChart>
+                <div className="flex flex-wrap justify-center gap-4 mt-4">
+                  {fulfillmentData.map((d: any) => (
+                    <div key={d.name} className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full" style={{ background: d.color }} /><span className="text-xs font-semibold">{d.name} ({d.value})</span></div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-gray-500 py-16">Aucune commande pour le moment.</p>
+            )}
          </div>
 
          <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm">
@@ -354,22 +353,40 @@ function TrafficBehaviorTab() {
   const [regionData, setRegionData] = useState<any[]>([]);
   const [stats, setStats] = useState({ pageviews: 0, uniqueVisitors: 0 });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     fetch('/api/posthog')
       .then(res => res.json())
       .then(data => {
+        if (data.error) throw new Error(data.error);
         if (data.trafficData) setTrafficData(data.trafficData);
         if (data.deviceData) setDeviceData(data.deviceData);
         if (data.regionData) setRegionData(data.regionData);
         setStats({ pageviews: data.pageviews || 0, uniqueVisitors: data.uniqueVisitors || 0 });
-        setLoading(false);
       })
       .catch(err => {
         console.error(err);
-        setLoading(false);
-      });
+        setError(true);
+      })
+      .finally(() => setLoading(false));
   }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-48">
+        <div className="w-6 h-6 border-2 border-[#C08A8E] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 text-red-600 text-sm font-medium px-4 py-3 rounded-xl">
+        Impossible de charger les données PostHog. Vérifiez la configuration de l'intégration analytics.
+      </div>
+    );
+  }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
@@ -451,30 +468,11 @@ function TrafficBehaviorTab() {
 
         {/* Page Flow */}
         <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm">
-          <h2 className="text-sm font-bold text-[#2A2424] mb-4">Parcours Utilisateur Populaire</h2>
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-[#F5F0EB] flex items-center justify-center text-[#2A2424] font-bold text-xs shrink-0">1</div>
-              <div className="flex-1 bg-gray-50 border border-gray-100 p-3 rounded-xl">
-                <p className="text-xs font-bold">Page d'Accueil</p>
-                <p className="text-[10px] text-gray-500">100% du trafic entrant</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-[#C08A8E]/10 flex items-center justify-center text-[#C08A8E] font-bold text-xs shrink-0">2</div>
-              <div className="flex-1 bg-gray-50 border border-gray-100 p-3 rounded-xl relative">
-                <p className="text-xs font-bold text-[#C08A8E]">Skin Coach IA (Scan)</p>
-                <p className="text-[10px] text-gray-500">68% de conversion vers le scan</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold text-xs shrink-0">3</div>
-              <div className="flex-1 bg-gray-50 border border-gray-100 p-3 rounded-xl">
-                <p className="text-xs font-bold text-emerald-600">Ajout au Panier (Routine complète)</p>
-                <p className="text-[10px] text-gray-500">42% ajoutent la recommandation</p>
-              </div>
-            </div>
-          </div>
+          <h2 className="text-sm font-bold text-[#2A2424] mb-4">Parcours Utilisateur</h2>
+          <p className="text-xs text-gray-500">
+            Le suivi d'entonnoir (Accueil → Skin Coach → Panier) n'est pas encore instrumenté dans PostHog —
+            à configurer pour afficher les taux de conversion réels entre ces étapes.
+          </p>
         </div>
       </div>
     </motion.div>
@@ -484,7 +482,7 @@ function TrafficBehaviorTab() {
 // --- Main Container ---
 
 export default function AnalyticsClient({
-  dailyRevenue, topProducts, paymentData, kpis, ecommerceData, skinCoachData, retentionData, uxData
+  dailyRevenue, topProducts, paymentData, kpis, ecommerceData, skinCoachData, retentionData, uxData, logisticsData
 }: any) {
   const [activeTab, setActiveTab] = useState("retention");
 
@@ -531,7 +529,7 @@ export default function AnalyticsClient({
         {activeTab === "retention" && <RetentionTab key="ret" retentionData={retentionData} />}
         {activeTab === "traffic" && <TrafficBehaviorTab key="traffic" />}
         {activeTab === "ux" && <UxTab key="ux" uxData={uxData} />}
-        {activeTab === "logistics" && <LogisticsTab key="log" paymentData={paymentData} />}
+        {activeTab === "logistics" && <LogisticsTab key="log" paymentData={paymentData} logisticsData={logisticsData} />}
       </AnimatePresence>
     </div>
   );

@@ -69,6 +69,10 @@ export default function OrderDetailClient({ order }: { order: Order }) {
   const [showShipModal, setShowShipModal] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState("");
   const [carrierName, setCarrierName] = useState("");
+  const [isRefunding, setIsRefunding] = useState(false);
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundReason, setRefundReason] = useState("");
   
   // Selected fulfillment to ship
   const [selectedFulfillmentId, setSelectedFulfillmentId] = useState<string | null>(null);
@@ -84,6 +88,28 @@ export default function OrderDetailClient({ order }: { order: Order }) {
     setIsCapturing(false);
     if (res.success) {
       alert("✅ Paiement capturé avec succès !");
+    } else {
+      alert(`❌ Erreur: ${res.error}`);
+    }
+  };
+
+  const openRefundModal = () => {
+    setRefundAmount(String(order.amount));
+    setRefundReason("");
+    setShowRefundModal(true);
+  };
+
+  const handleRefund = async () => {
+    if (!paymentId) return alert("Aucun paiement trouvé pour cette commande.");
+    const amount = Number(refundAmount);
+    if (!amount || amount <= 0) return alert("Montant invalide.");
+    if (amount > order.amount) return alert(`Le montant ne peut pas dépasser le total de la commande (${formatPrice(order.amount)} FCFA).`);
+    setIsRefunding(true);
+    const res = await refundPaymentAction(paymentId, order.rawId, amount, refundReason || "Remboursement demandé par l'administrateur");
+    setIsRefunding(false);
+    if (res.success) {
+      setShowRefundModal(false);
+      alert("↩️ Remboursement effectué avec succès !");
     } else {
       alert(`❌ Erreur: ${res.error}`);
     }
@@ -300,7 +326,14 @@ export default function OrderDetailClient({ order }: { order: Order }) {
                   Marquer comme payé
                 </button>
               ) : null}
-              {/* Le remboursement pourrait ouvrir une modale ici */}
+              {(order.payment_status === "captured" || order.payment_status === "paid") && paymentId && (
+                <button
+                  onClick={openRefundModal}
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-red-200 text-red-600 rounded-xl text-sm font-bold hover:bg-red-50 transition-colors"
+                >
+                  Rembourser
+                </button>
+              )}
             </div>
           </div>
 
@@ -478,6 +511,56 @@ export default function OrderDetailClient({ order }: { order: Order }) {
                 className="flex-1 flex items-center justify-center py-3 bg-purple-600 text-white rounded-xl font-bold text-sm hover:bg-purple-700 disabled:opacity-50"
               >
                 {isShipping ? <Loader2 className="w-4 h-4 animate-spin" /> : "Expédier"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Refund Modal */}
+      {showRefundModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-[#2A2424] mb-2">Rembourser la commande</h3>
+            <p className="text-sm text-[#2A2424]/60 mb-6">Cette action rembourse le client via le fournisseur de paiement. Elle est irréversible.</p>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-xs font-bold text-[#2A2424]/60 uppercase tracking-widest mb-1.5">Montant (FCFA)</label>
+                <input
+                  type="number"
+                  value={refundAmount}
+                  onChange={e => setRefundAmount(e.target.value)}
+                  max={order.amount}
+                  min={1}
+                  className="w-full bg-[#F5F0EB] border-none rounded-xl p-3 outline-none text-sm font-medium"
+                />
+                <p className="text-[11px] text-[#2A2424]/40 mt-1">Maximum : {formatPrice(order.amount)} FCFA</p>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-[#2A2424]/60 uppercase tracking-widest mb-1.5">Motif</label>
+                <input
+                  type="text"
+                  value={refundReason}
+                  onChange={e => setRefundReason(e.target.value)}
+                  placeholder="Ex: Article retourné, commande annulée..."
+                  className="w-full bg-[#F5F0EB] border-none rounded-xl p-3 outline-none text-sm font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowRefundModal(false)}
+                className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleRefund}
+                disabled={isRefunding}
+                className="flex-1 flex items-center justify-center py-3 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 disabled:opacity-50"
+              >
+                {isRefunding ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmer le remboursement"}
               </button>
             </div>
           </div>

@@ -48,7 +48,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 export async function PUT(request: NextRequest, context: RouteContext) {
   const adminKey = request.headers.get("x-admin-key");
-  if (adminKey !== (process.env.ADMIN_BLOG_KEY || "welfare-admin-2024")) {
+  if (!process.env.ADMIN_BLOG_KEY || adminKey !== process.env.ADMIN_BLOG_KEY) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -75,7 +75,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
 export async function DELETE(request: NextRequest, context: RouteContext) {
   const adminKey = request.headers.get("x-admin-key");
-  if (adminKey !== (process.env.ADMIN_BLOG_KEY || "welfare-admin-2024")) {
+  if (!process.env.ADMIN_BLOG_KEY || adminKey !== process.env.ADMIN_BLOG_KEY) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

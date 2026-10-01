@@ -21,8 +21,25 @@ type BlogPost = {
 };
 
 const CATEGORIES = ["Skincare", "Nutrition", "Tendances", "Routine", "Ingrédients", "Conseils"];
-const STOREFRONT_URL = process.env.NEXT_PUBLIC_STOREFRONT_URL || "";
-const ADMIN_KEY = "welfare-admin-2024";
+
+// Escapes any raw HTML the author typed BEFORE the markdown rules below add
+// their own well-formed tags, so pasted/typed <script>, onerror=, etc. never
+// reach dangerouslySetInnerHTML as live markup.
+function escapeHtml(str: string) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function markdownToHtml(content: string) {
+  return escapeHtml(content)
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/^(?!<(?:h2|h3|li|blockquote)>).+/gm, (line: string) => line.trim() ? `<p>${line}</p>` : '');
+}
 
 function generateSlug(title: string) {
   return title
@@ -51,14 +68,18 @@ export default function ArticleEditor({ postId }: { postId?: string }) {
     tags: [],
   });
 
+  const [loadError, setLoadError] = useState("");
+
   useEffect(() => {
     if (isEdit && postId) {
-      fetch(`${STOREFRONT_URL}/api/blog/${postId}`, {
-        headers: { "x-admin-key": ADMIN_KEY },
-      }).then(r => r.json()).then(data => {
-        setForm(data);
-        setTagInput(data.tags?.join(", ") || "");
-      });
+      fetch(`/api/blog/${postId}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) throw new Error(data.error);
+          setForm(data);
+          setTagInput(data.tags?.join(", ") || "");
+        })
+        .catch((e) => setLoadError(e.message || "Impossible de charger l'article."));
     }
   }, [isEdit, postId]);
 
@@ -73,19 +94,20 @@ export default function ArticleEditor({ postId }: { postId?: string }) {
       const readingTime = Math.max(1, Math.ceil(form.content.split(" ").length / 200));
       const payload = { ...form, slug, tags, readingTime, published: publish !== undefined ? publish : form.published };
 
-      const url = isEdit ? `${STOREFRONT_URL}/api/blog/${postId}` : `${STOREFRONT_URL}/api/blog`;
+      const url = isEdit ? `/api/blog/${postId}` : `/api/blog`;
       const method = isEdit ? "PUT" : "POST";
 
       const res = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json", "x-admin-key": ADMIN_KEY },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       if (res.ok) {
         router.push("/dashboard/blog");
       } else {
-        alert("Erreur lors de la sauvegarde.");
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || "Erreur lors de la sauvegarde.");
       }
     } finally {
       setSaving(false);
@@ -138,6 +160,14 @@ export default function ArticleEditor({ postId }: { postId?: string }) {
         </div>
       </div>
 
+      {loadError && (
+        <div className="max-w-6xl mx-auto px-6 pt-6">
+          <div className="bg-red-50 border border-red-200 text-red-600 text-sm font-medium px-4 py-3 rounded-xl">
+            {loadError}
+          </div>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
         {/* Main Editor / Preview */}
         <div className="space-y-4">
@@ -172,16 +202,7 @@ export default function ArticleEditor({ postId }: { postId?: string }) {
               {form.coverImage && (
                 <img src={form.coverImage} alt="" className="w-full rounded-xl mb-8 object-cover max-h-72" />
               )}
-              <div dangerouslySetInnerHTML={{ __html: form.content
-                .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-                .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.+?)\*/g, '<em>$1</em>')
-                .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
-                .replace(/^- (.+)$/gm, '<li>$1</li>')
-                .replace(/\n\n/g, '</p><p>')
-                .replace(/^(?!<[h2h3lbp]).+/gm, (line: string) => line.trim() ? `<p>${line}</p>` : '')
-              }} />
+              <div dangerouslySetInnerHTML={{ __html: markdownToHtml(form.content) }} />
             </motion.div>
           ) : (
             /* Markdown Editor */

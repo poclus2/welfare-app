@@ -95,20 +95,49 @@ export default async function AnalyticsPage() {
   const ecommerceData = {
     sekoriaPreorders,
     smartSaverUses,
-    stockLocations: stockLocations.length > 0 ? stockLocations.map((loc: any) => ({
-      name: loc.name,
-      capacity: Math.floor(Math.random() * 40) + 40
-    })) : [
-      { name: 'Boutique Dakar', capacity: 65 },
-      { name: 'Entrepôt Ziguinchor', capacity: 82 },
-      { name: 'Boutique Abidjan', capacity: 30 }
-    ]
+    // Real location names only — there is no actual warehouse-capacity tracking
+    // anywhere in the system, so we no longer fabricate a "% capacity" gauge.
+    stockLocations: stockLocations.map((loc: any) => ({ name: loc.name })),
   };
 
   const kpis = { revenue30: realTotalRev30, orders30: realTotalOrders30, aov30: aov30 };
 
+  // --- Real fulfillment breakdown (Logistique tab) — computed from actual
+  // order.fulfillment_status instead of a hardcoded fake pie chart.
+  const fulfillmentCounts: Record<string, number> = {};
+  validOrders.forEach(o => {
+    const status = o.fulfillment_status || "not_fulfilled";
+    fulfillmentCounts[status] = (fulfillmentCounts[status] || 0) + 1;
+  });
+  const FULFILLMENT_LABELS: Record<string, { label: string; color: string }> = {
+    not_fulfilled: { label: "Non Traité", color: "#f59e0b" },
+    partially_fulfilled: { label: "Part. Traité", color: "#f59e0b" },
+    fulfilled: { label: "Prêt (Expédition créée)", color: "#3b82f6" },
+    partially_shipped: { label: "Part. Expédié", color: "#8b5cf6" },
+    shipped: { label: "Expédié", color: "#10b981" },
+    delivered: { label: "Livré", color: "#10b981" },
+    canceled: { label: "Annulé", color: "#ef4444" },
+  };
+  const fulfillmentData = Object.entries(fulfillmentCounts).map(([status, value]) => ({
+    name: FULFILLMENT_LABELS[status]?.label || status,
+    value,
+    color: FULFILLMENT_LABELS[status]?.color || "#64748b",
+  }));
+  const shippedOrDelivered = (fulfillmentCounts.shipped || 0) + (fulfillmentCounts.delivered || 0);
+  const shippedRate = validOrders.length > 0 ? Math.round((shippedOrDelivered / validOrders.length) * 100) : 0;
+
+  const logisticsData = { fulfillmentData, shippedRate, totalOrders: validOrders.length };
+
   // --- 2. SKIN COACH ---
-  let hydratationTotal = 0, sebumTotal = 0, pigmentationTotal = 0, ridesTotal = 0, sensibiliteTotal = 0;
+  // Only averaged over scans that actually recorded each metric — no more
+  // Math.random() filling in for missing data and presenting it as "(Réel)".
+  const metricSums: Record<string, { total: number; count: number }> = {
+    hydratation: { total: 0, count: 0 },
+    sebum: { total: 0, count: 0 },
+    pigmentation: { total: 0, count: 0 },
+    rides: { total: 0, count: 0 },
+    sensibilite: { total: 0, count: 0 },
+  };
   let barrierFragileCount = 0;
   let melasmaCount = 0;
   let rule16Applied = 0;
@@ -116,11 +145,12 @@ export default async function AnalyticsPage() {
 
   skinScans.forEach(scan => {
     const metrics = scan.metrics || {};
-    hydratationTotal += metrics.hydratation || Math.floor(Math.random() * 40 + 40);
-    sebumTotal += metrics.sebum || Math.floor(Math.random() * 40 + 40);
-    pigmentationTotal += metrics.pigmentation || Math.floor(Math.random() * 40 + 40);
-    ridesTotal += metrics.rides || Math.floor(Math.random() * 40 + 20);
-    sensibiliteTotal += metrics.sensibilite || Math.floor(Math.random() * 40 + 30);
+    for (const key of Object.keys(metricSums)) {
+      if (typeof metrics[key] === "number") {
+        metricSums[key].total += metrics[key];
+        metricSums[key].count += 1;
+      }
+    }
 
     const concernsStr = JSON.stringify(scan.concerns || "").toLowerCase();
     const typeStr = (scan.final_skin_type || "").toLowerCase();
@@ -133,26 +163,28 @@ export default async function AnalyticsPage() {
     }
   });
 
-  const avgH = totalScans ? Math.round(hydratationTotal / totalScans) : 85;
-  const avgS = totalScans ? Math.round(sebumTotal / totalScans) : 65;
-  const avgP = totalScans ? Math.round(pigmentationTotal / totalScans) : 45;
-  const avgR = totalScans ? Math.round(ridesTotal / totalScans) : 30;
-  const avgSens = totalScans ? Math.round(sensibiliteTotal / totalScans) : 70;
+  const avg = (key: string) => metricSums[key].count ? Math.round(metricSums[key].total / metricSums[key].count) : null;
+  const avgH = avg("hydratation");
+  const avgS = avg("sebum");
+  const avgP = avg("pigmentation");
+  const avgR = avg("rides");
+  const avgSens = avg("sensibilite");
 
   const skinCoachData = {
     totalScans,
-    barrierFragilePercentage: totalScans ? Math.round((barrierFragileCount / totalScans) * 100) : 42,
-    melasmaPercentage: totalScans ? Math.round((melasmaCount / totalScans) * 100) : 18,
-    rule16Applied: totalScans ? rule16Applied : 845,
+    barrierFragilePercentage: totalScans ? Math.round((barrierFragileCount / totalScans) * 100) : 0,
+    melasmaPercentage: totalScans ? Math.round((melasmaCount / totalScans) * 100) : 0,
+    rule16Applied,
     radar: [
-      { subject: 'Hydratation', A: avgH, fullMark: 100 },
-      { subject: 'Sébum', A: avgS, fullMark: 100 },
-      { subject: 'Pigmentation', A: avgP, fullMark: 100 },
-      { subject: 'Rides fines', A: avgR, fullMark: 100 },
-      { subject: 'Sensibilité', A: avgSens, fullMark: 100 },
+      { subject: 'Hydratation', A: avgH ?? 0, fullMark: 100 },
+      { subject: 'Sébum', A: avgS ?? 0, fullMark: 100 },
+      { subject: 'Pigmentation', A: avgP ?? 0, fullMark: 100 },
+      { subject: 'Rides fines', A: avgR ?? 0, fullMark: 100 },
+      { subject: 'Sensibilité', A: avgSens ?? 0, fullMark: 100 },
     ],
     hydratationAvg: avgH,
-    sebumAvg: avgS
+    sebumAvg: avgS,
+    hasMetricData: metricSums.hydratation.count > 0 || metricSums.sebum.count > 0,
   };
 
   // --- 3. RÉTENTION & FIDÉLITÉ ---
@@ -204,11 +236,13 @@ export default async function AnalyticsPage() {
   };
 
   // --- 4. UX & INTELLIGENCE ---
-  const regionCount = { SN: 0, CI: 0, FR: 0, OTHER: 0 };
+  const regionCount = { SN: 0, CI: 0, FR: 0, OTHER: 0, UNKNOWN: 0 };
   let totalOrdersWithRegion = 0;
   validOrders.forEach(o => {
-    const code = (o.shipping_address?.country_code || o.billing_address?.country_code || "sn").toLowerCase();
+    const rawCode = o.shipping_address?.country_code || o.billing_address?.country_code;
     totalOrdersWithRegion++;
+    if (!rawCode) { regionCount.UNKNOWN++; return; }
+    const code = rawCode.toLowerCase();
     if (code === "sn") regionCount.SN++;
     else if (code === "ci") regionCount.CI++;
     else if (code === "fr") regionCount.FR++;
@@ -238,26 +272,6 @@ export default async function AnalyticsPage() {
     .slice(0, 10)
     .map(([term, count]) => ({ term, count }));
 
-  // Fallback data if DB is empty just for demo purposes (so the user sees something nice immediately)
-  if (topSearches.length === 0) {
-    topSearches.push(
-      { term: "sérum anti-taches", count: 342 },
-      { term: "crème hydratante", count: 215 },
-      { term: "vitamine c", count: 189 },
-      { term: "nettoyant doux", count: 145 },
-      { term: "sekoria", count: 112 }
-    );
-  }
-  if (topLostSearches.length === 0) {
-    topLostSearches.push(
-      { term: "acide glycolique the ordinary", count: 89 },
-      { term: "savon eclaircissant", count: 54 },
-      { term: "niacinamide paula choice", count: 42 },
-      { term: "lotion tonique", count: 38 },
-      { term: "écran solaire la roche posay", count: 25 }
-    );
-  }
-
   const noResultsCount = searchLogs.filter(log => log.results_count === 0).length;
   const totalRealSearches = searchLogs.length;
 
@@ -265,21 +279,20 @@ export default async function AnalyticsPage() {
     topSearches,
     topLostSearches,
     regionPercentages: {
-      sn: totalOrdersWithRegion ? Math.round((regionCount.SN / totalOrdersWithRegion) * 100) : 55,
-      ci: totalOrdersWithRegion ? Math.round((regionCount.CI / totalOrdersWithRegion) * 100) : 30,
-      fr: totalOrdersWithRegion ? Math.round((regionCount.FR / totalOrdersWithRegion) * 100) : 10,
-      other: totalOrdersWithRegion ? Math.round((regionCount.OTHER / totalOrdersWithRegion) * 100) : 5,
+      sn: totalOrdersWithRegion ? Math.round((regionCount.SN / totalOrdersWithRegion) * 100) : 0,
+      ci: totalOrdersWithRegion ? Math.round((regionCount.CI / totalOrdersWithRegion) * 100) : 0,
+      fr: totalOrdersWithRegion ? Math.round((regionCount.FR / totalOrdersWithRegion) * 100) : 0,
+      other: totalOrdersWithRegion ? Math.round((regionCount.OTHER / totalOrdersWithRegion) * 100) : 0,
+      unknown: totalOrdersWithRegion ? Math.round((regionCount.UNKNOWN / totalOrdersWithRegion) * 100) : 0,
     },
     kpis: {
-      searches: totalRealSearches > 0 ? totalRealSearches : (realTotalOrders30 || 150) * 24,
-      noResults: totalRealSearches > 0 ? ((noResultsCount / totalRealSearches) * 100).toFixed(1) : 4.2,
-      ttfb: 110 + (Math.floor((realTotalOrders30 || 50) / 10)),
-      learningViews: totalScans * 14
+      searches: totalRealSearches,
+      noResults: totalRealSearches > 0 ? Number(((noResultsCount / totalRealSearches) * 100).toFixed(1)) : 0,
     }
   };
 
   return (
-    <AnalyticsClient 
+    <AnalyticsClient
       dailyRevenue={dailyRevenue}
       topProducts={topProducts}
       paymentData={paymentData}
@@ -288,6 +301,7 @@ export default async function AnalyticsPage() {
       skinCoachData={skinCoachData}
       retentionData={retentionData}
       uxData={uxData}
+      logisticsData={logisticsData}
     />
   );
 }

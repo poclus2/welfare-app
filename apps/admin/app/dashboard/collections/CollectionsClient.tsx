@@ -80,7 +80,7 @@ export function CollectionsClient() {
   };
 
   const handleDelete = async (col: any) => {
-    const productCount = col.products?.length || 0;
+    const productCount = col.metadata?.product_count || 0;
     const warning = productCount > 0
       ? `Cette marque est encore rattachée à ${productCount} produit${productCount > 1 ? "s" : ""}. Les supprimer de cette marque ne les supprime pas du catalogue, mais ils n'auront plus de marque associée. Continuer ?`
       : "Êtes-vous sûr de vouloir supprimer cette marque/collection ?";
@@ -160,7 +160,7 @@ export function CollectionsClient() {
                     <td className="p-4 text-sm text-gray-500">{col.handle}</td>
                     <td className="p-4 text-sm text-gray-500">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        {col.products?.length || 0}
+                        {col.metadata?.product_count ?? 0}
                       </span>
                     </td>
                     <td className="p-4 text-sm text-gray-500">

@@ -23,9 +23,6 @@ type BlogPost = {
   coverImage: string;
 };
 
-const STOREFRONT_URL = process.env.NEXT_PUBLIC_STOREFRONT_URL || "";
-const ADMIN_KEY = "welfare-admin-2024";
-
 const CATEGORIES = ["Tous", "Skincare", "Nutrition", "Tendances", "Routine", "Ingrédients", "Conseils"];
 
 function formatDate(dateStr: string) {
@@ -40,20 +37,19 @@ export default function BlogClient() {
   const [filterStatus, setFilterStatus] = useState<"all" | "published" | "draft">("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState("");
 
   const fetchPosts = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${STOREFRONT_URL}/api/blog?all=true`, {
-        headers: { "x-admin-key": ADMIN_KEY },
-        cache: "no-store",
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setPosts(data);
-      }
-    } catch (e) {
+      setActionError("");
+      const res = await fetch(`/api/blog?all=true`, { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur de chargement");
+      setPosts(data);
+    } catch (e: any) {
       console.error(e);
+      setActionError(e.message || "Impossible de charger les articles.");
     } finally {
       setLoading(false);
     }
@@ -63,25 +59,32 @@ export default function BlogClient() {
 
   const togglePublish = async (post: BlogPost) => {
     setTogglingId(post.id);
+    setActionError("");
     try {
-      await fetch(`${STOREFRONT_URL}/api/blog/${post.id}`, {
+      const res = await fetch(`/api/blog/${post.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", "x-admin-key": ADMIN_KEY },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...post, published: !post.published }),
       });
+      if (!res.ok) throw new Error("Échec de la mise à jour du statut.");
       setPosts(prev => prev.map(p => p.id === post.id ? { ...p, published: !p.published } : p));
+    } catch (e: any) {
+      console.error(e);
+      setActionError(e.message);
     } finally {
       setTogglingId(null);
     }
   };
 
   const deletePost = async (id: string) => {
+    setActionError("");
     try {
-      await fetch(`${STOREFRONT_URL}/api/blog/${id}`, {
-        method: "DELETE",
-        headers: { "x-admin-key": ADMIN_KEY },
-      });
+      const res = await fetch(`/api/blog/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Échec de la suppression de l'article.");
       setPosts(prev => prev.filter(p => p.id !== id));
+    } catch (e: any) {
+      console.error(e);
+      setActionError(e.message);
     } finally {
       setDeleteId(null);
     }
@@ -110,6 +113,12 @@ export default function BlogClient() {
           Nouvel article
         </Link>
       </div>
+
+      {actionError && (
+        <div className="bg-red-50 border border-red-200 text-red-600 text-sm font-medium px-4 py-3 rounded-xl">
+          {actionError}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-white border border-[#EDE0E0] rounded-2xl p-4 flex flex-wrap gap-3">

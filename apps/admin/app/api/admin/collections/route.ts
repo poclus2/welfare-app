@@ -11,8 +11,11 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const limit = searchParams.get("limit") || "100";
 
+    // metadata.product_count is kept up to date by the collection-product-count-sync
+    // subscriber — reading it here avoids expanding *products (full product objects)
+    // on every page load just to compute a count.
     const data = await fetchAdmin<{ collections: any[]; count: number }>(
-      `/collections?limit=${limit}&fields=*products`,
+      `/collections?limit=${limit}&fields=*,metadata`,
       token
     );
 

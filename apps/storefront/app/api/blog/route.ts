@@ -41,7 +41,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const all = searchParams.get("all") === "true";
   const adminKey = request.headers.get("x-admin-key");
-  const isAdmin = adminKey === (process.env.ADMIN_BLOG_KEY || "welfare-admin-2024");
+  const isAdmin = !!process.env.ADMIN_BLOG_KEY && adminKey === process.env.ADMIN_BLOG_KEY;
 
   const posts = readPosts();
   const result = (all && isAdmin) ? posts : posts.filter(p => p.published);
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const adminKey = request.headers.get("x-admin-key");
-  if (adminKey !== (process.env.ADMIN_BLOG_KEY || "welfare-admin-2024")) {
+  if (!process.env.ADMIN_BLOG_KEY || adminKey !== process.env.ADMIN_BLOG_KEY) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

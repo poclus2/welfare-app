@@ -32,18 +32,26 @@ function formatDate(dateStr: string) {
   });
 }
 
+// Escapes any raw HTML the author typed BEFORE the markdown rules below add
+// their own well-formed tags, so <script>, onerror=, etc. typed into an
+// article's content never reach dangerouslySetInnerHTML as live markup on
+// this public page.
+function escapeHtml(str: string) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 // Simple markdown to HTML converter
 function renderMarkdown(content: string): string {
-  return content
+  return escapeHtml(content)
     .replace(/^### (.+)$/gm, '<h3 class="text-xl font-bold text-[#2A2424] mt-8 mb-3" style="letter-spacing:-0.01em">$1</h3>')
     .replace(/^## (.+)$/gm, '<h2 class="text-2xl font-bold text-[#2A2424] mt-10 mb-4" style="letter-spacing:-0.02em">$1</h2>')
     .replace(/^# (.+)$/gm, '<h1 class="text-3xl font-bold text-[#2A2424] mt-12 mb-5" style="letter-spacing:-0.02em">$1</h1>')
     .replace(/\*\*(.+?)\*\*/g, '<strong class="font-bold text-[#2A2424]">$1</strong>')
     .replace(/\*(.+?)\*/g, '<em class="italic">$1</em>')
-    .replace(/^> (.+)$/gm, '<blockquote class="border-l-4 border-[#E5B6B9] pl-5 py-1 my-6 italic text-[#2A2424]/70 bg-[#F4EAEB]/30 rounded-r-xl">$1</blockquote>')
+    .replace(/^&gt; (.+)$/gm, '<blockquote class="border-l-4 border-[#E5B6B9] pl-5 py-1 my-6 italic text-[#2A2424]/70 bg-[#F4EAEB]/30 rounded-r-xl">$1</blockquote>')
     .replace(/^- (.+)$/gm, '<li class="flex items-start gap-2 mb-2"><span class="w-1.5 h-1.5 rounded-full bg-[#E5B6B9] mt-2 shrink-0"></span><span>$1</span></li>')
     .replace(/(<li.*<\/li>\n?)+/g, (match) => `<ul class="space-y-1 my-4">${match}</ul>`)
-    .replace(/^(?!<[hublip]).+$/gm, (line) => line.trim() ? `<p class="text-[#2A2424]/70 leading-relaxed mb-4">${line}</p>` : '')
+    .replace(/^(?!<(?:h1|h2|h3|ul|li|blockquote)[ >]).+$/gm, (line) => line.trim() ? `<p class="text-[#2A2424]/70 leading-relaxed mb-4">${line}</p>` : '')
     .replace(/\n\n+/g, '\n');
 }
 

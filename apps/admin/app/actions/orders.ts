@@ -22,12 +22,15 @@ export async function capturePaymentAction(paymentId: string, orderId: string) {
   }
 }
 
-export async function refundPaymentAction(paymentId: string, orderId: string, amount: number, reason: string) {
+export async function refundPaymentAction(paymentId: string, orderId: string, amount: number, note: string) {
   const token = await getToken();
   try {
-    await fetchAdmin(`/payments/${paymentId}/refund`, token, { 
-      method: "POST", 
-      body: JSON.stringify({ amount, reason }) 
+    // Medusa's refund schema is { amount, refund_reason_id?, note? } — there is
+    // no "reason" field, so passing one here was silently dropped and the
+    // admin's refund note never actually got saved.
+    await fetchAdmin(`/payments/${paymentId}/refund`, token, {
+      method: "POST",
+      body: JSON.stringify({ amount, note })
     });
     revalidatePath(`/dashboard/orders/${orderId}`);
     return { success: true };

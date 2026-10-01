@@ -78,6 +78,9 @@ services:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - MEILISEARCH_HOST=http://meilisearch:7700
       - MEILISEARCH_SEARCH_KEY=${MEILISEARCH_API_KEY:-meilisearch_master_key}
+      - ADMIN_BLOG_KEY=${ADMIN_BLOG_KEY}
+    volumes:
+      - welfare-blog-data:/app/apps/storefront/data
     ports:
       - "3005:3000" # Exposes 3005 to host for Nginx to route to
     restart: unless-stopped
@@ -94,6 +97,8 @@ services:
       - MEDUSA_BACKEND_URL=https://api.thewelfarecm.com
       - POSTHOG_PERSONAL_API_KEY=${POSTHOG_PERSONAL_API_KEY}
       - POSTHOG_PROJECT_ID=${POSTHOG_PROJECT_ID:-616113}
+      - STOREFRONT_URL=http://storefront:3000
+      - ADMIN_BLOG_KEY=${ADMIN_BLOG_KEY}
     ports:
       - "3006:3000" # Exposes 3006 to host for Nginx to route to (admin.thewelfare.store)
     restart: unless-stopped
@@ -103,3 +108,4 @@ volumes:
   welfare-pgdata:
   welfare-meili-data:
   welfare-static:
+  welfare-blog-data:
