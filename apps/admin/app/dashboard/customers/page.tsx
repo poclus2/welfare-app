@@ -58,7 +58,7 @@ export default async function CustomersPage() {
       if (o.payment_status === "captured" || o.payment_status === "paid") {
         status = "paid";
       }
-      if (o.status === "completed") {
+      if (o.status === "completed" || o.fulfillment_status === "delivered") {
         status = "delivered";
       } else if (o.status === "canceled") {
         status = "cancelled";
