@@ -13,7 +13,7 @@ export default async function DashboardPage() {
   const firstOfMonth = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString();
 
   const [ordersRes, newCustomersRes, productsRes] = await Promise.all([
-    fetchAdmin<{ orders: any[], count: number }>("/orders?limit=200&fields=*customer,*items,*shipping_methods,*payment_collections.payments", token).catch(() => ({ orders: [], count: 0 })),
+    fetchAdmin<{ orders: any[], count: number }>("/orders?limit=1000&order=-created_at&fields=*customer,*items,*shipping_methods,*payment_collections.payments", token).catch(() => ({ orders: [], count: 0 })),
     fetchAdmin<{ count: number }>(`/customers?limit=1&created_at[$gte]=${encodeURIComponent(firstOfMonth)}`, token).catch(() => ({ count: 0 })),
     fetchAdmin<{ products: any[] }>("/products?limit=100&expand=variants,collection", token).catch(() => ({ products: [] })),
   ]);

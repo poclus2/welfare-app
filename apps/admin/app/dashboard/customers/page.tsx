@@ -24,7 +24,7 @@ export default async function CustomersPage() {
   if (!token) return null;
 
   const [customersData, ordersData, creatorPartnersData] = await Promise.all([
-    fetchAdmin<{ customers: any[]; count: number }>(`/customers?limit=100&fields=*,*addresses`, token).catch(() => ({ customers: [], count: 0 })),
+    fetchAdmin<{ customers: any[]; count: number }>(`/customers?limit=1000&order=-created_at&fields=*,*addresses`, token).catch(() => ({ customers: [], count: 0 })),
     fetchAdmin<{ orders: any[] }>(`/orders?limit=999`, token).catch(() => ({ orders: [] })),
     fetchAdmin<{ creator_partners: any[] }>(`/creator-partners`, token).catch(() => ({ creator_partners: [] })),
   ]);
