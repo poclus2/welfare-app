@@ -49,3 +49,14 @@ Odoo 16.0.20231113/
 # One-off local deploy/debug scratch dirs
 temp_deploy/
 temp_img/
+
+# Local deploy/build debug logs and scratch files — never meant to be committed
+*.log
+*.patch
+docker_inspect.json
+token.txt
+
+# Claude Code local tool state (skills, launch config) — not app code
+.agents/
+.claude/
+skills-lock.json

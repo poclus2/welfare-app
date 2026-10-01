@@ -28,11 +28,37 @@ export function ProductForm({ initialData, collections, categories = [] }: { ini
   const [thumbnail, setThumbnail] = useState(initialData?.thumbnail || "");
   const [status, setStatus] = useState(initialData?.status || "draft");
 
-  // Price: read from first variant's first price (XOF, no division needed)
-  const firstVariant = initialData?.variants?.[0];
-  const firstPrice = firstVariant?.prices?.[0];
-  const [price, setPrice] = useState<string>(firstPrice?.amount ? String(firstPrice.amount) : "");
-  const [currency] = useState(firstPrice?.currency_code || "xof");
+  // New-product-only: price for the single default variant created on save.
+  // No division needed — amounts are stored as full integers (e.g. 15000), not cents.
+  const [newProductPrice, setNewProductPrice] = useState<string>("");
+  const [newProductCurrency] = useState("xof");
+
+  // Existing-product: one editable row per real variant — price (in whatever
+  // currency that variant's price actually uses, never assumed) + per-store stock.
+  type VariantRow = {
+    id: string;
+    title: string;
+    currency: string;
+    price: string;
+    stockB1: string;
+    stockB2: string;
+    metadata: Record<string, any>;
+  };
+  const [variantRows, setVariantRows] = useState<VariantRow[]>(
+    (initialData?.variants || []).map((v: any) => ({
+      id: v.id,
+      title: v.title || v.barcode || "Variante",
+      currency: v.prices?.[0]?.currency_code || "xof",
+      price: v.prices?.[0]?.amount != null ? String(v.prices[0].amount) : "",
+      stockB1: v.metadata?.stock_b1 != null ? String(v.metadata.stock_b1) : "",
+      stockB2: v.metadata?.stock_b2 != null ? String(v.metadata.stock_b2) : "",
+      metadata: v.metadata || {},
+    }))
+  );
+
+  const updateVariantRow = (id: string, patch: Partial<VariantRow>) => {
+    setVariantRows(rows => rows.map(r => r.id === id ? { ...r, ...patch } : r));
+  };
 
   // Images: thumbnail + secondary images
   const [images, setImages] = useState<{ url: string }[]>(initialData?.images || []);
@@ -57,11 +83,33 @@ export function ProductForm({ initialData, collections, categories = [] }: { ini
         images: images.map(img => ({ url: img.url })),
       };
 
-      // Update price on first variant if changed
-      if (price && firstVariant) {
+      if (initialData) {
+        // Existing product: push price + per-store stock for every real variant.
+        // stock_total is kept in sync here too — nothing in the backend recomputes
+        // it, and the products list / low-stock KPI both read it as their fallback.
+        payload.variants = variantRows.map(row => {
+          const b1 = row.stockB1 === "" ? 0 : parseInt(row.stockB1, 10);
+          const b2 = row.stockB2 === "" ? 0 : parseInt(row.stockB2, 10);
+          return {
+            id: row.id,
+            prices: row.price ? [{ currency_code: row.currency, amount: parseInt(row.price, 10) }] : undefined,
+            metadata: {
+              ...row.metadata,
+              stock_b1: b1,
+              stock_b2: b2,
+              stock_total: b1 + b2,
+            },
+          };
+        });
+      } else {
+        // New product: create a single default variant so the price is actually saved
+        // and the product is sellable (matches the convention used by the catalog import).
+        payload.options = [{ title: "Default Option", values: ["Default Variant"] }];
         payload.variants = [{
-          id: firstVariant.id,
-          prices: [{ currency_code: currency, amount: parseInt(price, 10) }]
+          title: "Default Variant",
+          manage_inventory: true,
+          options: { "Default Option": "Default Variant" },
+          prices: newProductPrice ? [{ currency_code: newProductCurrency, amount: parseInt(newProductPrice, 10) }] : [],
         }];
       }
 
@@ -151,43 +199,94 @@ export function ProductForm({ initialData, collections, categories = [] }: { ini
             </div>
           </div>
 
-          {/* Price */}
-          <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm">
-            <h2 className="text-sm font-bold text-[#2A2424] mb-4 flex items-center gap-2">
-              <Tag className="w-4 h-4 text-[#C08A8E]" />
-              Prix
-            </h2>
-            <div className="grid grid-cols-2 gap-4">
+          {/* Price — new product: single default-variant price. Existing product: see
+              the "Variantes & Stock" card below, where every real variant is editable. */}
+          {!initialData && (
+            <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm">
+              <h2 className="text-sm font-bold text-[#2A2424] mb-4 flex items-center gap-2">
+                <Tag className="w-4 h-4 text-[#C08A8E]" />
+                Prix
+              </h2>
               <div>
-                <label className={labelClass}>Prix de vente ({currency.toUpperCase()})</label>
-                <div className="relative">
+                <label className={labelClass}>Prix de vente ({newProductCurrency.toUpperCase()})</label>
+                <div className="relative max-w-xs">
                   <input
                     type="number"
-                    value={price}
-                    onChange={e => setPrice(e.target.value)}
+                    value={newProductPrice}
+                    onChange={e => setNewProductPrice(e.target.value)}
                     placeholder="ex: 15000"
                     min="0"
                     className={inputClass + " pr-16"}
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#2A2424]/40">
-                    {currency.toUpperCase()}
+                    {newProductCurrency.toUpperCase()}
                   </span>
                 </div>
-                {price && (
+                {newProductPrice && (
                   <p className="text-[11px] text-[#2A2424]/40 mt-1">
-                    ≈ {new Intl.NumberFormat("fr-FR").format(parseInt(price || "0"))} {currency.toUpperCase()}
+                    ≈ {new Intl.NumberFormat("fr-FR").format(parseInt(newProductPrice || "0"))} {newProductCurrency.toUpperCase()}
                   </p>
                 )}
-              </div>
-              <div>
-                <label className={labelClass}>Variante concernée</label>
-                <div className={inputClass + " flex items-center text-[#2A2424]/50 cursor-not-allowed"}>
-                  {firstVariant?.title || firstVariant?.barcode || "Variante par défaut"}
-                </div>
-                <p className="text-[10px] text-[#2A2424]/30 mt-1">Prix appliqué à la première variante</p>
+                <p className="text-[10px] text-[#2A2424]/30 mt-1">
+                  Crée une variante par défaut avec ce prix. Vous pourrez ajouter d'autres variantes ensuite depuis cette page.
+                </p>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* Variantes & Stock — one editable row per real variant, each keeping its
+              own currency (never assumed) and its per-store stock breakdown. */}
+          {initialData && variantRows.length > 0 && (
+            <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm">
+              <h2 className="text-sm font-bold text-[#2A2424] mb-4 flex items-center gap-2">
+                <Tag className="w-4 h-4 text-[#C08A8E]" />
+                Variantes & Stock ({variantRows.length})
+              </h2>
+              <div className="space-y-3">
+                {variantRows.map(row => (
+                  <div key={row.id} className="border border-[#EDE0E0] rounded-xl p-3">
+                    <p className="text-xs font-bold text-[#2A2424] mb-2">{row.title}</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className={labelClass}>Prix ({row.currency.toUpperCase()})</label>
+                        <input
+                          type="number"
+                          value={row.price}
+                          onChange={e => updateVariantRow(row.id, { price: e.target.value })}
+                          placeholder="ex: 15000"
+                          min="0"
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Stock Hippodrome</label>
+                        <input
+                          type="number"
+                          value={row.stockB1}
+                          onChange={e => updateVariantRow(row.id, { stockB1: e.target.value })}
+                          placeholder="0"
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Stock Playce</label>
+                        <input
+                          type="number"
+                          value={row.stockB2}
+                          onChange={e => updateVariantRow(row.id, { stockB2: e.target.value })}
+                          placeholder="0"
+                          className={inputClass}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-[#2A2424]/30 mt-3">
+                Ajout/suppression de variantes non disponible depuis cette page pour l'instant — passez par l'admin Medusa pour changer le nombre de variantes.
+              </p>
+            </div>
+          )}
 
           {/* Media */}
           <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm">
@@ -375,50 +474,6 @@ export function ProductForm({ initialData, collections, categories = [] }: { ini
               </div>
             </div>
           </div>
-
-          {/* Variants Info (read-only for now) */}
-          {initialData?.variants && initialData.variants.length > 0 && (
-            <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm">
-              <h2 className="text-sm font-bold text-[#2A2424] mb-4">Variantes ({initialData.variants.length})</h2>
-              <div className="space-y-2">
-                {initialData.variants.slice(0, 5).map((v: any) => {
-                  const vPrice = v.prices?.[0];
-                  return (
-                    <div key={v.id} className="flex items-center justify-between py-2 border-b border-[#EDE0E0] last:border-0">
-                      <div>
-                        <p className="text-xs font-semibold text-[#2A2424]">{v.title || v.barcode || "Défaut"}</p>
-                        <p className="text-[10px] text-[#2A2424]/40">{v.barcode || "—"}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs font-bold text-[#2A2424]">
-                          {vPrice ? new Intl.NumberFormat("fr-FR").format(vPrice.amount) + " " + vPrice.currency_code.toUpperCase() : "—"}
-                        </p>
-                        <div className="flex flex-col items-end mt-0.5">
-                          {v.metadata?.stock_total !== undefined ? (
-                            <div className="flex flex-col items-end">
-                              <span className={`text-[10px] font-bold ${(v.metadata.stock_b1 || 0) <= 0 ? "text-red-400" : "text-green-600"}`}>
-                                Hyppodrome : {v.metadata.stock_b1 || 0}
-                              </span>
-                              <span className={`text-[10px] font-bold ${(v.metadata.stock_b2 || 0) <= 0 ? "text-red-400" : "text-green-600"}`}>
-                                Playce : {v.metadata.stock_b2 || 0}
-                              </span>
-                            </div>
-                          ) : (
-                            <p className={`text-[10px] font-semibold ${v.inventory_quantity === 0 ? "text-red-400" : "text-[#2A2424]/40"}`}>
-                              {v.inventory_quantity ?? "?"} en stock
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {initialData.variants.length > 5 && (
-                  <p className="text-[10px] text-[#2A2424]/30 pt-1">+{initialData.variants.length - 5} autres variantes</p>
-                )}
-              </div>
-            </div>
-          )}
 
         </div>
       </div>

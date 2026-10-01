@@ -63,9 +63,11 @@ export default async function ProductsPage({
     };
   }
 
-  const allProductsData = await fetchAdmin<{ count: number }>(`/products?limit=1`, token).catch(() => ({ count: 0 }));
-  const activeProductsData = await fetchAdmin<{ count: number }>(`/products?status=published&limit=1`, token).catch(() => ({ count: 0 }));
-  const draftProductsData = await fetchAdmin<{ count: number }>(`/products?status=draft&limit=1`, token).catch(() => ({ count: 0 }));
+  const [allProductsData, activeProductsData, draftProductsData] = await Promise.all([
+    fetchAdmin<{ count: number }>(`/products?limit=1`, token).catch(() => ({ count: 0 })),
+    fetchAdmin<{ count: number }>(`/products?status=published&limit=1`, token).catch(() => ({ count: 0 })),
+    fetchAdmin<{ count: number }>(`/products?status=draft&limit=1`, token).catch(() => ({ count: 0 })),
+  ]);
 
   // Compute low stock from fetched products (inventory < 10 but > 0)
   const lowStockCount = data.products.filter(p => {
@@ -189,8 +191,9 @@ export default async function ProductsPage({
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
           {data.products.map((product) => {
             const lowestPrice = product.variants?.reduce((min: number, v: any) => {
-              const p = v.prices?.find((px: any) => px.currency_code === "xof" || px.currency_code === "eur");
-              // XOF prices are stored as full integers (e.g. 15000), not in cents
+              // Whatever currency this variant's price actually uses — never assumed.
+              // Amounts are stored as full integers (e.g. 15000), not in cents.
+              const p = v.prices?.[0];
               const amt = p ? p.amount : 0;
               return amt > 0 && (amt < min || min === 0) ? amt : min;
             }, 0);

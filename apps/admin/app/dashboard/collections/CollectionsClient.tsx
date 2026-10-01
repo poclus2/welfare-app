@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Layers, Plus, Trash2, Search, Edit3, Power, PowerOff, X, Save } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-export function CollectionsClient({ token }: { token: string }) {
+export function CollectionsClient() {
   const [collections, setCollections] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -15,15 +15,17 @@ export function CollectionsClient({ token }: { token: string }) {
   const [title, setTitle] = useState("");
   const [handle, setHandle] = useState("");
 
+  const [errorMessage, setErrorMessage] = useState("");
+
   const fetchCollections = async () => {
     try {
-      const res = await fetch(`https://api.thewelfarecm.com/admin/collections?limit=100`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
+      const res = await fetch(`/api/admin/collections?limit=100`);
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur de chargement");
       setCollections(data.collections || []);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setErrorMessage(err.message || "Impossible de charger les marques.");
     } finally {
       setIsLoading(false);
     }
@@ -31,22 +33,19 @@ export function CollectionsClient({ token }: { token: string }) {
 
   useEffect(() => {
     fetchCollections();
-  }, [token]);
+  }, []);
 
   const apiCall = async (path: string, method: string, body?: any) => {
-    const res = await fetch(`https://api.thewelfarecm.com/admin/collections${path}`, {
+    const res = await fetch(`/api/admin/collections${path}`, {
       method,
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
+      headers: { "Content-Type": "application/json" },
       body: body ? JSON.stringify(body) : undefined
     });
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text);
+      throw new Error(data.error || "Erreur serveur");
     }
-    return res.json();
+    return data;
   };
 
   const handleOpenNew = () => {
@@ -73,22 +72,26 @@ export function CollectionsClient({ token }: { token: string }) {
       }
       setIsModalOpen(false);
       await fetchCollections();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Erreur lors de la sauvegarde.");
+      alert(e.message || "Erreur lors de la sauvegarde.");
       setIsLoading(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cette marque/collection ?")) return;
+  const handleDelete = async (col: any) => {
+    const productCount = col.products?.length || 0;
+    const warning = productCount > 0
+      ? `Cette marque est encore rattachée à ${productCount} produit${productCount > 1 ? "s" : ""}. Les supprimer de cette marque ne les supprime pas du catalogue, mais ils n'auront plus de marque associée. Continuer ?`
+      : "Êtes-vous sûr de vouloir supprimer cette marque/collection ?";
+    if (!window.confirm(warning)) return;
     try {
       setIsLoading(true);
-      await apiCall(`/${id}`, "DELETE");
+      await apiCall(`/${col.id}`, "DELETE");
       await fetchCollections();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Erreur lors de la suppression.");
+      alert(e.message || "Erreur lors de la suppression.");
       setIsLoading(false);
     }
   };
@@ -113,6 +116,12 @@ export function CollectionsClient({ token }: { token: string }) {
           Ajouter une marque
         </button>
       </div>
+
+      {errorMessage && (
+        <div className="mb-4 bg-red-50 border border-red-200 text-red-600 text-sm font-medium px-4 py-3 rounded-xl">
+          {errorMessage}
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col">
         <div className="p-4 border-b border-gray-100 flex items-center gap-2 bg-gray-50/50 rounded-t-2xl">
@@ -162,7 +171,7 @@ export function CollectionsClient({ token }: { token: string }) {
                         <button onClick={() => handleOpenEdit(col)} className="p-2 text-gray-400 hover:text-black hover:bg-gray-100 rounded-lg transition-colors">
                           <Edit3 className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleDelete(col.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                        <button onClick={() => handleDelete(col)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>

@@ -10,5 +10,5 @@ export default async function CollectionsPage() {
     redirect("/login");
   }
 
-  return <CollectionsClient token={token} />;
+  return <CollectionsClient />;
 }
