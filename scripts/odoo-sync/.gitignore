@@ -1,0 +1,8 @@
+# real configs hold the DB password and the sync token
+config.ini
+config.*.ini
+!config.example.ini
+*.log
+build/
+dist/
+*.spec

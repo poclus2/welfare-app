@@ -315,12 +315,13 @@ export function ProductDetailClient({ product: _product, recommendedProducts = [
 
   // Compute real inventory
   const variant = _product?.variants?.[0];
-  const stock_b1 = Number(variant?.metadata?.stock_b1) || 0;
-  const stock_b2 = Number(variant?.metadata?.stock_b2) || 0;
-  let computedStock = variant?.inventory_quantity;
-  if (computedStock === undefined || computedStock === null) {
-    computedStock = stock_b1 + stock_b2;
-  }
+  // Odoo stock (per-shop metadata) is the source of truth; Medusa's inventory_quantity is only a
+  // fallback for variants that were never synced from Odoo.
+  const vm = variant?.metadata || {};
+  const hasShopStock = vm.stock_b1 != null || vm.stock_b2 != null;
+  const computedStock = hasShopStock
+    ? Math.max(0, Number(vm.stock_b1) || 0) + Math.max(0, Number(vm.stock_b2) || 0)
+    : (variant?.inventory_quantity ?? 0);
   const totalStock = Math.max(0, computedStock);
 
   const data = {

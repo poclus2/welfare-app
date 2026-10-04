@@ -1,153 +1,213 @@
+import { timingSafeEqual } from "crypto";
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils";
 
+// Odoo -> Medusa stock sync. One Odoo database per shop pushes a full snapshot of its sellable stock
+// every few minutes (see scripts/odoo-sync). Odoo is the source of truth:
+//   - variant.metadata.stock_b1 / stock_b2 hold the per-shop quantity (read by admin + storefront)
+//   - variant.metadata.stock_total is kept as their sum
+//   - the Medusa inventory level of the shop's stock location is aligned too, so the cart can't be
+//     blocked (or allowed) by a number that disagrees with Odoo.
+// Quantities are clamped to >= 0: a negative Odoo quant means "sold without a stock entry", not stock.
+
+const FALLBACK_TOKEN = "welfare-odoo-super-secret-2026";
+
+// Medusa stock location -> metadata key. Override with env if the locations are ever recreated.
+const LOCATION_KEYS: Record<string, "stock_b1" | "stock_b2"> = {
+  [process.env.ODOO_LOCATION_B1 || "sloc_01M0MHY28WQ38S3YE3XNQ9JPFZ"]: "stock_b1",
+  [process.env.ODOO_LOCATION_B2 || "sloc_01M0MHY29NJWHRCEQBRT1KAM8N"]: "stock_b2",
+};
+
+const CHUNK = 200;
+
+type SyncState = { at: string; received: number; updated: number; not_found: number; errors: number };
+const lastSync: Record<string, SyncState> = {};
+
+// Both shops push at roughly the same time. Each variant's metadata is read-modify-written, so
+// concurrent requests could overwrite each other's key — run them one after the other.
+let queue: Promise<unknown> = Promise.resolve();
+function serialize<T>(job: () => Promise<T>): Promise<T> {
+  const run = queue.then(job, job);
+  queue = run.catch(() => undefined);
+  return run;
+}
+
+function tokenOk(header: string | string[] | undefined): boolean {
+  const expected = process.env.ODOO_SYNC_TOKEN || FALLBACK_TOKEN;
+  const given = Array.isArray(header) ? header[0] : header;
+  if (!given) return false;
+  const a = Buffer.from(given);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+if (!process.env.ODOO_SYNC_TOKEN) {
+  console.warn("[Odoo Sync] ODOO_SYNC_TOKEN is not set — using the built-in default token. Set it in the API environment.");
+}
+
+const toQty = (v: unknown) => Math.max(0, Math.trunc(Number(v) || 0));
+const chunks = <T,>(arr: T[], size: number) =>
+  Array.from({ length: Math.ceil(arr.length / size) }, (_, i) => arr.slice(i * size, (i + 1) * size));
+
+export const GET = async (req: MedusaRequest, res: MedusaResponse) => {
+  if (!tokenOk(req.headers["x-odoo-token"])) {
+    return res.status(401).json({ success: false, message: "Unauthorized" });
+  }
+  const locations = Object.entries(LOCATION_KEYS).map(([id, key]) => ({ location_id: id, key, last_sync: lastSync[id] || null }));
+  return res.status(200).json({ success: true, locations, note: "last_sync is kept in memory and resets on API restart" });
+};
+
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
-  const token = req.headers["x-odoo-token"];
-  
-  // Protect with a simple token (to be configured in env, with a fallback)
-  const validToken = process.env.ODOO_SYNC_TOKEN || "welfare-odoo-super-secret-2026";
-  if (token !== validToken) {
+  if (!tokenOk(req.headers["x-odoo-token"])) {
     return res.status(401).json({ success: false, message: "Unauthorized" });
   }
 
-  const { location_id, stock } = req.body as {
-    location_id: string;
-    stock: { barcode: string; quantity: number }[];
+  const { location_id, stock } = (req.body || {}) as {
+    location_id?: string;
+    stock?: { barcode: string; quantity: number }[];
   };
 
-  console.log(`[Odoo Sync] ---------------------------------------------`);
-  console.log(`[Odoo Sync] Received sync request from Odoo client`);
-  console.log(`[Odoo Sync] Client IP: ${req.headers["x-forwarded-for"] || req.connection.remoteAddress}`);
-  console.log(`[Odoo Sync] Location ID: ${location_id}`);
-  console.log(`[Odoo Sync] Items count: ${stock ? stock.length : "undefined"}`);
-
-  if (!location_id || !stock || !Array.isArray(stock)) {
-    console.warn(`[Odoo Sync] Rejected: Invalid payload. location_id or stock array missing.`);
+  if (!location_id || !Array.isArray(stock)) {
+    console.warn("[Odoo Sync] Rejected: invalid payload (location_id / stock missing)");
     return res.status(400).json({ success: false, message: "Invalid payload. Expected { location_id, stock: [{ barcode, quantity }] }" });
+  }
+  const key = LOCATION_KEYS[location_id];
+  if (!key) {
+    console.warn(`[Odoo Sync] Rejected: unknown location_id ${location_id}`);
+    return res.status(400).json({ success: false, message: `Unknown location_id ${location_id}` });
   }
 
   try {
-    const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
-    const inventoryService = req.scope.resolve(Modules.INVENTORY);
-
-    // Aggregate quantities by barcode (since Odoo sends separate lots for the same barcode)
-    const aggregatedStockMap = new Map<string, number>();
-    for (const item of stock) {
-      if (!item.barcode) continue;
-      const barcodeStr = String(item.barcode).trim();
-      const qty = Number(item.quantity) || 0;
-      aggregatedStockMap.set(barcodeStr, (aggregatedStockMap.get(barcodeStr) || 0) + qty);
-    }
-    
-    const aggregatedStock = Array.from(aggregatedStockMap.entries()).map(([barcode, quantity]) => ({ barcode, quantity }));
-    const barcodes = aggregatedStock.map((s) => s.barcode);
-
-    if (barcodes.length === 0) {
-      console.log(`[Odoo Sync] Finished: No barcodes provided. Updated: 0`);
-      return res.status(200).json({ success: true, updated_count: 0 });
-    }
-    
-    // Fetch variants and their associated inventory items using the Query Module
-    const { data: variants } = await query.graph({
-      entity: "variant",
-      fields: ["id", "barcode", "metadata", "inventory_items.inventory_item_id"],
-      filters: {
-        barcode: { $in: barcodes },
-      },
-    });
-
-    // Map barcode -> { inventory_item_id, variant_id, metadata }
-    const barcodeMap = new Map<string, { itemId: string, variantId: string, metadata: any }>();
-    for (const v of variants) {
-      if (v.barcode && v.inventory_items?.[0]?.inventory_item_id) {
-        barcodeMap.set(v.barcode.trim(), {
-          itemId: v.inventory_items[0].inventory_item_id,
-          variantId: v.id,
-          metadata: v.metadata || {}
-        });
-      }
-    }
-
-    let updatedCount = 0;
-    let notFoundCount = 0;
-    const errors: string[] = [];
-    
-    const productService = req.scope.resolve(Modules.PRODUCT);
-    const variantsToUpdate = [];
-
-    // Process each stock update using the aggregated data
-    for (const item of aggregatedStock) {
-      const barcodeStr = String(item.barcode).trim();
-      const mapped = barcodeMap.get(barcodeStr);
-
-      if (mapped) {
-        try {
-          // First, try to update existing level
-          await inventoryService.updateInventoryLevels([{
-            inventory_item_id: mapped.itemId,
-            location_id: location_id,
-            stocked_quantity: item.quantity,
-          }]);
-          updatedCount++;
-        } catch (err: any) {
-          // If level doesn't exist, create it
-          try {
-             await inventoryService.createInventoryLevels([{
-               inventory_item_id: mapped.itemId,
-               location_id: location_id,
-               stocked_quantity: item.quantity,
-             }]);
-             updatedCount++;
-          } catch (createErr: any) {
-             console.error(`[Odoo Sync] Create Error for barcode ${barcodeStr}:`, createErr.message);
-             errors.push(`Failed to set stock for barcode ${barcodeStr}: ${createErr.message}`);
-          }
-        }
-        
-        // Prepare metadata update for the custom Admin UI
-        const newMetadata = { ...mapped.metadata };
-        if (location_id === "sloc_01M0MHY28WQ38S3YE3XNQ9JPFZ") {
-          newMetadata.stock_b1 = item.quantity;
-        } else if (location_id === "sloc_01M0MHY29NJWHRCEQBRT1KAM8N") {
-          newMetadata.stock_b2 = item.quantity;
-        }
-        variantsToUpdate.push({
-          id: mapped.variantId,
-          metadata: newMetadata
-        });
-        
-      } else {
-        notFoundCount++;
-      }
-    }
-    
-    // Batch update metadata
-    if (variantsToUpdate.length > 0) {
-      try {
-        for (const v of variantsToUpdate) {
-          await productService.updateProductVariants(v.id, { metadata: v.metadata });
-        }
-      } catch (e: any) {
-        console.error(`[Odoo Sync] Failed to update variant metadata:`, e.message);
-      }
-    }
-
-    console.log(`[Odoo Sync] Finished processing Location: ${location_id}.`);
-    console.log(`[Odoo Sync] Total variants matched & updated: ${updatedCount}`);
-    console.log(`[Odoo Sync] Total barcodes not found in Medusa: ${notFoundCount}`);
-    if (errors.length > 0) {
-      console.log(`[Odoo Sync] Encountered ${errors.length} errors during sync.`);
-    }
-
-    return res.status(200).json({
-      success: true,
-      updated_count: updatedCount,
-      not_found_count: notFoundCount,
-      errors: errors.length > 0 ? errors : undefined,
-    });
-
+    const result = await serialize(() => syncLocation(req, location_id, key, stock));
+    return res.status(200).json({ success: true, ...result });
   } catch (error: any) {
     console.error("[Odoo Sync] Fatal Error:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
+async function syncLocation(
+  req: MedusaRequest,
+  locationId: string,
+  key: "stock_b1" | "stock_b2",
+  stock: { barcode: string; quantity: number }[]
+) {
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY);
+  const inventoryService = req.scope.resolve(Modules.INVENTORY) as any;
+  const productService = req.scope.resolve(Modules.PRODUCT) as any;
+
+  // Odoo can send several lots/rows for one barcode: add them up
+  const qtyByBarcode = new Map<string, number>();
+  let negatives = 0;
+  for (const item of stock) {
+    if (!item?.barcode) continue;
+    const barcode = String(item.barcode).trim();
+    if (Number(item.quantity) < 0) negatives++;
+    qtyByBarcode.set(barcode, (qtyByBarcode.get(barcode) || 0) + (Number(item.quantity) || 0));
+  }
+
+  console.log(`[Odoo Sync] ${key} (${locationId}): ${stock.length} rows, ${qtyByBarcode.size} barcodes, ${negatives} negative`);
+
+  let metadataWritten = 0;
+  let unchanged = 0;
+  let levelsUpdated = 0;
+  let levelsCreated = 0;
+  let notFound = 0;
+  const notFoundSample: string[] = [];
+  const errors: string[] = [];
+
+  for (const barcodes of chunks(Array.from(qtyByBarcode.keys()), CHUNK)) {
+    const { data: variants } = await query.graph({
+      entity: "variant",
+      fields: ["id", "barcode", "metadata", "inventory_items.inventory_item_id"],
+      filters: { barcode: { $in: barcodes } },
+      pagination: { take: barcodes.length },
+    });
+
+    const byBarcode = new Map<string, any>();
+    for (const v of variants as any[]) if (v.barcode) byBarcode.set(String(v.barcode).trim(), v);
+
+    // --- Medusa inventory levels (best effort: metadata below is written regardless) ---
+    const itemIds = (variants as any[]).map((v) => v.inventory_items?.[0]?.inventory_item_id).filter(Boolean);
+    if (itemIds.length) {
+      try {
+        const levels: any[] = await inventoryService.listInventoryLevels(
+          { location_id: locationId, inventory_item_id: itemIds },
+          { take: null }
+        );
+        const levelByItem = new Map(levels.map((l) => [l.inventory_item_id, l]));
+        const toUpdate: any[] = [];
+        const toCreate: any[] = [];
+        for (const barcode of barcodes) {
+          const itemId = byBarcode.get(barcode)?.inventory_items?.[0]?.inventory_item_id;
+          if (!itemId) continue;
+          const qty = toQty(qtyByBarcode.get(barcode));
+          const level = levelByItem.get(itemId);
+          if (!level) toCreate.push({ inventory_item_id: itemId, location_id: locationId, stocked_quantity: qty });
+          else if (Number(level.stocked_quantity) !== qty) toUpdate.push({ inventory_item_id: itemId, location_id: locationId, stocked_quantity: qty });
+        }
+        if (toUpdate.length) {
+          await inventoryService.updateInventoryLevels(toUpdate);
+          levelsUpdated += toUpdate.length;
+        }
+        if (toCreate.length) {
+          await inventoryService.createInventoryLevels(toCreate);
+          levelsCreated += toCreate.length;
+        }
+      } catch (e: any) {
+        console.error(`[Odoo Sync] Inventory level error (${key}):`, e.message);
+        errors.push(`inventory levels: ${e.message}`);
+      }
+    }
+
+    // --- Variant metadata (what admin + storefront read) ---
+    for (const barcode of barcodes) {
+      const variant = byBarcode.get(barcode);
+      if (!variant) {
+        notFound++;
+        if (notFoundSample.length < 20) notFoundSample.push(barcode);
+        continue;
+      }
+      const qty = toQty(qtyByBarcode.get(barcode));
+      const metadata = { ...(variant.metadata || {}) };
+      const other = key === "stock_b1" ? "stock_b2" : "stock_b1";
+      const total = qty + toQty(metadata[other]);
+
+      if (metadata[key] === qty && metadata.stock_total === total) {
+        unchanged++;
+        continue;
+      }
+      metadata[key] = qty;
+      metadata.stock_total = total;
+      try {
+        await productService.updateProductVariants(variant.id, { metadata });
+        metadataWritten++;
+      } catch (e: any) {
+        console.error(`[Odoo Sync] Metadata error for ${barcode}:`, e.message);
+        errors.push(`metadata ${barcode}: ${e.message}`);
+      }
+    }
+  }
+
+  lastSync[locationId] = {
+    at: new Date().toISOString(),
+    received: qtyByBarcode.size,
+    updated: metadataWritten,
+    not_found: notFound,
+    errors: errors.length,
+  };
+  console.log(
+    `[Odoo Sync] ${key} done: metadata written ${metadataWritten}, unchanged ${unchanged}, levels updated ${levelsUpdated}/created ${levelsCreated}, not found ${notFound}, errors ${errors.length}`
+  );
+
+  return {
+    received: qtyByBarcode.size,
+    updated_count: metadataWritten,
+    unchanged_count: unchanged,
+    levels_updated: levelsUpdated,
+    levels_created: levelsCreated,
+    not_found_count: notFound,
+    not_found_sample: notFoundSample.length ? notFoundSample : undefined,
+    errors: errors.length ? errors.slice(0, 20) : undefined,
+  };
+}
