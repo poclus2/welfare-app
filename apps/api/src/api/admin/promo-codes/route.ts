@@ -133,12 +133,14 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
   let applicationMethod: any
   if (kind === "free_shipping") {
-    applicationMethod = { type: "percentage", target_type: "shipping_methods", allocation: "each", value: 100 }
+    // Medusa requires max_quantity whenever allocation is "each"
+    applicationMethod = { type: "percentage", target_type: "shipping_methods", allocation: "each", max_quantity: 1, value: 100 }
   } else if (restricted) {
     applicationMethod = {
       type: kind,
       target_type: "items",
       allocation: kind === "fixed" ? "across" : "each",
+      ...(kind === "fixed" ? {} : { max_quantity: 999 }),
       value,
       ...(currencyCode ? { currency_code: currencyCode } : {}),
       target_rules: targetRules,

@@ -444,7 +444,7 @@ export default function PromotionsClient({
 
                 <label className="flex items-center gap-2.5 text-xs font-semibold text-[#2A2424] cursor-pointer">
                   <input type="checkbox" checked={form.perCustomerOnce} onChange={(e) => set("perCustomerOnce", e.target.checked)} className="accent-[#2A2424]" />
-                  1 seule utilisation par client
+                  1 seule utilisation par client (réservé aux clients connectés)
                 </label>
               </div>
 

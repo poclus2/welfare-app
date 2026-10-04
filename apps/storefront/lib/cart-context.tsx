@@ -23,6 +23,7 @@ interface CartState {
   discountTotal: number;
   medusaTotal: number | null;
   promoCodes: string[];
+  pendingPromoCode: string | null;
   freeShipping: boolean;
 }
 
@@ -58,6 +59,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     discountTotal: 0,
     medusaTotal: null,
     promoCodes: [],
+    pendingPromoCode: null,
     freeShipping: false,
   });
 
@@ -98,6 +100,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         discountTotal: Number((cart as any).discount_total || 0),
         medusaTotal: (cart as any).total != null ? Number((cart as any).total) : null,
         promoCodes,
+        pendingPromoCode: (cart as any).metadata?.pending_promo_code || null,
         freeShipping: Boolean((cart as any).metadata?.creator_free_shipping),
       }));
       localStorage.setItem("welfare_cart_id", cart.id);
@@ -201,7 +204,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const currentCartId = localStorage.getItem("welfare_cart_id");
     if (!currentCartId) return;
     try {
-      await sdk.store.cart.removePromotions(currentCartId, { promo_codes: [code] });
+      // A parked free-shipping code isn't attached to the cart yet, so there may be nothing to detach
+      await sdk.store.cart.removePromotions(currentCartId, { promo_codes: [code] }).catch(() => {});
+      await sdk.store.cart.update(currentCartId, { metadata: { pending_promo_code: null } });
       await refreshCart(currentCartId);
     } catch (err) {
       console.error("Failed to remove promo code:", err);

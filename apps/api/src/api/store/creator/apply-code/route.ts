@@ -60,6 +60,11 @@ async function applyGenericPromo(req: MedusaRequest, res: MedusaResponse, cartId
     })
   } catch (e: any) {
     console.error("[apply-code] generic promo failed:", e?.message)
+    // "1 use per customer" budgets need a customer on the cart, so guests can't use those codes
+    if (String(e?.message).includes('"customer_id" is required')) {
+      res.status(400).json({ message: "Connectez-vous à votre compte pour utiliser ce code (1 utilisation par client)" })
+      return
+    }
     res.status(400).json({ message: "Ce code ne peut pas être appliqué à ce panier" })
     return
   }
@@ -83,13 +88,31 @@ async function applyGenericPromo(req: MedusaRequest, res: MedusaResponse, cartId
     }
   }
 
+  // Medusa only keeps a shipping-discount code on the cart once a shipping method exists, and the
+  // shipping method is picked at the very end of checkout. Until then the code is parked in cart
+  // metadata and the checkout re-applies it right after choosing the shipping method.
+  let pending = false
+  if (kind === "free_shipping") {
+    const { data: linked } = await query.graph({
+      entity: "cart",
+      fields: ["id", "promotions.code"],
+      filters: { id: cartId },
+    })
+    pending = !((linked[0] as any)?.promotions || []).some((p: any) => p.code === promo.code)
+  }
+
   // A generic code must never be credited to a creator who was applied earlier on this cart
   const cartModuleService = req.scope.resolve(Modules.CART) as any
   await cartModuleService.updateCarts(cartId, {
-    metadata: { creator_partner_id: null, creator_code: null, creator_free_shipping: false },
+    metadata: {
+      creator_partner_id: null,
+      creator_code: null,
+      creator_free_shipping: false,
+      pending_promo_code: pending ? promo.code : null,
+    },
   })
 
-  res.json({ kind: "promo", code: promo.code, discount_kind: kind })
+  res.json({ kind: "promo", code: promo.code, discount_kind: kind, pending })
 }
 
 // Resolves a single visible creator code into whichever real Medusa promo

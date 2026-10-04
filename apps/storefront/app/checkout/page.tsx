@@ -108,7 +108,7 @@ function StepIndicator({ step }: { step: 1 | 2 }) {
 export default function CheckoutPage() {
   const router = useRouter();
   const { t } = useI18n();
-  const { items, totalAmount, discountTotal, freeShipping, clearCart, cartId } = useCart();
+  const { items, totalAmount, discountTotal, freeShipping, clearCart, cartId, pendingPromoCode, applyPromoCode } = useCart();
   const [step, setStep] = useState<1 | 2>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [paymentWait, setPaymentWait] = useState("");
@@ -340,6 +340,12 @@ useEffect(() => {
         }
       } else {
         throw new Error(t("Aucun mode de livraison n'est disponible pour cette adresse."));
+      }
+
+      // A free-shipping code can only attach once the shipping method exists — re-apply it now
+      if (pendingPromoCode) {
+        const reapplied = await applyPromoCode(pendingPromoCode);
+        if (!reapplied.ok) throw new Error(reapplied.error || t("Le code promo n'a pas pu être appliqué."));
       }
 
       // 3. Mobile Money: send the push to the customer's phone and wait for them to confirm it.
@@ -793,7 +799,8 @@ useEffect(() => {
                                 className="w-full text-xs px-3 py-2.5 rounded-xl border border-[#EDE0E0] bg-white outline-none focus:border-[#C08A8E]"
                               >
                                 <option value="MTN_MOMO_CMR">{t("MTN MoMo Cameroun")}</option>
-                                <option value="ORANGE_CEW_CMR">{t("Orange Money Cameroun")}</option>
+                                {/* Only MTN_MOMO_CMR is enabled on the PawaPay account (checked via /active-conf) */}
+                                <option value="ORANGE_CEW_CMR" disabled>{t("Orange Money Cameroun")} ({t("bientôt disponible")})</option>
                               </select>
                             <p className="text-[11px] text-[#2A2424]/50 mt-2 leading-relaxed">
                               {t("Vous recevrez une notification (Push USSD) sur votre téléphone après confirmation pour valider le paiement.")}

@@ -8,7 +8,7 @@ import { CheckCircle, Tag, X } from "@phosphor-icons/react";
 
 export function PromoCodeField() {
   const { t } = useI18n();
-  const { cartId, promoCodes, applyPromoCode, removePromoCode } = useCart();
+  const { cartId, promoCodes, pendingPromoCode, applyPromoCode, removePromoCode } = useCart();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -37,13 +37,16 @@ export function PromoCodeField() {
     }
   };
 
-  const appliedCode = promoCodes[0];
+  const appliedCode = promoCodes[0] || pendingPromoCode;
   if (appliedCode) {
     return (
       <div className="flex items-center justify-between bg-[#F4EAEB]/60 rounded-xl px-3 py-2.5">
         <div className="flex items-center gap-2 text-xs font-semibold text-[#2A2424]">
           <CheckCircle className="w-4 h-4 text-green-600 shrink-0" weight="fill" />
-          <span>{t("Code")} <span className="font-mono">{appliedCode}</span> {t("appliqué")}</span>
+          <span>
+            {t("Code")} <span className="font-mono">{appliedCode}</span>{" "}
+            {promoCodes[0] ? t("appliqué") : t("enregistré : livraison offerte au choix de la livraison")}
+          </span>
         </div>
         <button
           onClick={() => removePromoCode(appliedCode)}
