@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react";
 
@@ -11,6 +11,11 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  useEffect(() => {
+    setSessionExpired(new URLSearchParams(window.location.search).get("expired") === "1");
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +62,12 @@ export default function LoginPage() {
             <h1 className="text-xl font-bold text-[#2A2424]">The Welfare</h1>
             <p className="text-sm text-[#2A2424]/50 mt-1">Administration</p>
           </div>
+
+          {sessionExpired && !error && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
+              Votre session a expiré. Veuillez vous reconnecter.
+            </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">

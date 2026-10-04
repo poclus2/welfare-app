@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard, ShoppingBag, Package, Users,
   Store, BarChart2, Tag, Settings, LogOut,
-  Bell, Search, ChevronDown, Menu, X, Bot, Truck, FileText
+  Bell, Search, ChevronDown, Menu, X, Bot, Truck, FileText, Ticket
 , Layers } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/skin-scans", label: "Skin Scans", icon: Search },
   { href: "/dashboard/skin-coach", label: "Skin Coach IA", icon: Bot },
   { href: "/dashboard/createurs", label: "Créateurs Partenaires", icon: Tag },
+  { href: "/dashboard/promotions", label: "Codes promo", icon: Ticket },
   { href: "/dashboard/blog", label: "Blog / Articles", icon: FileText },
   { href: "/dashboard/delivery", label: "Livraison", icon: Truck },
   { href: "/dashboard/settings", label: "Paramètres", icon: Settings },
@@ -30,6 +31,31 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Send the admin back to the login screen as soon as the session stops being valid, instead of
+  // leaving them on pages that silently load empty. Checked every minute and whenever the tab
+  // regains focus (the usual case: coming back after the session ran out while idle).
+  useEffect(() => {
+    let cancelled = false;
+    const checkSession = async () => {
+      try {
+        const res = await fetch("/api/auth/session", { cache: "no-store" });
+        if (res.status === 401 && !cancelled) {
+          window.location.href = "/login?expired=1";
+        }
+      } catch {
+        // Network hiccup: not a session problem
+      }
+    };
+    const interval = setInterval(checkSession, 60_000);
+    const onVisible = () => document.visibilityState === "visible" && checkSession();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });

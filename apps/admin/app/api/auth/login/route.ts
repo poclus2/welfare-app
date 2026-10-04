@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getTokenExpiry } from "@/lib/session";
 
 const MEDUSA_URL = process.env.MEDUSA_BACKEND_URL || "https://api.thewelfarecm.com";
 
@@ -23,13 +24,18 @@ export async function POST(req: NextRequest) {
 
     const data = await medusaRes.json();
     const token: string = data.token;
+    const tokenExp = getTokenExpiry(token);
 
     const res = NextResponse.json({ success: true });
     res.cookies.set("admin_token", token, {
       httpOnly: true,
       secure: false, // Allows HTTP access before SSL is configured
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      // Never outlive the backend token itself (Medusa JWTs last 24h by default) — a 7-day cookie
+      // holding a dead token is what used to leave admins on empty pages instead of the login screen.
+      maxAge: tokenExp
+        ? Math.max(60, Math.min(60 * 60 * 24 * 7, tokenExp - Math.floor(Date.now() / 1000)))
+        : 60 * 60 * 24,
       path: "/",
     });
     return res;
