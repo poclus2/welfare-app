@@ -111,6 +111,7 @@ export default function CheckoutPage() {
   const { items, totalAmount, discountTotal, freeShipping, clearCart, cartId } = useCart();
   const [step, setStep] = useState<1 | 2>(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [paymentWait, setPaymentWait] = useState("");
   const [mobileNetwork, setMobileNetwork] = useState("MTN_MOMO_CMR");
   const [manualProvider, setManualProvider] = useState<"orange" | "mtn">("orange");
 
@@ -341,25 +342,48 @@ useEffect(() => {
         throw new Error(t("Aucun mode de livraison n'est disponible pour cette adresse."));
       }
 
-      // 3. Initiate Payment Session
+      // 3. Mobile Money: send the push to the customer's phone and wait for them to confirm it.
+      // The order is only created once PawaPay reports the deposit as COMPLETED.
+      let depositId: string | null = null;
+      if (paymentMode === "pawapay") {
+        const deposit = await sdk.client.fetch<{ depositId: string; amount: number }>("/store/pawapay/deposit", {
+          method: "POST",
+          body: { cart_id: cartId, phone: identity.phone, correspondent: mobileNetwork },
+        });
+        depositId = deposit.depositId;
+        setPaymentWait(`${t("Validez le paiement sur votre téléphone")} (${formatPrice(deposit.amount)} FCFA)`);
+
+        const deadline = Date.now() + 3 * 60 * 1000;
+        let confirmed = false;
+        while (Date.now() < deadline) {
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          const status = await sdk.client
+            .fetch<{ status: string; message?: string }>(`/store/pawapay/deposit/${depositId}`)
+            .catch(() => null);
+          if (status?.status === "COMPLETED") {
+            confirmed = true;
+            break;
+          }
+          if (status?.status === "FAILED") {
+            throw new Error(status.message || t("Le paiement Mobile Money a été refusé ou annulé."));
+          }
+        }
+        if (!confirmed) {
+          throw new Error(t("Délai dépassé : le paiement n'a pas été confirmé sur votre téléphone. Réessayez ; si vous avez validé après ce délai, contactez-nous avant de repayer."));
+        }
+        setPaymentWait(t("Paiement confirmé, finalisation de votre commande..."));
+      }
+
+      // 4. Initiate Payment Session
       const { cart } = await sdk.store.cart.retrieve(cartId);
       await sdk.store.payment.initiatePaymentSession(cart as any, {
           provider_id: paymentMode === "pawapay" ? "pp_pawapay_pawapay" : "pp_system_default",
-          data: {
-            mobile_network: paymentMode === "pawapay" ? mobileNetwork : null,
-            correspondent: paymentMode === "pawapay" ? mobileNetwork : null,
-            payer: {
-              type: "MSISDN",
-              address: { value: identity.phone.startsWith("237") ? identity.phone : (identity.phone.startsWith("+237") ? identity.phone.replace("+", "") : "237" + identity.phone) }
-            },
-            amount: total.toString(),
-            currency: "XAF",
-            depositId: cartId + "_" + Date.now().toString(),
-            statementDescription: "The Welfare Paiement"  
-          }
+          data: paymentMode === "pawapay"
+            ? { depositId, correspondent: mobileNetwork }
+            : {},
         });
 
-      // 4. Complete Checkout
+      // 5. Complete Checkout
       const response = await sdk.store.cart.complete(cartId);
       
       let ref = "WLF-PENDING";
@@ -388,6 +412,7 @@ useEffect(() => {
       console.error("Payment Error:", err);
       const msg = err?.message || err?.toString() || t("Erreur inconnue");
       alert(t("Erreur lors de la validation: ") + msg);
+      setPaymentWait("");
       setIsLoading(false);
     }
   };
@@ -852,6 +877,12 @@ useEffect(() => {
                     <>{t("Confirmer ma commande")} <CaretRight className="w-4 h-4" /></>
                   )}
                 </motion.button>
+
+                {paymentWait && (
+                  <p className="text-center text-xs font-semibold text-[#2A2424] bg-[#F4EAEB]/70 rounded-xl px-3 py-2.5">
+                    {paymentWait}
+                  </p>
+                )}
 
                 <button
                   onClick={() => setStep(1)}

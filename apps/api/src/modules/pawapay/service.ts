@@ -1,5 +1,5 @@
 import { AbstractPaymentProvider } from "@medusajs/framework/utils"
-import crypto from "crypto"
+import { getDeposit, isValidDepositId } from "./client"
 
 const PaymentSessionStatus = {
   AUTHORIZED: "authorized",
@@ -18,12 +18,13 @@ class PawapayProviderService extends AbstractPaymentProvider {
   }
 
   async initiatePayment(input: any): Promise<any> {
-    // input contains: amount, currency_code, context, data
-    // We just return a pending session here. The actual call to PawaPay happens in authorizePayment.
+    // The Mobile Money push is sent beforehand by POST /store/pawapay/deposit.
+    // Here we only remember which deposit belongs to this session and the amount Medusa expects.
     return {
       id: "session_pawapay_" + Date.now(),
       data: {
         ...input.data,
+        expected_amount: Number(input.amount),
         status: "pending"
       }
     }
@@ -35,6 +36,7 @@ class PawapayProviderService extends AbstractPaymentProvider {
       data: {
         ...(input.sessionData || {}),
         ...input.data,
+        ...(input.amount !== undefined ? { expected_amount: Number(input.amount) } : {}),
         status: "pending"
       }
     }
@@ -42,69 +44,44 @@ class PawapayProviderService extends AbstractPaymentProvider {
 
   async getPaymentStatus(input: any): Promise<any> {
     const status = input.data?.status as string;
-    if (status === "captured" || status === "COMPLETED") return { status: PaymentSessionStatus.CAPTURED };
+    if (status === "captured") return { status: PaymentSessionStatus.CAPTURED };
+    if (status === "authorized" || status === "COMPLETED") return { status: PaymentSessionStatus.AUTHORIZED };
     if (status === "canceled" || status === "FAILED") return { status: PaymentSessionStatus.CANCELED };
     return { status: PaymentSessionStatus.PENDING }
   }
 
   async authorizePayment(input: any): Promise<any> {
-    const token = process.env.PAWAPAY_API_KEY;
-    if (!token) {
-      throw new Error("PawaPay API token is not configured in PAWAPAY_API_KEY");
+    const data = input.data || {};
+    const depositId = data.depositId;
+
+    if (!isValidDepositId(depositId)) {
+      throw new Error("Paiement Mobile Money introuvable : aucun dépôt PawaPay valide n'est associé à cette commande.");
     }
 
-    const frontendData = input.data || {};
-    
-    // Ensure amount is a string. If the frontend passed a number or it was converted, stringify it.
-    // If the frontend didn't pass it, fallback to Medusa's input.amount.
-    let amountString = "";
-    if (frontendData.amount) {
-      amountString = String(frontendData.amount);
-    } else {
-      amountString = String(input.amount);
+    const deposit = await getDeposit(depositId);
+    if (!deposit) {
+      return { status: PaymentSessionStatus.PENDING, data: { ...data, status: "pending" } };
     }
 
-    const payload = {
-      depositId: frontendData.depositId || crypto.randomUUID(),
-      amount: amountString,
-      currency: (frontendData.currency || input.currency_code || "XAF").toUpperCase(),
-      correspondent: frontendData.correspondent || "MTN_MOMO_CMR",
-      payer: frontendData.payer || {
-        type: "MSISDN",
-        address: { value: "237651702809" } // Fallback
-      },
-      customerTimestamp: new Date().toISOString(),
-      statementDescription: frontendData.statementDescription || "The Welfare Shop"
+    if (deposit.status === "FAILED") {
+      throw new Error(`Paiement Mobile Money échoué : ${deposit.failureReason?.failureMessage || deposit.failureReason?.failureCode || "raison inconnue"}`);
+    }
+
+    if (deposit.status !== "COMPLETED") {
+      // ACCEPTED / SUBMITTED / ENQUEUED: customer has not confirmed yet
+      return { status: PaymentSessionStatus.PENDING, data: { ...data, pawapay_deposit: deposit, status: "pending" } };
+    }
+
+    const paid = Number(deposit.depositedAmount ?? deposit.requestedAmount ?? 0);
+    const expected = Number(data.expected_amount ?? 0);
+    if (expected > 0 && paid < expected) {
+      throw new Error(`Montant Mobile Money insuffisant (${paid} payé, ${expected} attendu).`);
+    }
+
+    return {
+      status: PaymentSessionStatus.AUTHORIZED,
+      data: { ...data, pawapay_deposit: deposit, status: "authorized" },
     };
-
-    try {
-      const response = await fetch("https://api.pawapay.cloud/v1/deposits", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(`PawaPay API error: ${response.status} - ${JSON.stringify(data)}`);
-      }
-
-      // PawaPay returns 200 OK with status ACCEPTED or similar when push is sent
-      return {
-        status: PaymentSessionStatus.PENDING,
-        data: {
-          ...frontendData,
-          pawapay_response: data,
-          status: "pending"
-        },
-      }
-    } catch (error: any) {
-      throw new Error(`PawaPay initiation failed: ${error.message}`);
-    }
   }
 
   async capturePayment(input: any): Promise<any> {
