@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useTransition } from "react";
-import { ArrowDownAZ, ArrowUpAZ, CalendarClock, CalendarDays, Loader2 } from "lucide-react";
+import { ArrowDownAZ, ArrowUpAZ, ArrowDownWideNarrow, ArrowUpNarrowWide, CalendarClock, CalendarDays, Loader2 } from "lucide-react";
 
 export function ProductFilters() {
   const router = useRouter();
@@ -74,6 +74,8 @@ export function ProductFilters() {
           <option value="title">Alphabétique (A-Z)</option>
           <option value="-title">Alphabétique (Z-A)</option>
           <option value="-updated_at">Dernière modification</option>
+          <option value="stock_desc">Stock : plus élevé d'abord</option>
+          <option value="stock_asc">Stock : plus faible d'abord</option>
         </select>
         <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#2A2424]/40">
           {isPending ? (
@@ -86,6 +88,10 @@ export function ProductFilters() {
             <ArrowDownAZ className="w-3.5 h-3.5" />
           ) : currentOrder === "-title" ? (
             <ArrowUpAZ className="w-3.5 h-3.5" />
+          ) : currentOrder === "stock_desc" ? (
+            <ArrowDownWideNarrow className="w-3.5 h-3.5" />
+          ) : currentOrder === "stock_asc" ? (
+            <ArrowUpNarrowWide className="w-3.5 h-3.5" />
           ) : (
             <CalendarClock className="w-3.5 h-3.5" />
           )}

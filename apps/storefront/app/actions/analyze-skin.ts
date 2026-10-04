@@ -129,11 +129,16 @@ async function fetchStoreProductsByIds(
         description: p.description,
         handle: p.handle,
         thumbnail: p.thumbnail,
-        stock_total: (p.variants || []).reduce(
-          (acc: number, v: any) =>
-            acc + (v.inventory_quantity || v.metadata?.stock_total || 0),
-          0
-        ),
+        // Per-store metadata (Odoo-synced, same source as the product page) is the stock of record;
+        // Medusa's inventory_quantity is an unmaintained counter that only goes negative.
+        stock_total: (p.variants || []).reduce((acc: number, v: any) => {
+          const m = v.metadata || {};
+          if (m.stock_b1 != null || m.stock_b2 != null) {
+            return acc + (Number(m.stock_b1) || 0) + (Number(m.stock_b2) || 0);
+          }
+          if (m.stock_total != null) return acc + (Number(m.stock_total) || 0);
+          return acc + (Number(v.inventory_quantity) || 0);
+        }, 0),
         category,
         price
       };

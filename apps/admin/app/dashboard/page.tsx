@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { fetchAdmin } from "@/lib/medusa-admin";
+import { productStock } from "@/lib/stock";
 import DashboardClient from "./DashboardClient";
 import { redirect } from "next/navigation";
 
@@ -102,7 +103,7 @@ export default async function DashboardPage() {
 
   // Low stock products
   products.forEach(p => {
-    const inv = p.variants?.reduce((acc: number, v: any) => acc + (v.inventory_quantity || v.metadata?.stock_total || 0), 0) || 0;
+    const inv = productStock(p);
     if (inv > 0 && inv < 5) {
       urgentTasks.push({
         type: "stock",

@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Package, Plus, ChevronRight, ChevronLeft, Pencil } from "lucide-react";
 import { fetchAdmin } from "@/lib/medusa-admin";
+import { productStock } from "@/lib/stock";
 import { ProductSearch } from "@/components/products/ProductSearch";
 import { ProductFilters } from "@/components/products/ProductFilters";
 import { ShopPageManager } from "@/components/products/ShopPageManager";
@@ -28,12 +29,15 @@ export default async function ProductsPage({
   const tab = typeof resolvedParams.tab === "string" ? resolvedParams.tab : "catalogue";
 
   const isCustomStockFilter = status === "negative_stock" || status === "low_stock";
+  // Stock is computed from variant metadata, so Medusa can't sort on it: fetch everything and sort here
+  const isStockSort = order === "stock_desc" || order === "stock_asc";
+  const needsFullFetch = isCustomStockFilter || isStockSort;
 
   const query = new URLSearchParams({
-    offset: isCustomStockFilter ? "0" : offset.toString(),
-    limit: isCustomStockFilter ? "2000" : limit.toString(),
+    offset: needsFullFetch ? "0" : offset.toString(),
+    limit: needsFullFetch ? "2000" : limit.toString(),
     expand: "variants,collection,options",
-    order: order,
+    order: isStockSort ? "-created_at" : order,
   });
   if (q) query.set("q", q);
   if (status && status !== "all" && !isCustomStockFilter) {
@@ -45,14 +49,19 @@ export default async function ProductsPage({
     token
   ).catch(() => ({ products: [], count: 0, offset: 0, limit: 24 }));
 
-  if (isCustomStockFilter) {
-    // Manually filter products based on stock
-    const filteredProducts = data.products.filter(p => {
-      const inv = p.variants?.reduce((acc: number, v: any) => acc + (v.inventory_quantity || v.metadata?.stock_total || 0), 0) || 0;
+  if (needsFullFetch) {
+    // Manually filter and/or sort products based on stock
+    let filteredProducts = data.products.filter(p => {
+      const inv = productStock(p);
       if (status === "negative_stock") return inv < 0;
       if (status === "low_stock") return inv >= 0 && inv < 10;
       return true;
     });
+
+    if (isStockSort) {
+      const direction = order === "stock_desc" ? -1 : 1;
+      filteredProducts = filteredProducts.sort((a, b) => direction * (productStock(a) - productStock(b)));
+    }
 
     data = {
       ...data,
@@ -71,7 +80,7 @@ export default async function ProductsPage({
 
   // Compute low stock from fetched products (inventory < 10 but > 0)
   const lowStockCount = data.products.filter(p => {
-    const inv = p.variants?.reduce((acc: number, v: any) => acc + (v.inventory_quantity || v.metadata?.stock_total || 0), 0) || 0;
+    const inv = productStock(p);
     return inv > 0 && inv < 10;
   }).length;
 
@@ -197,7 +206,7 @@ export default async function ProductsPage({
               const amt = p ? p.amount : 0;
               return amt > 0 && (amt < min || min === 0) ? amt : min;
             }, 0);
-            const totalInventory = product.variants?.reduce((acc: number, v: any) => acc + (v.inventory_quantity || v.metadata?.stock_total || 0), 0) || 0;
+            const totalInventory = productStock(product);
             const isPublished = product.status === "published";
 
             return (
