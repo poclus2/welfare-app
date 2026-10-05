@@ -31,6 +31,9 @@ export const CATEGORY_LABELS: Record<string, string> = {
   "body-care": "Soins du Corps",
   "hair-care": "Soins des Cheveux",
   "supplements": "Compléments",
+  "masques-visage": "Masques visage",
+  "soins-levres": "Soins des lèvres",
+  "foot-care": "Foot Care",
 };
 
 export function matchesQuery(p: FilterableProduct, query: string): boolean {

@@ -8,11 +8,15 @@ import { buildFacets, matchesCategory, matchesQuery } from "@/lib/shop-filters";
 // Pages with no Medusa category of their own. "cheveux" is matched by category name / title (see
 // matchesCategory); the two below used to come out empty (linked from the home page) and are now
 // built from the Medusa categories they really are.
-const NO_MEDUSA_CATEGORY = new Set(["cheveux", "hydratants", "soins-contour-des-yeux", "yeux"]);
+const NO_MEDUSA_CATEGORY = new Set(["cheveux", "hydratants", "soins-contour-des-yeux", "yeux", "masques-visage", "soins-levres", "foot-care"]);
 const GROUPED_BY_HANDLE: Record<string, { handles: string[]; title?: RegExp }> = {
   hydratants: { handles: ["moisturizer-/-cream", "crèmes"] },
-  "soins-contour-des-yeux": { handles: ["eye-cream"], title: /yeux|eye|contour/i },
-  yeux: { handles: ["eye-cream"], title: /yeux|eye|contour/i },
+  "soins-contour-des-yeux": { handles: ["eye-cream"], title: /yeux|\beye\b|contour/i },
+  yeux: { handles: ["eye-cream"], title: /yeux|\beye\b|contour/i },
+  // menu entries that gather several Medusa categories
+  "masques-visage": { handles: ["sheet-mask", "wash-off-mask", "sleeping-mask"] },
+  "soins-levres": { handles: ["lip-care"] },
+  "foot-care": { handles: ["foot-cream", "foot-peeling"] },
 };
 
 // Slugs whose Medusa category handle differs

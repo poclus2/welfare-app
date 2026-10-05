@@ -5,8 +5,27 @@ import { ProductForm } from "@/components/products/ProductForm";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditProductPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const { id } = await params;
+  const { from } = await searchParams;
+
+  // Where to go back to after saving: the list exactly as it was (page, search, sort, status).
+  // Only those four known parameters are kept, so `from` can never point anywhere else.
+  const back = new URLSearchParams();
+  if (typeof from === "string") {
+    const src = new URLSearchParams(from);
+    for (const key of ["offset", "q", "order", "status"]) {
+      const v = src.get(key);
+      if (v && (key !== "offset" || /^\d+$/.test(v))) back.set(key, v);
+    }
+  }
+  const returnTo = `/dashboard/products${back.toString() ? `?${back.toString()}` : ""}`;
   const cookieStore = await cookies();
   const token = cookieStore.get("admin_token")?.value;
   
@@ -31,7 +50,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
 
   return (
     <div className="p-5 lg:p-8">
-      <ProductForm initialData={product} collections={collections} categories={categories} />
+      <ProductForm initialData={product} collections={collections} categories={categories} returnTo={returnTo} />
     </div>
   );
 }

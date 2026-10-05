@@ -104,7 +104,8 @@ export function Navbar({ dict }: { dict?: any }) {
                       <Link href="/shop/moisturizer-cream" className="text-sm text-[#2A2424]/70 hover:text-[#2A2424] hover:underline">Moisturizer / Cream</Link>
                       <Link href="/shop/sunscreen" className="text-sm text-[#2A2424]/70 hover:text-[#2A2424] hover:underline">Sunscreen</Link>
                       <Link href="/shop/exfoliant" className="text-sm text-[#2A2424]/70 hover:text-[#2A2424] hover:underline">Exfoliant</Link>
-                      <Link href="/shop/sheet-mask" className="text-sm text-[#2A2424]/70 hover:text-[#2A2424] hover:underline">Masks</Link>
+                      <Link href="/shop/masques-visage" className="text-sm text-[#2A2424]/70 hover:text-[#2A2424] hover:underline">Masque visage</Link>
+                      <Link href="/shop/soins-levres" className="text-sm text-[#2A2424]/70 hover:text-[#2A2424] hover:underline">Soins des lèvres</Link>
                     </div>
                   </div>
 
@@ -115,8 +116,10 @@ export function Navbar({ dict }: { dict?: any }) {
                       <Link href="/shop/body-wash" className="text-sm text-[#2A2424]/70 hover:text-[#2A2424] hover:underline">Body Wash</Link>
                       <Link href="/shop/body-lotion" className="text-sm text-[#2A2424]/70 hover:text-[#2A2424] hover:underline">Body Lotion / Cream</Link>
                       <Link href="/shop/body-oil" className="text-sm text-[#2A2424]/70 hover:text-[#2A2424] hover:underline">Body Oil</Link>
+                      <Link href="/shop/body-mist" className="text-sm text-[#2A2424]/70 hover:text-[#2A2424] hover:underline">Body Mist</Link>
                       <Link href="/shop/body-scrub" className="text-sm text-[#2A2424]/70 hover:text-[#2A2424] hover:underline">Body Scrub</Link>
-                      <Link href="/shop/hand-cream" className="text-sm text-[#2A2424]/70 hover:text-[#2A2424] hover:underline">Hand & Foot Care</Link>
+                      <Link href="/shop/hand-cream" className="text-sm text-[#2A2424]/70 hover:text-[#2A2424] hover:underline">Hand Cream</Link>
+                      <Link href="/shop/foot-care" className="text-sm text-[#2A2424]/70 hover:text-[#2A2424] hover:underline">Foot Care</Link>
                     </div>
                   </div>
 
@@ -280,6 +283,8 @@ export function Navbar({ dict }: { dict?: any }) {
                             <Link href="/shop/serum" onClick={() => setIsMobileMenuOpen(false)} className="text-sm text-[#2A2424]/70">Serum & Ampoule</Link>
                             <Link href="/shop/moisturizer-cream" onClick={() => setIsMobileMenuOpen(false)} className="text-sm text-[#2A2424]/70">Moisturizer / Cream</Link>
                             <Link href="/shop/sunscreen" onClick={() => setIsMobileMenuOpen(false)} className="text-sm text-[#2A2424]/70">Sunscreen</Link>
+                            <Link href="/shop/masques-visage" onClick={() => setIsMobileMenuOpen(false)} className="text-sm text-[#2A2424]/70">Masque visage</Link>
+                            <Link href="/shop/soins-levres" onClick={() => setIsMobileMenuOpen(false)} className="text-sm text-[#2A2424]/70">Soins des lèvres</Link>
                           </div>
                         </div>
                         
@@ -290,6 +295,9 @@ export function Navbar({ dict }: { dict?: any }) {
                             <Link href="/shop/body-wash" onClick={() => setIsMobileMenuOpen(false)} className="text-sm text-[#2A2424]/70">Body Wash</Link>
                             <Link href="/shop/body-lotion" onClick={() => setIsMobileMenuOpen(false)} className="text-sm text-[#2A2424]/70">Body Lotion / Cream</Link>
                             <Link href="/shop/body-scrub" onClick={() => setIsMobileMenuOpen(false)} className="text-sm text-[#2A2424]/70">Body Scrub</Link>
+                            <Link href="/shop/body-oil" onClick={() => setIsMobileMenuOpen(false)} className="text-sm text-[#2A2424]/70">Body Oil</Link>
+                            <Link href="/shop/body-mist" onClick={() => setIsMobileMenuOpen(false)} className="text-sm text-[#2A2424]/70">Body Mist</Link>
+                            <Link href="/shop/foot-care" onClick={() => setIsMobileMenuOpen(false)} className="text-sm text-[#2A2424]/70">Foot Care</Link>
                           </div>
                         </div>
 

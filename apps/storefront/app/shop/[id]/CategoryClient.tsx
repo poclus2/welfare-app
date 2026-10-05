@@ -45,6 +45,9 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   "body-care": "Prenez soin de votre corps avec nos crèmes, laits et gommages nourrissants.",
   "hair-care": "Des soins capillaires experts pour revitaliser et sublimer vos cheveux.",
   "supplements": "La beauté qui vient de l'intérieur avec nos compléments premium.",
+  "masques-visage": "Masques en tissu, à rincer ou de nuit : des rituels ciblés pour votre visage.",
+  "soins-levres": "Baumes et masques pour des lèvres douces et nourries.",
+  "foot-care": "Crèmes et gommages pour des pieds doux et soignés.",
 };
 
 /* ─────────────────────────────────────────
@@ -227,7 +230,7 @@ export default function CategoryClient({
       <div className="w-full border-b border-[#F4EAEB] sticky top-0 z-30 bg-white/90 backdrop-blur-md">
         <div className="w-full max-w-[1600px] mx-auto px-5 lg:px-12 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar flex-1">
-            {Object.entries(CATEGORY_LABELS).filter(([slug]) => !['face-care', 'body-care', 'hair-care', 'supplements'].includes(slug)).map(([slug, label]) => (
+            {Object.entries(CATEGORY_LABELS).filter(([slug]) => !['face-care', 'body-care', 'hair-care', 'supplements', 'masques-visage', 'soins-levres', 'foot-care'].includes(slug)).map(([slug, label]) => (
               <Link
                 key={slug}
                 href={`/shop/${slug}`}

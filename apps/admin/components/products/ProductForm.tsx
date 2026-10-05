@@ -8,7 +8,7 @@ import { Loader2, UploadCloud, X, Save, ImageIcon, Tag } from "lucide-react";
 const inputClass = "w-full px-4 py-2.5 rounded-xl border border-[#EDE0E0] text-sm text-[#2A2424] bg-[#FDFBF7] outline-none focus:border-[#C08A8E] focus:ring-2 focus:ring-[#F4EAEB] transition-all";
 const labelClass = "block text-[11px] font-bold text-[#2A2424]/60 mb-1.5 uppercase tracking-widest";
 
-export function ProductForm({ initialData, collections, categories = [] }: { initialData?: any, collections: any[], categories?: any[] }) {
+export function ProductForm({ initialData, collections, categories = [], returnTo = "/dashboard/products" }: { initialData?: any, collections: any[], categories?: any[], returnTo?: string }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -127,7 +127,7 @@ export function ProductForm({ initialData, collections, categories = [] }: { ini
         throw new Error(err.error || "Erreur lors de l'enregistrement");
       }
 
-      router.push("/dashboard/products");
+      router.push(returnTo);
       router.refresh();
     } catch (err: any) {
       setError(err.message);
@@ -148,7 +148,7 @@ export function ProductForm({ initialData, collections, categories = [] }: { ini
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => router.back()}
+            onClick={() => router.push(returnTo)}
             className="px-4 py-2 bg-white border border-[#EDE0E0] rounded-xl text-sm font-semibold text-[#2A2424]/60 hover:text-[#2A2424] transition-colors"
           >
             Annuler

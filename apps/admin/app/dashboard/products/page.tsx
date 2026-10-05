@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import Image from "next/image";
 import { Package, Plus, ChevronRight, ChevronLeft, Pencil } from "lucide-react";
 import { fetchAdmin } from "@/lib/medusa-admin";
@@ -27,6 +28,19 @@ export default async function ProductsPage({
   const offset = typeof resolvedParams.offset === "string" ? parseInt(resolvedParams.offset, 10) : 0;
   const limit = 24;
   const tab = typeof resolvedParams.tab === "string" ? resolvedParams.tab : "catalogue";
+
+  // URL of this list at a given offset, keeping search / sort / status. The edit page gets it as `from`
+  // so that saving brings the admin back to the exact page they were browsing.
+  const listQuery = (off: number) => {
+    const sp = new URLSearchParams();
+    if (off > 0) sp.set("offset", String(off));
+    if (q) sp.set("q", q);
+    if (order && order !== "-created_at") sp.set("order", order);
+    if (status && status !== "all") sp.set("status", status);
+    return sp.toString();
+  };
+  const listUrl = (off: number) => `/dashboard/products${listQuery(off) ? `?${listQuery(off)}` : ""}`;
+  const editUrl = (id: string) => `/dashboard/products/${id}${listQuery(offset) ? `?from=${encodeURIComponent(listQuery(offset))}` : ""}`;
 
   const isCustomStockFilter = status === "negative_stock" || status === "low_stock";
   // Stock is computed from variant metadata, so Medusa can't sort on it: fetch everything and sort here
@@ -71,6 +85,13 @@ export default async function ProductsPage({
       offset,
       limit,
     };
+  }
+
+  // Last page can disappear (e.g. its only product went to draft while filtering on "published"):
+  // go back to the new last page instead of showing an empty list.
+  if (data.count > 0 && offset >= data.count) {
+    const lastOffset = Math.floor((data.count - 1) / limit) * limit;
+    redirect(listUrl(lastOffset));
   }
 
   const [allProductsData, activeProductsData, draftProductsData] = await Promise.all([
@@ -234,7 +255,7 @@ export default async function ProductsPage({
                   {/* Edit button on hover */}
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
                     <Link
-                      href={`/dashboard/products/${product.id}`}
+                      href={editUrl(product.id)}
                       className="flex items-center gap-1.5 bg-white text-[#2A2424] text-xs font-bold px-3 py-1.5 rounded-full shadow-lg hover:bg-[#2A2424] hover:text-white transition-colors"
                     >
                       <Pencil className="w-3 h-3" />
@@ -286,7 +307,7 @@ export default async function ProductsPage({
 
                   {/* Edit button below */}
                   <Link
-                    href={`/dashboard/products/${product.id}`}
+                    href={editUrl(product.id)}
                     className="mt-1 w-full text-center text-[11px] font-bold py-1.5 rounded-lg border border-[#EDE0E0] text-[#2A2424]/60 hover:bg-[#2A2424] hover:text-white hover:border-[#2A2424] transition-all duration-150"
                   >
                     Éditer
@@ -306,7 +327,7 @@ export default async function ProductsPage({
           </p>
           <div className="flex items-center gap-2">
             <Link
-              href={`/dashboard/products?offset=${Math.max(0, offset - limit)}${q ? `&q=${q}` : ''}${order ? `&order=${order}` : ''}${status && status !== 'all' ? `&status=${status}` : ''}`}
+              href={listUrl(Math.max(0, offset - limit))}
               className={`p-1.5 rounded-lg border border-[#EDE0E0] transition-colors ${currentPage === 1 ? "opacity-40 pointer-events-none" : "hover:bg-[#F5F0EB]"}`}
             >
               <ChevronLeft className="w-4 h-4 text-[#2A2424]" />
@@ -317,7 +338,7 @@ export default async function ProductsPage({
               return (
                 <Link
                   key={page}
-                  href={`/dashboard/products?offset=${(page - 1) * limit}${q ? `&q=${q}` : ''}${order ? `&order=${order}` : ''}${status && status !== 'all' ? `&status=${status}` : ''}`}
+                  href={listUrl((page - 1) * limit)}
                   className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-colors ${
                     page === currentPage
                       ? "bg-[#2A2424] text-white"
@@ -329,7 +350,7 @@ export default async function ProductsPage({
               );
             })}
             <Link
-              href={`/dashboard/products?offset=${offset + limit}${q ? `&q=${q}` : ''}${order ? `&order=${order}` : ''}${status && status !== 'all' ? `&status=${status}` : ''}`}
+              href={listUrl(offset + limit)}
               className={`p-1.5 rounded-lg border border-[#EDE0E0] transition-colors ${currentPage >= totalPages ? "opacity-40 pointer-events-none" : "hover:bg-[#F5F0EB]"}`}
             >
               <ChevronRight className="w-4 h-4 text-[#2A2424]" />
