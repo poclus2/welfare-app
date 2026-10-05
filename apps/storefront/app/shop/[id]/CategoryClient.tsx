@@ -19,7 +19,6 @@ import {
   CATEGORY_LABELS,
   FacetOption,
   ShopFacets,
-  matchesCategory,
   matchesQuery,
   matchesSkinTypes,
 } from "@/lib/shop-filters";
@@ -182,7 +181,7 @@ export default function CategoryClient({
 
   const filteredProducts = products.filter((p) => {
     if (query && !matchesQuery(p, query)) return false;
-    if (!matchesCategory(category, p)) return false;
+    // (the category itself is already applied by the page on the server)
     if (!matchesSkinTypes(selectedSkinTypes, p.skin_types)) return false;
     if (selectedConcerns.length > 0 && !selectedConcerns.some((c) => p.concerns.includes(c))) return false;
     if (selectedIngredients.length > 0 && !selectedIngredients.some((i) => p.ingredients.includes(i))) return false;
