@@ -23,6 +23,7 @@ export type SkinAnalysisResult = {
   estimated_skin_age: number;
   melanin_phototype?: string;
   empathetic_message: string;
+  scan_id?: string; // id of the saved diagnostic, used to attach it to the customer's history
   kbeauty_routine: RoutineStep[];
   metrics?: {
     sebum_level_percentage: number;
@@ -775,12 +776,15 @@ FORMAT JSON ATTENDU :
       try {
         const medusaBackendUrl =
           process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000";
-        await fetch(`${medusaBackendUrl}/store/skin-scans`, {
+        // The diagnostic (with the face photos) is saved by this server only: the route needs the shared
+        // server token. It is saved unattached; the logged-in customer claims it from the result page.
+        const saveRes = await fetch(`${medusaBackendUrl}/store/skin-scans`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "x-publishable-api-key":
               process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "",
+            "x-skin-scan-token": process.env.SKIN_SCAN_TOKEN || "",
           },
           body: JSON.stringify({
             final_skin_type: finalResult.final_skin_type,
@@ -801,6 +805,12 @@ FORMAT JSON ATTENDU :
             claude_raw_summary: finalResult.empathetic_message || "",
           }),
         });
+        if (saveRes.ok) {
+          const saved = await saveRes.json().catch(() => null);
+          if (saved?.scan?.id) finalResult.scan_id = saved.scan.id;
+        } else {
+          console.error(`[SkinCoach] Diagnostic non enregistré (HTTP ${saveRes.status}) — SKIN_SCAN_TOKEN configuré des deux côtés ?`);
+        }
       } catch (logError) {
         console.error("[SkinCoach] Erreur lors de la journalisation du scan :", logError);
       }

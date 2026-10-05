@@ -52,34 +52,23 @@ export default function SkinCoachResultPage() {
     }
   }, [result, router, isCheckingAuth]);
 
-  // 3. Sauvegarder le scan dans la DB si l'utilisateur est connecté
+  // 3. Rattacher le diagnostic à l'historique de la cliente connectée.
+  // Le diagnostic est déjà enregistré côté serveur par l'analyse (photos et résumés réels, sans compte
+  // rattaché) : on le revendique simplement pour cette cliente, au lieu d'en créer un doublon.
   useEffect(() => {
-    const saveScan = async () => {
-      if (!result || !customerId || hasSavedRef.current || (result as any).id) return; // Do not save if it came from history (has id)
+    const claimScan = async () => {
+      const scanId = (result as any)?.scan_id;
+      if (!result || !customerId || !scanId || hasSavedRef.current || (result as any).id) return; // (id = déjà dans l'historique)
       hasSavedRef.current = true;
       try {
-        await sdk.client.fetch("/store/skin-scans", {
-          method: "POST",
-          body: {
-            customer_id: customerId,
-            final_skin_type: result.final_skin_type,
-            estimated_skin_age: result.estimated_skin_age || 25,
-            melanin_phototype: result.melanin_phototype,
-            concerns: result.metrics ? ["Acné", "Hydratation"] : [], // Fallback since concerns wasn't natively an array
-            metrics: result.metrics,
-            routine: result.kbeauty_routine,
-            images: [],
-            qwen_raw_summary: "Generated from UI",
-            claude_raw_summary: "Generated from UI",
-          }
-        });
+        await sdk.client.fetch(`/store/skin-scans/${scanId}/claim`, { method: "POST" });
       } catch (err) {
-        console.error("Failed to save skin scan", err);
+        console.error("Failed to attach the skin scan to the customer", err);
       }
     };
 
     if (isAuthenticated && result && customerId) {
-      saveScan();
+      claimScan();
     }
   }, [isAuthenticated, result, customerId]);
 

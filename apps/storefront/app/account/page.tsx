@@ -28,6 +28,7 @@ import { IconIA } from "@/components/ui/icons/IconIA";
 import { OrderCard } from "@/components/account/OrderCard";
 import { OrderDetailsTab } from "@/components/account/OrderDetailsTab";
 import ProfileTab from "@/components/account/ProfileTab";
+import { ORDER_FIELDS } from "@/lib/order-view";
 
 import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
 
@@ -75,10 +76,16 @@ function getNextTier(points: number): TierType | null {
   return idx >= 0 && idx < loyaltyTiers.length - 1 ? (loyaltyTiers[idx + 1] as TierType) : null;
 }
 
+// Older records were saved with this placeholder instead of the real message
+const PLACEHOLDER_SUMMARY = "Generated from UI";
+const scanMessage = (scan: any): string => {
+  const v = typeof scan?.claude_raw_summary === "string" ? scan.claude_raw_summary.trim() : "";
+  return v && v !== PLACEHOLDER_SUMMARY ? v : "";
+};
+
 const SkinCoachScanCard = ({ scan, onClick }: { scan: any, onClick: () => void }) => {
-  const displaySummary = scan.qwen_raw_summary && scan.qwen_raw_summary !== "Generated from UI" 
-    ? scan.qwen_raw_summary 
-    : "Votre rituel beauté sur-mesure a été élaboré par notre intelligence artificielle à partir de votre diagnostic.";
+  const displaySummary = scanMessage(scan)
+    || "Votre rituel beauté sur-mesure a été élaboré par notre intelligence artificielle à partir de votre diagnostic.";
   
   const rawSkinType = scan.final_skin_type || "";
   const displaySkinType = rawSkinType.toUpperCase().startsWith("PEAU ") 
@@ -162,7 +169,8 @@ export default function AccountPage() {
         return;
       }
       setCustomer(customer);
-      const { orders } = await sdk.store.order.list();
+      // the default list carries no items, address or delivery status: ask for them
+      const { orders } = await sdk.store.order.list({ fields: ORDER_FIELDS, order: "-created_at", limit: 50 });
       setOrders(orders || []);
       
       try {
@@ -200,7 +208,7 @@ export default function AccountPage() {
       final_skin_type: scan.final_skin_type,
       estimated_skin_age: scan.estimated_skin_age,
       melanin_phototype: scan.melanin_phototype,
-      empathetic_message: scan.qwen_raw_summary || "Voici votre diagnostic personnalisé.",
+      empathetic_message: scanMessage(scan) || "Voici votre diagnostic personnalisé.",
       kbeauty_routine: scan.routine || [],
       metrics: scan.metrics,
         id: scan.id
@@ -277,7 +285,7 @@ export default function AccountPage() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => { setSelectedOrder(null); setActiveTab(item.id); }}
                   className={`snap-start whitespace-nowrap md:w-full flex items-center gap-2 md:gap-3 px-4 py-2.5 md:py-3 rounded-xl transition-all duration-200 text-sm font-medium ${
                     isActive 
                       ? "bg-[#F4EAEB]/10 text-[#C97C85]" 
@@ -409,8 +417,7 @@ export default function AccountPage() {
                 {/* KPI Cards (Glamour Edition) */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
                   {[
-                    { label: "Commandes", value: orders.length, icon: Package,
-  Truck, color: "#cd858d", glow: "rgba(205,133,141,0.15)", delay: 0.1 },
+                    { label: "Commandes", value: orders.filter((o: any) => o.status !== "canceled").length, icon: Package, color: "#cd858d", glow: "rgba(205,133,141,0.15)", delay: 0.1 },
                     { label: "Scans IA", value: scans.length, icon: Scan, color: "#cd858d", glow: "rgba(205,133,141,0.15)", delay: 0.2 },
                     { label: "Fidélité", value: loyaltyPoints.toLocaleString('fr-FR'), icon: Star, color: "#cd858d", glow: "rgba(205,133,141,0.15)", delay: 0.3 },
                     { label: "Statut", value: tier.name, icon: Seal, color: "#cd858d", glow: "rgba(205,133,141,0.15)", delay: 0.4 },
