@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -18,9 +18,13 @@ import { Footer } from "@/components/home/footer";
 import {
   CATEGORY_LABELS,
   FacetOption,
-  ShopFacets,
+  Domain,
+  buildFacets,
+  matchesConcerns,
+  matchesIngredients,
   matchesQuery,
   matchesSkinTypes,
+  relevanceScore,
 } from "@/lib/shop-filters";
 import { useCart } from "@/lib/cart-context";
 import { useI18n } from "@/lib/i18n-context";
@@ -123,16 +127,16 @@ export type CategoryProduct = {
   skin_types: string[];
   concerns: string[];
   ingredients: string[];
+  // face / hair / body / supplement (see productDomain)
+  domain: Domain;
 };
 
 export default function CategoryClient({
   category,
   products,
-  facets,
 }: {
   category: string;
   products: CategoryProduct[];
-  facets: ShopFacets;
 }) {
   const { t } = useI18n();
   const searchParams = useSearchParams();
@@ -182,14 +186,35 @@ export default function CategoryClient({
     setList(list.includes(item) ? list.filter((i) => i !== item) : [...list, item]);
   };
 
-  const filteredProducts = products.filter((p) => {
-    if (query && !matchesQuery(p, query)) return false;
-    // (the category itself is already applied by the page on the server)
-    if (!matchesSkinTypes(selectedSkinTypes, p.skin_types)) return false;
-    if (selectedConcerns.length > 0 && !selectedConcerns.some((c) => p.concerns.includes(c))) return false;
-    if (selectedIngredients.length > 0 && !selectedIngredients.some((i) => p.ingredients.includes(i))) return false;
-    return true;
-  });
+  // The skin filters are for a face routine: on "all" (and on face pages) shampoos, body care and
+  // supplements are left out as soon as a filter is on; on a hair / body page, that page's own products stay.
+  const pageDomain: Domain = useMemo(() => {
+    if (category === "all") return "face";
+    const n: Record<string, number> = {};
+    products.forEach((p) => (n[p.domain] = (n[p.domain] || 0) + 1));
+    return ((Object.entries(n).sort((a, b) => b[1] - a[1])[0]?.[0]) as Domain) || "face";
+  }, [category, products]);
+
+  const hasFilters = selectedSkinTypes.length > 0 || selectedConcerns.length > 0 || selectedIngredients.length > 0;
+
+  // Sidebar choices come from the products they can actually apply to (no "Cuir chevelu" on a face page)
+  const facets = useMemo(() => buildFacets(products.filter((p) => p.domain === pageDomain)), [products, pageDomain]);
+
+  const filteredProducts = useMemo(() => {
+    const selected = { skinTypes: selectedSkinTypes, concerns: selectedConcerns, ingredients: selectedIngredients };
+    const list = products.filter((p) => {
+      if (query && !matchesQuery(p, query)) return false;
+      // (the category itself is already applied by the page on the server)
+      if (hasFilters && p.domain !== pageDomain) return false;
+      return matchesSkinTypes(selectedSkinTypes, p) && matchesConcerns(selectedConcerns, p) && matchesIngredients(selectedIngredients, p);
+    });
+    if (!hasFilters) return list;
+    // best fit first (stable: ties keep the shop's order)
+    return list
+      .map((p, i) => ({ p, i, score: relevanceScore(selected, p) }))
+      .sort((a, b) => b.score - a.score || a.i - b.i)
+      .map((x) => x.p);
+  }, [products, query, hasFilters, pageDomain, selectedSkinTypes, selectedConcerns, selectedIngredients]);
 
   // Rendering all ~580 cards at once (each with animations) made the page heavy: show them 24 at a time
   const PAGE_SIZE = 24;
@@ -199,7 +224,6 @@ export default function CategoryClient({
   }, [selectedSkinTypes, selectedConcerns, selectedIngredients, query, category]);
   const visibleProducts = filteredProducts.slice(0, visibleCount);
 
-  const hasFilters = selectedSkinTypes.length > 0 || selectedConcerns.length > 0 || selectedIngredients.length > 0;
   const clearAll = () => { setSelectedSkinTypes([]); setSelectedConcerns([]); setSelectedIngredients([]); };
 
   return (
@@ -246,7 +270,7 @@ export default function CategoryClient({
           </div>
           <div className="hidden lg:flex items-center gap-3 shrink-0 pl-4 border-l border-[#F4EAEB]">
             <span className="text-xs font-bold uppercase tracking-wider text-[#2A2424]/50">
-              {filteredProducts.length} {filteredProducts.length > 1 ? t("Résultats") : t("Résultat")}
+              {filteredProducts.length} {filteredProducts.length > 1 ? t("Résultats") : t("Résultat")}{hasFilters ? ` · ${t("triés par pertinence")}` : ""}
             </span>
           </div>
           <button

@@ -1,5 +1,5 @@
 import CategoryClient, { CategoryProduct } from "./CategoryClient";
-import { buildFacets, matchesCategory, matchesQuery } from "@/lib/shop-filters";
+import { matchesCategory, matchesQuery, productDomain } from "@/lib/shop-filters";
 
 // Category pages (/shop/all, /shop/serums...) read the slim catalogue served by the API
 // (GET /store/shop-catalog: cached, ~250 KB, already carries the filter facets) instead of
@@ -90,6 +90,7 @@ export default async function CategoryPage({
       brand: p.brand,
       brand_id: p.brand_id,
       category_handles: p.categories.map((c) => (c.handle || "").toLowerCase()),
+      domain: productDomain(p.categories.map((c) => c.handle || ""), p.title),
     }));
   } catch (error) {
     console.error("Failed to fetch the shop catalogue:", error);
@@ -114,5 +115,5 @@ export default async function CategoryPage({
         : matchesCategory(category, p))
   );
 
-  return <CategoryClient category={category} products={listed} facets={buildFacets(listed)} />;
+  return <CategoryClient category={category} products={listed} />;
 }
