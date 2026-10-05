@@ -1,5 +1,52 @@
-import { sdk } from "@/lib/medusa";
 import CategoryClient, { CategoryProduct } from "./CategoryClient";
+import { buildFacets, matchesCategory, matchesQuery } from "@/lib/shop-filters";
+
+// Category pages (/shop/all, /shop/serums...) read the slim catalogue served by the API
+// (GET /store/shop-catalog: cached, ~250 KB, already carries the filter facets) instead of
+// pulling every product with images, variants and prices (17-45 s, 4.7 MB).
+
+// Pages with no Medusa category of their own. "cheveux" is matched by category name / title (see
+// matchesCategory); the two below used to come out empty (linked from the home page) and are now
+// built from the Medusa categories they really are.
+const NO_MEDUSA_CATEGORY = new Set(["cheveux", "hydratants", "soins-contour-des-yeux", "yeux"]);
+const GROUPED_BY_HANDLE: Record<string, { handles: string[]; title?: RegExp }> = {
+  hydratants: { handles: ["moisturizer-/-cream", "crèmes"] },
+  "soins-contour-des-yeux": { handles: ["eye-cream"], title: /yeux|eye|contour/i },
+  yeux: { handles: ["eye-cream"], title: /yeux|eye|contour/i },
+};
+
+// Slugs whose Medusa category handle differs
+const CATEGORY_HANDLE_MAP: Record<string, string> = {
+  serums: "sérums",
+  cremes: "crèmes",
+  "masques-en-tissu": "masques",
+};
+
+type CatalogItem = {
+  id: string;
+  title: string;
+  thumbnail: string | null;
+  brand: string;
+  brand_id: string | null;
+  categories: { name: string; handle: string }[];
+  price: number;
+  variant_id: string;
+  concern_tags: string[];
+  skin_types: string[];
+  concerns: string[];
+  ingredients: string[];
+};
+
+async function fetchCatalog(): Promise<CatalogItem[]> {
+  const medusaUrl = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000";
+  const res = await fetch(`${medusaUrl}/store/shop-catalog`, {
+    headers: { "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "" },
+    next: { revalidate: 60 },
+  });
+  if (!res.ok) throw new Error(`shop-catalog responded ${res.status}`);
+  const data = await res.json();
+  return data.products || [];
+}
 
 export default async function CategoryPage({
   params,
@@ -13,132 +60,55 @@ export default async function CategoryPage({
   const q = typeof resolvedSearchParams.q === "string" ? resolvedSearchParams.q : undefined;
   const collection_id = typeof resolvedSearchParams.collection_id === "string" ? resolvedSearchParams.collection_id : undefined;
 
-  let products: CategoryProduct[] = [];
+  let products: (CategoryProduct & { brand_id: string | null; category_handles: string[] })[] = [];
 
   try {
-    const { regions } = await sdk.store.region.list().catch(() => ({ regions: [] }));
-    const regionId = regions?.[0]?.id;
-
-    // Fetch products. If category is "cheveux", use text search since there is no Medusa category
-    const queryParams: any = {
-      limit: 1000,
-      fields: "+variants,*images,*categories,*collection",
-    };
-    
-    const categoryMap: Record<string, string> = {
-      "serums": "sérums",
-      "cremes": "crèmes",
-      "masques-en-tissu": "masques",
-    };
-    
-    const searchMap: Record<string, string> = {
-      "cheveux": "cheveux",
-      "hydratants": "hydratant",
-      "soins-contour-des-yeux": "yeux",
-      "yeux": "yeux"
-    };
-
-    if (q) {
-      queryParams.q = q;
-    } 
-    if (collection_id) {
-      queryParams.collection_id = [collection_id];
-    }
-    
-    if (!q && !collection_id && searchMap[category]) {
-      queryParams.q = searchMap[category];
-    } else if (!collection_id && category !== "all") {
-      const handle = categoryMap[category] || category;
-      try {
-        const catRes = await sdk.store.category.list({ handle }, { next: { revalidate: 60 } } as any);
-        if (catRes && catRes.product_categories && catRes.product_categories.length > 0) {
-          queryParams.category_id = [catRes.product_categories[0]!.id as string];
-        } else {
-          console.log(`Category handle '${handle}' not found via Store API.`);
-          // If category not found, we can still fallback below, or pass an empty array to return 0 products
-        }
-      } catch (err) {
-        console.error("Failed to fetch category by handle:", err);
-      }
-    }
-    
-    if (regionId) {
-      queryParams.region_id = regionId;
-      queryParams.fields += ",*variants.prices,*variants.calculated_price";
-    }
-
-    let fetchedProducts: any[] = [];
-    try {
-      const result = await sdk.store.product.list(
-        queryParams,
-        { next: { revalidate: 60 } } as any
-      );
-      fetchedProducts = result.products || [];
-    } catch {
-      // Fallback: if category_handle filter fails, fetch without it (limited)
-      const fallbackParams: any = {
-        limit: 1000,
-        fields: "+variants,*images,*categories,*collection",
-      };
-      if (regionId) {
-        fallbackParams.region_id = regionId;
-        fallbackParams.fields += ",*variants.prices,*variants.calculated_price";
-      }
-      const fallback = await sdk.store.product.list(
-        fallbackParams,
-        { next: { revalidate: 60 } } as any
-      ).catch(() => ({ products: [] }));
-      fetchedProducts = fallback.products || [];
-    }
-
-    // Map Medusa products to the format expected by CategoryClient
-    products = (fetchedProducts || []).map((p: any) => {
-      // Get image
-      const imageUrl = p.images && p.images.length > 0 ? p.images[0].url : p.thumbnail || "/products/1.webp";
-      
-      // Get price
-      const price = p.variants?.[0]?.calculated_price?.calculated_amount
-        || p.variants?.[0]?.prices?.[0]?.amount
-        || 15000;
-
-      const variantId = p.variants?.[0]?.id || "";
-
-      // Extract metadata
-      const rawSkinTypes = p.metadata?.skin_types;
-      const skin_types = Array.isArray(rawSkinTypes) ? rawSkinTypes : (rawSkinTypes ? [rawSkinTypes] : ["Toutes"]);
-
-      const rawSkinConcerns = p.metadata?.skin_concerns;
-      const skin_concerns = Array.isArray(rawSkinConcerns) ? rawSkinConcerns : (rawSkinConcerns ? [rawSkinConcerns] : []);
-
-      const rawIngredients = p.metadata?.active_ingredients;
-      let active_ingredients: { name: string }[] = [];
-      if (Array.isArray(rawIngredients)) {
-        active_ingredients = rawIngredients.map((i: any) => typeof i === "string" ? { name: i } : i);
-      } else if (typeof rawIngredients === "string") {
-        active_ingredients = [{ name: rawIngredients }];
-      }
-
-      const categories = (p.categories || []).map((c: any) => c.name || c.handle || "");
-
-      return {
-        id: p.id,
-        title: p.title,
-        category: p.categories?.[0]?.name || "Soin",
-        categories,
-        image: imageUrl,
-        price_fcfa: price,
-        variantId,
-        skin_profile: {
-          skin_types,
-          skin_concerns,
-        },
-        active_ingredients,
-        brand: p.collection?.title || "",
-      };
-    });
+    const items = await fetchCatalog();
+    products = items.map((p) => ({
+      id: p.id,
+      title: p.title,
+      category: p.categories[0]?.name || "Soin",
+      categories: p.categories.map((c) => c.name || c.handle || ""),
+      image: p.thumbnail || "/products/1.webp",
+      price_fcfa: p.price || 15000,
+      variantId: p.variant_id,
+      skin_profile: {
+        // raw tags, displayed as chips on the card
+        skin_types: p.skin_types,
+        skin_concerns: p.concern_tags,
+      },
+      // canonical labels the filters match on
+      skin_types: p.skin_types,
+      concerns: p.concerns,
+      ingredients: p.ingredients,
+      // searching "niacinamide" should find products that contain it
+      active_ingredients: p.ingredients.map((name) => ({ name })),
+      brand: p.brand,
+      brand_id: p.brand_id,
+      category_handles: p.categories.map((c) => (c.handle || "").toLowerCase()),
+    }));
   } catch (error) {
-    console.error("Failed to fetch products for category:", error);
+    console.error("Failed to fetch the shop catalogue:", error);
   }
 
-  return <CategoryClient category={category} products={products} />;
+  // Same as before: a regular category narrows to the Medusa category with that handle. If no product
+  // belongs to such a category (handle not found), no narrowing - the name matching below decides.
+  let base = products;
+  if (!collection_id && category !== "all" && !NO_MEDUSA_CATEGORY.has(category)) {
+    const handle = (CATEGORY_HANDLE_MAP[category] || category).toLowerCase();
+    const inCategory = products.filter((p) => p.category_handles.includes(handle));
+    if (inCategory.length > 0) base = inCategory;
+  }
+
+  const grouped = !collection_id ? GROUPED_BY_HANDLE[category] : undefined;
+  const listed = base.filter(
+    (p) =>
+      (!collection_id || p.brand_id === collection_id) &&
+      (!q || matchesQuery(p, q)) &&
+      (grouped
+        ? p.category_handles.some((h) => grouped.handles.includes(h)) || (!!grouped.title && grouped.title.test(p.title))
+        : matchesCategory(category, p))
+  );
+
+  return <CategoryClient category={category} products={listed} facets={buildFacets(listed)} />;
 }

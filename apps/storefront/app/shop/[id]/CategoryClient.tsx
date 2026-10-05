@@ -15,32 +15,20 @@ import {
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { Footer } from "@/components/home/footer";
-import { FILTER_OPTIONS } from "@/lib/mock-data";
+import {
+  CATEGORY_LABELS,
+  FacetOption,
+  ShopFacets,
+  matchesCategory,
+  matchesQuery,
+  matchesSkinTypes,
+} from "@/lib/shop-filters";
 import { useCart } from "@/lib/cart-context";
 import { useI18n } from "@/lib/i18n-context";
 
 /* ─────────────────────────────────────────
    CATEGORY CONFIG
 ───────────────────────────────────────── */
-const CATEGORY_LABELS: Record<string, string> = {
-  all: "Tous les produits",
-  nettoyants: "Nettoyants",
-  toners: "Toners",
-  serums: "Sérums",
-  cremes: "Crèmes",
-  solaires: "Solaires",
-  masques: "Masques",
-  essences: "Essences",
-  traitements: "Traitements",
-  coffrets: "Coffrets",
-  exfoliants: "Exfoliants",
-  cheveux: "Cheveux",
-  "face-care": "Soins du Visage",
-  "body-care": "Soins du Corps",
-  "hair-care": "Soins des Cheveux",
-  "supplements": "Compléments",
-};
-
 const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   all: "Explorez notre collection complète de soins K-Beauty authentiques.",
   nettoyants: "Préparez votre peau avec un nettoyage doux et efficace en profondeur.",
@@ -70,16 +58,22 @@ function FilterSection({
   onToggle,
 }: {
   title: string;
-  options: string[];
+  options: FacetOption[];
   selected: string[];
   onToggle: (item: string) => void;
 }) {
   const { t } = useI18n();
+  const COLLAPSED_COUNT = 7;
+  const [expanded, setExpanded] = useState(false);
+  const shown = expanded
+    ? options
+    : options.filter((o, i) => i < COLLAPSED_COUNT || selected.includes(o.label));
+  const hiddenCount = options.length - shown.length;
   return (
     <div className="mb-8">
       <h3 className="text-sm font-bold uppercase tracking-wider text-[#2A2424] mb-4">{title}</h3>
       <div className="flex flex-col gap-3">
-        {options.map((opt) => (
+        {shown.map(({ label: opt, count }) => (
           <label key={opt} className="flex items-center gap-3 cursor-pointer group" onClick={() => onToggle(opt)}>
             <div
               className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
@@ -91,10 +85,19 @@ function FilterSection({
               {selected.includes(opt) && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
             </div>
             <span className={`text-sm ${selected.includes(opt) ? "text-[#2A2424] font-medium" : "text-[#2A2424]/70"}`}>
-              {t(opt)}
+              {t(opt)} <span className="text-[#2A2424]/40 font-normal">({count})</span>
             </span>
           </label>
         ))}
+        {options.length > COLLAPSED_COUNT && (hiddenCount > 0 || expanded) && (
+          <button
+            type="button"
+            onClick={() => setExpanded((e) => !e)}
+            className="self-start text-xs font-semibold text-[#2A2424]/60 hover:text-[#2A2424] underline underline-offset-2"
+          >
+            {expanded ? t("Voir moins") : `${t("Voir plus")} (${hiddenCount})`}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -114,22 +117,22 @@ export type CategoryProduct = {
     skin_concerns: string[];
   };
   active_ingredients: { name: string }[];
+  // canonical labels the filters match on (built by the API, see api/src/lib/shop-facets.ts)
+  skin_types: string[];
+  concerns: string[];
+  ingredients: string[];
 };
 
 export default function CategoryClient({
   category,
   products,
+  facets,
 }: {
   category: string;
   products: CategoryProduct[];
+  facets: ShopFacets;
 }) {
   const { t } = useI18n();
-  const normalize = (s: string) =>
-    s
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-
   const searchParams = useSearchParams();
   const query = searchParams.get("q") || "";
   const brandName = searchParams.get("brand_name");
@@ -178,54 +181,21 @@ export default function CategoryClient({
   };
 
   const filteredProducts = products.filter((p) => {
-    if (query) {
-      const qNorm = normalize(query);
-      const titleMatch = normalize(p.title).includes(qNorm);
-      const brandMatch = p.brand ? normalize(p.brand).includes(qNorm) : false;
-      const ingredientMatch = p.active_ingredients?.some(i => normalize(i.name).includes(qNorm));
-      
-      const catNorm = normalize(p.category || "");
-      const catMatch = catNorm.includes(qNorm) || (p.categories && p.categories.some((c) => normalize(c).includes(qNorm)));
-
-      if (!titleMatch && !brandMatch && !ingredientMatch && !catMatch) return false;
-    }
-
-    if (category !== "all") {
-      const catSlugNorm = normalize(category).replace(/-/g, " ");
-      const catLabel = CATEGORY_LABELS[category] || "";
-      const catLabelNorm = normalize(catLabel).replace(/-/g, " ");
-      
-      const pCatNorm = normalize(p.category || "").replace(/-/g, " ");
-      let matchesCategory =
-        (catSlugNorm && pCatNorm.includes(catSlugNorm)) ||
-        (catLabelNorm && pCatNorm.includes(catLabelNorm)) ||
-        (pCatNorm && catSlugNorm.includes(pCatNorm)) ||
-        (p.categories && p.categories.some((c) => {
-          const cNorm = normalize(c).replace(/-/g, " ");
-          return (catSlugNorm && cNorm.includes(catSlugNorm)) || (catLabelNorm && cNorm.includes(catLabelNorm)) || (cNorm && catSlugNorm.includes(cNorm));
-        }));
-
-      // Fallback for special categories like 'cheveux' where we also search in titles/ingredients
-      if (!matchesCategory && category === "cheveux") {
-        const titleNorm = normalize(p.title);
-        const descNorm = normalize(p.active_ingredients.map(i => i.name).join(" "));
-        matchesCategory = titleNorm.includes("cheveux") || titleNorm.includes("hair") || titleNorm.includes("shamp") || titleNorm.includes("scalp") || descNorm.includes("cheveux");
-      }
-
-      if (!matchesCategory) return false;
-    }
-
-    if (selectedSkinTypes.length > 0 && !selectedSkinTypes.includes("Toutes")) {
-      if (!selectedSkinTypes.some((t) => p.skin_profile.skin_types.some((st) => normalize(st).includes(normalize(t))))) return false;
-    }
-    if (selectedConcerns.length > 0) {
-      if (!selectedConcerns.some((c) => p.skin_profile.skin_concerns.some((sc) => normalize(sc).includes(normalize(c))))) return false;
-    }
-    if (selectedIngredients.length > 0) {
-      if (!selectedIngredients.some((ing) => p.active_ingredients.some((ai) => normalize(ai.name).includes(normalize(ing))))) return false;
-    }
+    if (query && !matchesQuery(p, query)) return false;
+    if (!matchesCategory(category, p)) return false;
+    if (!matchesSkinTypes(selectedSkinTypes, p.skin_types)) return false;
+    if (selectedConcerns.length > 0 && !selectedConcerns.some((c) => p.concerns.includes(c))) return false;
+    if (selectedIngredients.length > 0 && !selectedIngredients.some((i) => p.ingredients.includes(i))) return false;
     return true;
   });
+
+  // Rendering all ~580 cards at once (each with animations) made the page heavy: show them 24 at a time
+  const PAGE_SIZE = 24;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [selectedSkinTypes, selectedConcerns, selectedIngredients, query, category]);
+  const visibleProducts = filteredProducts.slice(0, visibleCount);
 
   const hasFilters = selectedSkinTypes.length > 0 || selectedConcerns.length > 0 || selectedIngredients.length > 0;
   const clearAll = () => { setSelectedSkinTypes([]); setSelectedConcerns([]); setSelectedIngredients([]); };
@@ -289,7 +259,7 @@ export default function CategoryClient({
       {/* Main content */}
       <div className="w-full max-w-[1600px] mx-auto px-5 lg:px-12 py-12 flex flex-col lg:flex-row gap-12">
         {/* Desktop Sidebar */}
-        <div className="hidden lg:block w-[280px] shrink-0 sticky top-[80px] h-fit">
+        <div className="hidden lg:block w-[280px] shrink-0 sticky top-[80px] h-fit max-h-[calc(100vh-100px)] overflow-y-auto">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-2 text-[#2A2424]">
               <Sliders className="w-5 h-5" />
@@ -302,11 +272,11 @@ export default function CategoryClient({
             )}
           </div>
           <div className="space-y-8 pr-6">
-            <FilterSection title={t("Type de Peau")} options={FILTER_OPTIONS.skinTypes} selected={selectedSkinTypes} onToggle={(item) => toggleFilter(selectedSkinTypes, setSelectedSkinTypes, item)} />
+            <FilterSection title={t("Type de Peau")} options={facets.skinTypes} selected={selectedSkinTypes} onToggle={(item) => toggleFilter(selectedSkinTypes, setSelectedSkinTypes, item)} />
             <div className="w-full h-px bg-[#F4EAEB]" />
-            <FilterSection title={t("Préoccupations")} options={FILTER_OPTIONS.skinConcerns} selected={selectedConcerns} onToggle={(item) => toggleFilter(selectedConcerns, setSelectedConcerns, item)} />
+            <FilterSection title={t("Préoccupations")} options={facets.concerns} selected={selectedConcerns} onToggle={(item) => toggleFilter(selectedConcerns, setSelectedConcerns, item)} />
             <div className="w-full h-px bg-[#F4EAEB]" />
-            <FilterSection title={t("Ingrédients Phares")} options={FILTER_OPTIONS.ingredients} selected={selectedIngredients} onToggle={(item) => toggleFilter(selectedIngredients, setSelectedIngredients, item)} />
+            <FilterSection title={t("Ingrédients Phares")} options={facets.ingredients} selected={selectedIngredients} onToggle={(item) => toggleFilter(selectedIngredients, setSelectedIngredients, item)} />
           </div>
         </div>
 
@@ -314,7 +284,7 @@ export default function CategoryClient({
         <div className="flex-1">
           <motion.div layout className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6 lg:gap-8">
             <AnimatePresence mode="popLayout">
-              {filteredProducts.map((product) => (
+              {visibleProducts.map((product) => (
                 <motion.div
                   layout
                   key={product.id}
@@ -331,6 +301,8 @@ export default function CategoryClient({
                     <Link href={`/shop/product/${product.id}`} className="w-full h-full flex items-center justify-center">
                       <img
                         src={product.image}
+                        loading="lazy"
+                        decoding="async"
                         alt={product.title}
                         className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-700 ease-out"
                       />
@@ -402,6 +374,17 @@ export default function CategoryClient({
             </AnimatePresence>
           </motion.div>
 
+          {filteredProducts.length > visibleCount && (
+            <div className="w-full flex justify-center pt-10">
+              <button
+                onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                className="px-8 py-3 rounded-full border border-[#2A2424] text-[#2A2424] text-sm font-semibold hover:bg-[#2A2424] hover:text-white transition-colors"
+              >
+                {t("Voir plus de produits")} ({filteredProducts.length - visibleCount})
+              </button>
+            </div>
+          )}
+
           {filteredProducts.length === 0 && (
             <div className="w-full py-20 flex flex-col items-center justify-center text-center">
               <div className="w-16 h-16 rounded-full bg-[#F4EAEB] flex items-center justify-center mb-6">
@@ -436,11 +419,11 @@ export default function CategoryClient({
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto p-5 pb-32">
-                <FilterSection title={t("Type de Peau")} options={FILTER_OPTIONS.skinTypes} selected={selectedSkinTypes} onToggle={(item) => toggleFilter(selectedSkinTypes, setSelectedSkinTypes, item)} />
+                <FilterSection title={t("Type de Peau")} options={facets.skinTypes} selected={selectedSkinTypes} onToggle={(item) => toggleFilter(selectedSkinTypes, setSelectedSkinTypes, item)} />
                 <div className="w-full h-px bg-[#F4EAEB] my-8" />
-                <FilterSection title={t("Préoccupations")} options={FILTER_OPTIONS.skinConcerns} selected={selectedConcerns} onToggle={(item) => toggleFilter(selectedConcerns, setSelectedConcerns, item)} />
+                <FilterSection title={t("Préoccupations")} options={facets.concerns} selected={selectedConcerns} onToggle={(item) => toggleFilter(selectedConcerns, setSelectedConcerns, item)} />
                 <div className="w-full h-px bg-[#F4EAEB] my-8" />
-                <FilterSection title={t("Ingrédients Phares")} options={FILTER_OPTIONS.ingredients} selected={selectedIngredients} onToggle={(item) => toggleFilter(selectedIngredients, setSelectedIngredients, item)} />
+                <FilterSection title={t("Ingrédients Phares")} options={facets.ingredients} selected={selectedIngredients} onToggle={(item) => toggleFilter(selectedIngredients, setSelectedIngredients, item)} />
               </div>
               <div className="absolute bottom-0 inset-x-0 p-5 bg-white border-t border-[#F4EAEB] flex gap-4">
                 <button onClick={clearAll} className="px-6 py-3.5 rounded-full text-sm font-semibold text-[#2A2424] hover:bg-[#F4EAEB] transition-colors">{t("Effacer")}</button>
