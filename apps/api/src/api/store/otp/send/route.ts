@@ -1,10 +1,11 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { generateAndSendOtp, OtpRateLimitError, OtpPurpose } from "../../../../lib/otp"
 import { isWhatsappSimulated } from "../../../../lib/whatsapp-client"
 import { OTP_MODULE } from "../../../../modules/otp"
 
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
-  const { phone, purpose } = (req.body || {}) as { phone?: string; purpose?: OtpPurpose }
+  const { phone, purpose, email } = (req.body || {}) as { phone?: string; purpose?: OtpPurpose; email?: string }
 
   if (!phone || !purpose || !["signup", "login"].includes(purpose)) {
     res.status(400).json({ message: "phone et purpose ('signup' | 'login') sont requis" })
@@ -19,6 +20,21 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   if (simulated && purpose === "login" && process.env.NODE_ENV === "production") {
     res.status(503).json({ message: "La connexion par code WhatsApp n'est pas encore disponible. Utilisez votre mot de passe." })
     return
+  }
+
+  // Signup: refuse an e-mail that already has an account BEFORE spending a code (and a paid message) —
+  // otherwise the customer only finds out after verifying, when Medusa rejects the profile creation.
+  if (purpose === "signup" && email?.trim()) {
+    const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+    const { data } = await query.graph({
+      entity: "customer",
+      fields: ["id"],
+      filters: { email: email.trim().toLowerCase(), has_account: true },
+    })
+    if (data.length) {
+      res.status(409).json({ message: "Cette adresse e-mail est déjà utilisée par un compte. Connectez-vous ou utilisez une autre adresse." })
+      return
+    }
   }
 
   const otpService = req.scope.resolve(OTP_MODULE)

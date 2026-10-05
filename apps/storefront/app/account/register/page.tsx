@@ -38,7 +38,7 @@ function RegisterForm() {
   const sendOtp = async () => {
     const res: any = await sdk.client.fetch("/store/otp/send", {
       method: "POST",
-      body: { phone, purpose: "signup" },
+      body: { phone, purpose: "signup", email: email.trim() || undefined },
     });
     // Simulated mode (WhatsApp not connected yet): the API returns the code so the form fills itself in.
     // Once the real WhatsApp send is live the API stops returning it and the customer types it from the message.
@@ -56,7 +56,7 @@ function RegisterForm() {
     } catch (err: any) {
       console.error(err);
       setError(
-        err?.message?.includes("Trop de")
+        err?.message?.includes("Trop de") || err?.message?.includes("déjà utilisée")
           ? err.message
           : t("Impossible d'envoyer le code. Vérifiez le numéro et réessayez.")
       );
@@ -113,6 +113,11 @@ function RegisterForm() {
       if (isPhoneExists) {
         const loginUrl = `/account/login?phone=${encodeURIComponent(phone)}&redirect=${encodeURIComponent(redirectUrl)}&hint=exists`;
         router.push(loginUrl);
+      } else if (errMsg.toLowerCase().includes("already has an account")) {
+        // The e-mail belongs to another account: back to the first step so it can be changed
+        setCode("");
+        setStep("info");
+        setError(t("Cette adresse e-mail est déjà utilisée par un compte. Connectez-vous ou utilisez une autre adresse."));
       } else if (errMsg.toLowerCase().includes("invalide") || errMsg.toLowerCase().includes("expiré")) {
         setError(t("Code invalide ou expiré."));
       } else {
