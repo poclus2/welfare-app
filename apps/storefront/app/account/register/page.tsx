@@ -191,6 +191,11 @@ function RegisterForm() {
 
   return (
     <form onSubmit={handleSendCode} className="space-y-6">
+      {searchParams.get("incomplete") === "1" && !error && (
+        <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-4 text-sm leading-relaxed text-amber-800">
+          {t("Votre inscription n'avait pas été terminée. Complétez vos informations pour activer votre compte.")}
+        </div>
+      )}
       <AnimatePresence>
         {error && (
           <motion.div

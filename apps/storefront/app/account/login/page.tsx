@@ -33,6 +33,25 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
+  // A phone identity can exist without a customer profile (a sign-up interrupted before the profile was
+  // created, e.g. by an e-mail already in use): the password is right, but there is no account behind it
+  // and every account call answers 401, which used to bounce her straight back to this page. Send her to
+  // finish the sign-up instead (same phone: the half-made identity is reused).
+  const goAfterLogin = async () => {
+    try {
+      await sdk.store.customer.retrieve();
+    } catch (err: any) {
+      if (err?.status === 401) {
+        try { await sdk.auth.logout(); } catch {}
+        router.push(`/account/register?phone=${encodeURIComponent(phone)}&incomplete=1&redirect=${encodeURIComponent(redirectUrl)}`);
+        return;
+      }
+      // any other failure: let the account page deal with it (it offers a retry)
+    }
+    router.push(redirectUrl);
+    router.refresh();
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -40,8 +59,7 @@ export default function LoginPage() {
 
     try {
       await sdk.auth.login("customer", "phonepass", { phone, password });
-      router.push(redirectUrl);
-      router.refresh();
+      await goAfterLogin();
     } catch (err: any) {
       setError(t("Identifiants incorrects. Veuillez réessayer."));
       console.error(err);
@@ -89,8 +107,7 @@ export default function LoginPage() {
       });
 
       await sdk.auth.login("customer", "phoneotp", { phone, ticket: verifyResult.login_ticket });
-      router.push(redirectUrl);
-      router.refresh();
+      await goAfterLogin();
     } catch (err: any) {
       setError(
         err?.message?.includes("Aucun compte")
