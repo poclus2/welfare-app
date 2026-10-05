@@ -41,7 +41,8 @@ export default async function ProductsPage({
   });
   if (q) query.set("q", q);
   if (status && status !== "all" && !isCustomStockFilter) {
-    query.set("status", status);
+    // Medusa v2 expects an array for status: a bare `status=draft` is rejected with a 400
+    query.append("status[]", status);
   }
 
   let data = await fetchAdmin<{ products: any[]; count: number; offset: number; limit: number }>(
@@ -74,8 +75,8 @@ export default async function ProductsPage({
 
   const [allProductsData, activeProductsData, draftProductsData] = await Promise.all([
     fetchAdmin<{ count: number }>(`/products?limit=1`, token).catch(() => ({ count: 0 })),
-    fetchAdmin<{ count: number }>(`/products?status=published&limit=1`, token).catch(() => ({ count: 0 })),
-    fetchAdmin<{ count: number }>(`/products?status=draft&limit=1`, token).catch(() => ({ count: 0 })),
+    fetchAdmin<{ count: number }>(`/products?status[]=published&limit=1`, token).catch(() => ({ count: 0 })),
+    fetchAdmin<{ count: number }>(`/products?status[]=draft&limit=1`, token).catch(() => ({ count: 0 })),
   ]);
 
   // Compute low stock from fetched products (inventory < 10 but > 0)

@@ -26,7 +26,7 @@ export async function generateAndSendOtp(
   service: any,
   phone: string,
   purpose: OtpPurpose
-): Promise<void> {
+): Promise<{ code: string }> {
   const windowStart = new Date(Date.now() - SEND_WINDOW_MINUTES * 60 * 1000)
   const dayStart = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
@@ -55,6 +55,7 @@ export async function generateAndSendOtp(
   })
 
   await sendWhatsappOtp(phone, code)
+  return { code }
 }
 
 export async function verifyOtp(

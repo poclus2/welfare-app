@@ -68,7 +68,7 @@ export default function LoginPage() {
     } catch (err: any) {
       console.error(err);
       setError(
-        err?.message?.includes("Trop de")
+        err?.message?.includes("Trop de") || err?.message?.includes("pas encore disponible")
           ? err.message
           : t("Impossible d'envoyer le code. Vérifiez le numéro et réessayez.")
       );

@@ -15,6 +15,10 @@ const TEMPLATE_NAME = process.env.WHATSAPP_OTP_TEMPLATE_NAME || "otp_code"
 // be exercised locally without a configured Meta WABA.
 const DEBUG_LOG = process.env.WHATSAPP_DEBUG_LOG === "true"
 
+// Simulated mode: the signup route also hands the code back to the browser so the form fills itself
+// in (nobody can receive a WhatsApp message yet). Turn WHATSAPP_DEBUG_LOG off once the WABA is live.
+export const isWhatsappSimulated = () => DEBUG_LOG
+
 export async function sendWhatsappOtp(phone: string, code: string): Promise<void> {
   if (DEBUG_LOG) {
     console.log(`[whatsapp-client] DEBUG — would send OTP ${code} to ${phone} via template "${TEMPLATE_NAME}"`)

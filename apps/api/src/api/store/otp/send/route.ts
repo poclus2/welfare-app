@@ -1,5 +1,6 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { generateAndSendOtp, OtpRateLimitError, OtpPurpose } from "../../../../lib/otp"
+import { isWhatsappSimulated } from "../../../../lib/whatsapp-client"
 import { OTP_MODULE } from "../../../../modules/otp"
 
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
@@ -10,10 +11,21 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     return
   }
 
+  // Simulated mode (WhatsApp not connected yet): the code goes back to the browser for signup, which
+  // means it proves nothing about who owns the phone. A passwordless LOGIN on that basis would let
+  // anyone sign in to any account knowing only the number, so it stays off in production until the
+  // real WhatsApp send is wired. (Dev can still test it: the code is in the API log.)
+  const simulated = isWhatsappSimulated()
+  if (simulated && purpose === "login" && process.env.NODE_ENV === "production") {
+    res.status(503).json({ message: "La connexion par code WhatsApp n'est pas encore disponible. Utilisez votre mot de passe." })
+    return
+  }
+
   const otpService = req.scope.resolve(OTP_MODULE)
 
+  let code: string
   try {
-    await generateAndSendOtp(otpService, phone, purpose)
+    ;({ code } = await generateAndSendOtp(otpService, phone, purpose))
   } catch (e: any) {
     if (e instanceof OtpRateLimitError) {
       res.status(429).json({ message: e.message })
@@ -26,5 +38,5 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     return
   }
 
-  res.json({ sent: true })
+  res.json({ sent: true, ...(simulated && purpose === "signup" ? { debug_code: code } : {}) })
 }

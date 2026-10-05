@@ -36,10 +36,13 @@ function RegisterForm() {
   const redirectUrl = searchParams.get("redirect") || "/account";
 
   const sendOtp = async () => {
-    await sdk.client.fetch("/store/otp/send", {
+    const res: any = await sdk.client.fetch("/store/otp/send", {
       method: "POST",
       body: { phone, purpose: "signup" },
     });
+    // Simulated mode (WhatsApp not connected yet): the API returns the code so the form fills itself in.
+    // Once the real WhatsApp send is live the API stops returning it and the customer types it from the message.
+    if (res?.debug_code) setCode(String(res.debug_code));
   };
 
   const handleSendCode = async (e: React.FormEvent) => {
