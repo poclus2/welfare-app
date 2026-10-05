@@ -31,6 +31,7 @@ import ProfileTab from "@/components/account/ProfileTab";
 import { ORDER_FIELDS } from "@/lib/order-view";
 
 import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
+import { useI18n } from "@/lib/i18n-context";
 
 // Animated counter hook
 function useCounter(target: number, duration = 1500) {
@@ -59,11 +60,13 @@ function useCounter(target: number, duration = 1500) {
 
 type TierType = { name: string; min: number; max: number; color: string; icon: any };
 
+// 1 point = 1000 FCFA spent (rule applied by the API when an order is placed). The tiers sit at
+// 50 000 / 150 000 / 300 000 FCFA of purchases.
 const loyaltyTiers: TierType[] = [
-  { name: "Découverte", min: 0, max: 500, color: "#8B7B7B", icon: Star },
-  { name: "Bien-être", min: 500, max: 1500, color: "#C97C85", icon: Heart },
-  { name: "Prestige", min: 1500, max: 3000, color: "#9B59B6", icon: Seal },
-  { name: "Élite", min: 3000, max: Infinity, color: "#F59E0B", icon: IconIA },
+  { name: "Découverte", min: 0, max: 50, color: "#8B7B7B", icon: Star },
+  { name: "Bien-être", min: 50, max: 150, color: "#C97C85", icon: Heart },
+  { name: "Prestige", min: 150, max: 300, color: "#9B59B6", icon: Seal },
+  { name: "Élite", min: 300, max: Infinity, color: "#F59E0B", icon: IconIA },
 ];
 
 function getTier(points: number): TierType {
@@ -84,13 +87,15 @@ const scanMessage = (scan: any): string => {
 };
 
 const SkinCoachScanCard = ({ scan, onClick }: { scan: any, onClick: () => void }) => {
+  const { t, locale } = useI18n();
+  const dateLocale = locale === "en" ? "en-GB" : "fr-FR";
   const displaySummary = scanMessage(scan)
-    || "Votre rituel beauté sur-mesure a été élaboré par notre intelligence artificielle à partir de votre diagnostic.";
+    || t("Votre rituel beauté sur-mesure a été élaboré par notre intelligence artificielle à partir de votre diagnostic.");
   
   const rawSkinType = scan.final_skin_type || "";
   const displaySkinType = rawSkinType.toUpperCase().startsWith("PEAU ") 
     ? rawSkinType 
-    : `Peau ${rawSkinType}`;
+    : `${t("Peau")} ${rawSkinType}`;
 
   return (
     <div 
@@ -113,10 +118,10 @@ const SkinCoachScanCard = ({ scan, onClick }: { scan: any, onClick: () => void }
         </div>
         
         <h3 className="text-[1.15rem] font-bold text-[#2A2424] mb-1.5 tracking-tight group-hover:text-[#cd858d] transition-colors">
-          Votre rituel sur-mesure
+          {t("Votre rituel sur-mesure")}
         </h3>
         <p className="text-[10px] text-[#C97C85]/80 font-bold tracking-[0.15em] uppercase mb-4">
-          Analysé le {new Date(scan.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+          {t("Analysé le")} {new Date(scan.created_at).toLocaleDateString(dateLocale, { day: 'numeric', month: 'long', year: 'numeric' })}
         </p>
         
         <p className="text-[13px] text-gray-500 mb-8 line-clamp-3 leading-[1.6] flex-grow font-medium">
@@ -126,12 +131,12 @@ const SkinCoachScanCard = ({ scan, onClick }: { scan: any, onClick: () => void }
         {scan.estimated_skin_age && (
           <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100/60">
             <div className="flex flex-col">
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Âge estimé</span>
-              <span className="text-sm font-semibold text-[#2A2424]">{scan.estimated_skin_age} ans</span>
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t("Âge estimé")}</span>
+              <span className="text-sm font-semibold text-[#2A2424]">{scan.estimated_skin_age} {t("ans")}</span>
             </div>
             <div className="w-px h-8 bg-gray-100"></div>
             <div className="flex flex-col">
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Phototype</span>
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t("Phototype")}</span>
               <span className="text-sm font-semibold text-[#2A2424]">{scan.melanin_phototype || "N/A"}</span>
             </div>
           </div>
@@ -141,7 +146,7 @@ const SkinCoachScanCard = ({ scan, onClick }: { scan: any, onClick: () => void }
           onClick={(e) => { e.stopPropagation(); onClick(); }}
           className="mt-auto w-full py-[14px] bg-[#FAF5F0] text-[#cd858d] text-[10px] font-bold uppercase tracking-[0.15em] rounded-xl hover:bg-[#cd858d] hover:text-white hover:shadow-lg hover:shadow-[#cd858d]/20 transition-all duration-300 flex items-center justify-center gap-2 group-hover:translate-y-[-2px]"
         >
-          Consulter la routine <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
+          {t("Consulter la routine")} <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
         </button>
       </div>
     </div>
@@ -149,10 +154,14 @@ const SkinCoachScanCard = ({ scan, onClick }: { scan: any, onClick: () => void }
 };
 
 export default function AccountPage() {
+  const { t, locale } = useI18n();
+  const numLocale = locale === "en" ? "en-GB" : "fr-FR";
   const [customer, setCustomer] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [scans, setScans] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false); // the account itself could not be loaded (network...)
+  const [partialError, setPartialError] = useState(false); // orders or diagnostics could not be loaded
   const [activeTab, setActiveTab] = useState<"dashboard" | "orders" | "scans" | "profile">("dashboard");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const router = useRouter();
@@ -163,26 +172,32 @@ export default function AccountPage() {
   const fetchCustomer = async () => {
     try {
       setIsLoading(true);
+      setLoadError(false);
+      setPartialError(false);
       const { customer } = await sdk.store.customer.retrieve();
       if (!customer) {
         router.push("/account/login");
         return;
       }
       setCustomer(customer);
-      // the default list carries no items, address or delivery status: ask for them
-      const { orders } = await sdk.store.order.list({ fields: ORDER_FIELDS, order: "-created_at", limit: 50 });
-      setOrders(orders || []);
-      
-      try {
-        const res: any = await sdk.client.fetch("/store/skin-scans", { method: "GET" });
-        setScans(res.scans || []);
-      } catch (e) {
-        console.error("Failed to fetch skin scans", e);
-      }
 
-    } catch (err) {
+      // orders and diagnostics load side by side; one failing must not hide the other
+      const [ordersRes, scansRes] = await Promise.all([
+        // the default list carries no address, shipping or fulfillments: ask for what the pages need
+        sdk.store.order.list({ fields: ORDER_FIELDS, order: "-created_at", limit: 50 }).catch((e: any) => { console.error("Failed to fetch orders", e); return null; }),
+        sdk.client.fetch("/store/skin-scans", { method: "GET" }).catch((e: any) => { console.error("Failed to fetch skin scans", e); return null; }),
+      ]);
+      if (ordersRes) setOrders((ordersRes as any).orders || []);
+      if (scansRes) setScans((scansRes as any).scans || []);
+      if (!ordersRes || !scansRes) setPartialError(true);
+    } catch (err: any) {
       console.error(err);
-      router.push("/account/login");
+      // Only "not logged in" goes back to the login page: a network hiccup shouldn't log her out of the page
+      if (err?.status === 401 || /unauthorized/i.test(String(err?.message))) {
+        router.push("/account/login");
+      } else {
+        setLoadError(true);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -208,7 +223,7 @@ export default function AccountPage() {
       final_skin_type: scan.final_skin_type,
       estimated_skin_age: scan.estimated_skin_age,
       melanin_phototype: scan.melanin_phototype,
-      empathetic_message: scanMessage(scan) || "Voici votre diagnostic personnalisé.",
+      empathetic_message: scanMessage(scan) || t("Voici votre diagnostic personnalisé."),
       kbeauty_routine: scan.routine || [],
       metrics: scan.metrics,
         id: scan.id
@@ -216,16 +231,34 @@ export default function AccountPage() {
     router.push("/skin-coach/result");
   };
 
-  const loyaltyPoints = orders.reduce(
-    (acc, order) => acc + Math.floor((order.total || 0) / 100),
-    0
-  );
+  // The balance is kept on the customer by the API (credited when an order is placed, taken back if it is
+  // canceled). It used to be recomputed here from the order totals at a different rate, so the dashboard
+  // and the profile showed two different numbers.
+  const loyaltyPoints = Math.max(0, Math.floor(Number(customer?.metadata?.loyalty_points) || 0));
+  const memberSince = (() => {
+    const y = new Date(customer?.created_at).getFullYear();
+    return Number.isFinite(y) ? y : new Date().getFullYear();
+  })();
   const animatedPoints = useCounter(loyaltyPoints);
   const tier = getTier(loyaltyPoints) ?? loyaltyTiers[0];
   const nextTier = getNextTier(loyaltyPoints);
   const progressPct = nextTier
     ? Math.min(100, ((loyaltyPoints - tier.min) / (nextTier.min - tier.min)) * 100)
     : 100;
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-[#FDF8F8] flex items-center justify-center p-6">
+        <div className="text-center max-w-sm">
+          <p className="text-[#2A2424] font-medium mb-2">{t("Impossible de charger votre espace pour le moment.")}</p>
+          <p className="text-sm text-gray-500 mb-6">{t("Vérifiez votre connexion et réessayez.")}</p>
+          <button onClick={fetchCustomer} className="px-6 py-3 bg-[#2A2424] text-white text-sm font-semibold rounded-xl hover:bg-black transition-colors">
+            {t("Réessayer")}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -243,7 +276,7 @@ export default function AccountPage() {
                 transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
               />
             </div>
-            <p className="text-xs text-[#2A2424]/40 tracking-widest uppercase mt-2">Chargement</p>
+            <p className="text-xs text-[#2A2424]/40 tracking-widest uppercase mt-2">{t("Chargement")}</p>
           </div>
         </div>
     );
@@ -265,7 +298,7 @@ export default function AccountPage() {
           {/* User Info */}
           <div className="mb-6 md:mb-10 flex items-center justify-between md:block">
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-[#F4EAEB]/40 mb-1 font-semibold">Mon Espace</p>
+              <p className="text-[10px] uppercase tracking-widest text-[#F4EAEB]/40 mb-1 font-semibold">{t("Mon Espace")}</p>
               <h2 className="text-lg md:text-xl text-[#F4EAEB]">{customer?.first_name} {customer?.last_name}</h2>
             </div>
             
@@ -293,7 +326,7 @@ export default function AccountPage() {
                   }`}
                 >
                   <item.icon weight={isActive ? "fill" : "regular"} className="w-4 h-4 md:w-5 md:h-5" />
-                  {item.label}
+                  {t(item.label)}
                 </button>
               );
             })}
@@ -305,8 +338,8 @@ export default function AccountPage() {
               <div className="flex items-center gap-3 mb-3">
                 <tier.icon weight="fill" className="w-5 h-5" style={{ color: tier.color }} />
                 <div>
-                  <p className="text-xs text-[#F4EAEB]/50">{tier.name}</p>
-                  <p className="text-sm font-semibold text-[#F4EAEB]">{animatedPoints.toLocaleString("fr-FR")} pts</p>
+                  <p className="text-xs text-[#F4EAEB]/50">{t(tier.name)}</p>
+                  <p className="text-sm font-semibold text-[#F4EAEB]">{animatedPoints.toLocaleString(numLocale)} pts</p>
                 </div>
               </div>
               {nextTier && (
@@ -321,7 +354,7 @@ export default function AccountPage() {
                     />
                   </div>
                   <p className="text-[10px] text-[#F4EAEB]/40 text-right">
-                    Plus que {(nextTier.min - loyaltyPoints).toLocaleString("fr-FR")} pts avant {nextTier.name}
+                    {t("Plus que")} {(nextTier.min - loyaltyPoints).toLocaleString(numLocale)} pts {t("avant")} {t(nextTier.name)}
                   </p>
                 </div>
               )}
@@ -332,7 +365,7 @@ export default function AccountPage() {
               className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-[#F4EAEB]/60 hover:text-[#c97c85] transition-colors"
             >
               <SignOut className="w-5 h-5" />
-              <span>Se déconnecter</span>
+              <span>{t("Se déconnecter")}</span>
             </button>
           </div>
         </div>
@@ -341,7 +374,13 @@ export default function AccountPage() {
       {/* Main Content Area */}
       <main className="flex-1 w-full max-w-full overflow-hidden">
         <div className="max-w-5xl mx-auto p-4 sm:p-8">
-          
+          {partialError && (
+            <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-[#F5C2C0] bg-[#FDECEC] px-4 py-3 text-sm text-[#B42318]">
+              <span>{t("Certaines informations n'ont pas pu être chargées.")}</span>
+              <button onClick={fetchCustomer} className="font-semibold underline underline-offset-2">{t("Réessayer")}</button>
+            </div>
+          )}
+
           {selectedOrder ? (
             <OrderDetailsTab order={selectedOrder} onBack={() => setSelectedOrder(null)} />
           ) : (
@@ -372,7 +411,7 @@ export default function AccountPage() {
                       className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/60 backdrop-blur-md border border-white/50 shadow-sm text-xs font-semibold tracking-wide text-[#C97C85] mb-6"
                     >
                       <IconIA className="w-3.5 h-3.5" />
-                      MEMBRE DEPUIS {new Date(customer?.created_at).getFullYear()}
+                      {t("MEMBRE DEPUIS")} {memberSince}
                     </motion.div>
                     
                     <motion.h1 
@@ -381,9 +420,9 @@ export default function AccountPage() {
                       transition={{ delay: 0.1 }}
                       className="text-4xl sm:text-5xl font-bold text-[#2A2424] mb-4 leading-[1.15]"
                     >
-                      Bonjour {customer?.first_name},<br />
+                      {t("Bonjour")} {customer?.first_name},<br />
                       <span className="italic bg-clip-text text-transparent bg-gradient-to-r from-[#C97C85] via-[#E5B6B9] to-[#C97C85] bg-[length:200%_auto] animate-gradient-x">
-                        bienvenue dans votre espace.
+                        {t("bienvenue dans votre espace.")}
                       </span>
                     </motion.h1>
                     
@@ -393,7 +432,7 @@ export default function AccountPage() {
                       transition={{ delay: 0.2 }}
                       className="text-[#2A2424]/70 text-sm sm:text-base max-w-md leading-relaxed font-medium"
                     >
-                      Retrouvez ici l'historique de vos commandes, votre suivi fidélité et les résultats de vos diagnostics de peau personnalisés.
+                      {t("Retrouvez ici l'historique de vos commandes, votre suivi fidélité et les résultats de vos diagnostics de peau personnalisés.")}
                     </motion.p>
                     
                     <motion.div 
@@ -403,12 +442,12 @@ export default function AccountPage() {
                       className="mt-8 flex flex-wrap gap-4"
                     >
                       <Link href="/shop" className="px-7 py-3.5 bg-[#2A2424] text-white text-sm font-semibold rounded-2xl shadow-[0_8px_20px_rgba(42,36,36,0.2)] hover:shadow-[0_12px_25px_rgba(42,36,36,0.3)] hover:-translate-y-[2px] transition-all duration-300 flex items-center gap-2 group">
-                        Découvrir la boutique
+                        {t("Découvrir la boutique")}
                         <ArrowRight weight="bold" className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                       </Link>
                       <Link href="/skin-coach" className="px-7 py-3.5 bg-white/80 backdrop-blur-md text-[#2A2424] border border-white shadow-[0_4px_14px_0_rgba(0,0,0,0.05)] text-sm font-semibold rounded-2xl hover:bg-white hover:-translate-y-[2px] hover:shadow-[0_6px_20px_rgba(0,0,0,0.08)] transition-all duration-300 flex items-center gap-2">
                         <Scan weight="bold" className="w-4 h-4 text-[#C97C85]" />
-                        Lancer un diagnostic IA
+                        {t("Lancer un diagnostic IA")}
                       </Link>
                     </motion.div>
                   </div>
@@ -419,8 +458,8 @@ export default function AccountPage() {
                   {[
                     { label: "Commandes", value: orders.filter((o: any) => o.status !== "canceled").length, icon: Package, color: "#cd858d", glow: "rgba(205,133,141,0.15)", delay: 0.1 },
                     { label: "Scans IA", value: scans.length, icon: Scan, color: "#cd858d", glow: "rgba(205,133,141,0.15)", delay: 0.2 },
-                    { label: "Fidélité", value: loyaltyPoints.toLocaleString('fr-FR'), icon: Star, color: "#cd858d", glow: "rgba(205,133,141,0.15)", delay: 0.3 },
-                    { label: "Statut", value: tier.name, icon: Seal, color: "#cd858d", glow: "rgba(205,133,141,0.15)", delay: 0.4 },
+                    { label: "Fidélité", value: loyaltyPoints.toLocaleString(numLocale), icon: Star, color: "#cd858d", glow: "rgba(205,133,141,0.15)", delay: 0.3 },
+                    { label: "Statut", value: t(tier.name), icon: Seal, color: "#cd858d", glow: "rgba(205,133,141,0.15)", delay: 0.4 },
                   ].map((stat) => (
                     <motion.div
                       key={stat.label}
@@ -440,22 +479,43 @@ export default function AccountPage() {
                       
                       <div className="relative z-10">
                         <p className="text-3xl font-bold text-[#2A2424] mb-1" style={{ letterSpacing: "-0.03em" }}>{stat.value}</p>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{stat.label}</p>
+                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t(stat.label)}</p>
                       </div>
                     </motion.div>
                   ))}
                 </div>
 
                 
-                  {/* Dashboard - Dernières Commandes (Full Width) */}
+                  {/* Loyalty (mobile: the sidebar card is desktop only) */}
+                <div className="md:hidden bg-white/70 rounded-3xl p-5 border border-white shadow-sm">
+                  <div className="flex items-center gap-3 mb-3">
+                    <tier.icon weight="fill" className="w-6 h-6" style={{ color: tier.color }} />
+                    <div>
+                      <p className="text-xs text-gray-400">{t(tier.name)}</p>
+                      <p className="text-base font-semibold text-[#2A2424]">{loyaltyPoints.toLocaleString(numLocale)} pts</p>
+                    </div>
+                  </div>
+                  {nextTier && (
+                    <>
+                      <div className="relative h-1.5 bg-gray-100 rounded-full overflow-hidden mb-1.5">
+                        <div className="absolute left-0 top-0 h-full rounded-full" style={{ width: `${progressPct}%`, background: `linear-gradient(90deg, ${tier.color}, ${nextTier.color})` }} />
+                      </div>
+                      <p className="text-[11px] text-gray-400 text-right">
+                        {t("Plus que")} {(nextTier.min - loyaltyPoints).toLocaleString(numLocale)} pts {t("avant")} {t(nextTier.name)}
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                {/* Dashboard - Dernières Commandes (Full Width) */}
                   <div className="mt-8">
                     <div className="flex items-end justify-between mb-6">
                       <div>
-                        <p className="text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-1">Historique et acheminement</p>
-                        <h2 className="text-2xl text-[#2A2424]">Dernières Commandes</h2>
+                        <p className="text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-1">{t("Historique et acheminement")}</p>
+                        <h2 className="text-2xl text-[#2A2424]">{t("Dernières Commandes")}</h2>
                       </div>
                       <button onClick={() => setActiveTab('orders')} className="text-sm font-medium text-gray-500 hover:text-[#C97C85] transition-colors flex items-center gap-1">
-                        Toutes mes commandes ({orders.length}) <ArrowRight className="w-4 h-4" />
+                        {t("Toutes mes commandes")} ({orders.length}) <ArrowRight className="w-4 h-4" />
                       </button>
                     </div>
                     
@@ -468,7 +528,7 @@ export default function AccountPage() {
                     ) : (
                       <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center shadow-sm">
                         <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                        <p className="text-gray-500 font-medium">Vous n&apos;avez pas encore de commande.</p>
+                        <p className="text-gray-500 font-medium">{t("Vous n'avez pas encore de commande.")}</p>
                       </div>
                     )}
                   </div>
@@ -484,13 +544,13 @@ export default function AccountPage() {
                         </div>
                         <div>
                           <h2 className="text-2xl text-[#2A2424] flex items-center gap-2">
-                            Coach Beauté IA <span className="px-2 py-0.5 bg-[#FAF5F0] text-[#cd858d] text-[9px] rounded-full uppercase tracking-widest font-sans font-bold border border-[#F1E5D8]">Bêta</span>
+                            {t("Coach Beauté IA")} <span className="px-2 py-0.5 bg-[#FAF5F0] text-[#cd858d] text-[9px] rounded-full uppercase tracking-widest font-sans font-bold border border-[#F1E5D8]">{t("Bêta")}</span>
                           </h2>
-                          <p className="text-sm text-gray-500 mt-0.5">Votre expert dermo-cosmétique personnel</p>
+                          <p className="text-sm text-gray-500 mt-0.5">{t("Votre expert dermo-cosmétique personnel")}</p>
                         </div>
                       </div>
                       <button onClick={() => setActiveTab('scans')} className="text-xs font-bold tracking-widest uppercase text-[#cd858d] hover:text-[#b5737a] transition-colors flex items-center gap-1">
-                        Historique ({scans.length}) <ArrowRight className="w-4 h-4" />
+                        {t("Historique")} ({scans.length}) <ArrowRight className="w-4 h-4" />
                       </button>
                     </div>
                     
@@ -510,14 +570,14 @@ export default function AccountPage() {
                             <IconIA className="w-8 h-8" />
                           </div>
                           <h3 className="text-xl font-bold text-[#2A2424] mb-3">
-                            Découvrez les besoins de votre peau
+                            {t("Découvrez les besoins de votre peau")}
                           </h3>
                           <p className="text-gray-500 font-medium mb-8 max-w-md mx-auto leading-relaxed">
-                            Notre intelligence artificielle analyse votre visage pour créer une routine de soins botanique 100% sur-mesure.
+                            {t("Notre intelligence artificielle analyse votre visage pour créer une routine de soins botanique 100% sur-mesure.")}
                           </p>
                           <Link href="/skin-coach" className="inline-flex items-center gap-2 px-8 py-4 bg-[#cd858d] text-white text-sm font-bold uppercase tracking-widest rounded-xl hover:bg-[#b5737a] transition-colors shadow-lg shadow-[#cd858d]/20">
                             <IconIA className="w-4 h-4" />
-                            Démarrer l&apos;analyse IA
+                            {t("Démarrer l'analyse IA")}
                           </Link>
                         </div>
                       </div>
@@ -536,8 +596,8 @@ export default function AccountPage() {
               >
                 <div className="flex items-end justify-between mb-8">
                   <div>
-                    <h2 className="text-2xl text-[#2A2424] mb-1">Mes commandes</h2>
-                    <p className="text-sm text-gray-500">Retrouvez l&apos;historique et le suivi de vos achats.</p>
+                    <h2 className="text-2xl text-[#2A2424] mb-1">{t("Mes commandes")}</h2>
+                    <p className="text-sm text-gray-500">{t("Retrouvez l'historique et le suivi de vos achats.")}</p>
                   </div>
                 </div>
 
@@ -550,13 +610,13 @@ export default function AccountPage() {
                 ) : (
                   <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center shadow-sm">
                     <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-[#2A2424] mb-2">Aucune commande</h3>
+                    <h3 className="text-lg font-semibold text-[#2A2424] mb-2">{t("Aucune commande")}</h3>
                     <p className="text-sm text-gray-500 max-w-sm mx-auto mb-6">
-                      Vous n&apos;avez pas encore passé de commande sur notre boutique.
+                      {t("Vous n'avez pas encore passé de commande sur notre boutique.")}
                     </p>
                     <Link href="/shop" className="inline-flex items-center gap-2 px-6 py-3 bg-[#2A2424] text-white text-sm font-medium rounded-xl hover:bg-black transition-colors">
                       <ShoppingBag className="w-4 h-4" />
-                      Visiter la boutique
+                      {t("Visiter la boutique")}
                     </Link>
                   </div>
                 )}
@@ -578,13 +638,13 @@ export default function AccountPage() {
                     </div>
                     <div>
                       <h2 className="text-2xl text-[#2A2424] flex items-center gap-2">
-                        Diagnostics IA <span className="px-2 py-0.5 bg-[#FAF5F0] text-[#cd858d] text-[9px] rounded-full uppercase tracking-widest font-sans font-bold border border-[#F1E5D8]">Bêta</span>
+                        {t("Diagnostics IA")} <span className="px-2 py-0.5 bg-[#FAF5F0] text-[#cd858d] text-[9px] rounded-full uppercase tracking-widest font-sans font-bold border border-[#F1E5D8]">{t("Bêta")}</span>
                       </h2>
-                      <p className="text-sm text-gray-500 mt-1">Historique de vos analyses de peau et routines.</p>
+                      <p className="text-sm text-gray-500 mt-1">{t("Historique de vos analyses de peau et routines.")}</p>
                     </div>
                   </div>
                   <Link href="/skin-coach" className="hidden sm:flex items-center gap-2 px-6 py-3 bg-[#cd858d] text-white rounded-xl text-sm font-medium hover:opacity-90 shadow-md shadow-[#cd858d]/20">
-                    <Scan className="w-4 h-4" /> Nouveau diagnostic
+                    <Scan className="w-4 h-4" /> {t("Nouveau diagnostic")}
                   </Link>
                 </div>
 
@@ -598,14 +658,14 @@ export default function AccountPage() {
                         <IconIA className="w-8 h-8" />
                       </div>
                       <h3 className="text-xl font-bold text-[#2A2424] mb-3">
-                        Découvrez les besoins de votre peau
+                        {t("Découvrez les besoins de votre peau")}
                       </h3>
                       <p className="text-gray-500 font-medium mb-8 max-w-md mx-auto leading-relaxed">
-                        Notre intelligence artificielle analyse votre visage pour créer une routine de soins botanique 100% sur-mesure.
+                        {t("Notre intelligence artificielle analyse votre visage pour créer une routine de soins botanique 100% sur-mesure.")}
                       </p>
                       <Link href="/skin-coach" className="inline-flex items-center gap-2 px-8 py-4 bg-[#cd858d] text-white text-sm font-bold uppercase tracking-widest rounded-xl hover:bg-[#b5737a] transition-colors shadow-lg shadow-[#cd858d]/20">
                         <IconIA className="w-4 h-4" />
-                        Démarrer l&apos;analyse IA
+                        {t("Démarrer l'analyse IA")}
                       </Link>
                     </div>
                   </div>

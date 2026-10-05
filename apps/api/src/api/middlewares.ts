@@ -16,6 +16,11 @@ export default defineMiddlewares({
       middlewares: [authenticate("customer", ["session", "bearer"])],
     },
     {
+      matcher: "/store/customers/me/email",
+      method: ["POST"],
+      middlewares: [authenticate("customer", ["session", "bearer"])],
+    },
+    {
       matcher: "/store/skin-scans/:id/claim",
       method: ["POST"],
       middlewares: [authenticate("customer", ["session", "bearer"])],

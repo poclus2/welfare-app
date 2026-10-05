@@ -144,7 +144,8 @@ export default function CheckoutPage() {
             ...prev,
             firstName: customer.first_name || prev.firstName,
             lastName: customer.last_name || prev.lastName,
-            email: customer.email || prev.email,
+            // a phone sign-up has a made-up address (<digits>@phone.thewelfarecm.com): don't prefill it as hers
+            email: customer.email && !customer.email.toLowerCase().endsWith("@phone.thewelfarecm.com") ? customer.email : prev.email,
             phone: customer.phone || prev.phone,
           }));
         }

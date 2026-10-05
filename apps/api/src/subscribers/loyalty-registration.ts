@@ -1,84 +1,87 @@
 import { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 import { Modules } from "@medusajs/framework/utils"
 import { Resend } from "resend"
+import { pointsForTotal } from "../lib/loyalty"
 
+// order.placed: credit loyalty points to the customer (once per order), and invite guests to open an
+// account so they can collect them.
 export default async function loyaltyRegistration({
   event: { data },
   container,
 }: SubscriberArgs<{ id: string }>) {
   try {
     const query = container.resolve("query")
-    
-    // Fetch the order with customer details
+
     const { data: orders } = await query.graph({
       entity: "order",
-      fields: ["id", "email", "customer_id", "first_name", "last_name", "total", "customer.*"],
-      filters: { id: data.id }
+      fields: ["id", "email", "customer_id", "total", "metadata", "customer.*", "shipping_address.first_name"],
+      filters: { id: data.id },
     })
-    
+
     if (!orders || orders.length === 0) return
-    const order = orders[0]
+    const order: any = orders[0]
 
-    // Calculate points: 1 point per 1000 Frs
-    const orderTotal = typeof order.total === 'number' ? order.total : 0
-    const earnedPoints = Math.floor(orderTotal / 1000)
+    const earnedPoints = pointsForTotal(order.total)
 
-    // Attribution des points si le client a un compte
-    if (order.customer_id && earnedPoints > 0) {
+    // Points go to customers with an account — and only once per order, even if the event is replayed
+    if (order.customer_id && earnedPoints > 0 && order.metadata?.loyalty_points_earned == null) {
       try {
         const customerModuleService = container.resolve(Modules.CUSTOMER)
-        const customer = order.customer
-        const currentPoints = (customer?.metadata?.loyalty_points as number) || 0
+        const orderModuleService: any = container.resolve(Modules.ORDER)
+        const currentPoints = Number(order.customer?.metadata?.loyalty_points) || 0
         const newPoints = currentPoints + earnedPoints
 
         await customerModuleService.updateCustomers(order.customer_id, {
-          metadata: {
-            ...(customer?.metadata || {}),
-            loyalty_points: newPoints
-          }
+          metadata: { ...(order.customer?.metadata || {}), loyalty_points: newPoints },
         })
+        // remembered on the order so a cancellation can take exactly these points back
+        await orderModuleService.updateOrders([
+          { id: order.id, metadata: { ...(order.metadata || {}), loyalty_points_earned: earnedPoints } },
+        ])
         console.log(`Attributed ${earnedPoints} loyalty points to customer ${order.customer_id}. New total: ${newPoints}`)
       } catch (err) {
         console.error("Error updating customer loyalty points:", err)
       }
     }
 
-    // If order already has a customer, they are already registered
+    // If the order already has a customer, they are already registered
     if (order.customer_id) {
       console.log(`Order ${order.id} already linked to customer ${order.customer_id}. Skipping loyalty registration email.`)
       return
     }
+    if (!order.email) return
 
-    // Initialize Resend
     const resendApiKey = process.env.RESEND_API_KEY
     if (!resendApiKey) {
       console.warn("RESEND_API_KEY is not set. Cannot send loyalty registration email.")
       return
     }
-    
-    const resend = new Resend(resendApiKey)
-    const storeUrl = process.env.STORE_CORS?.split(",")[0] || "https://thewelfare.store"
-    const registerUrl = `${storeUrl}/account/register?email=${encodeURIComponent(order.email)}`
 
-    // Send the magic link email
+    const resend = new Resend(resendApiKey)
+    const storeUrl = process.env.STORE_CORS?.split(",")[0] || "https://thewelfarecm.com"
+    const registerUrl = `${storeUrl}/account/register?email=${encodeURIComponent(order.email)}`
+    // Resend only sends from a verified domain
+    const from = process.env.LOYALTY_EMAIL_FROM || "The Welfare Shop <hello@thewelfarecm.com>"
+    const firstName = order.shipping_address?.first_name || ""
+
     const { error } = await resend.emails.send({
-      from: "The Welfare Shop <hello@thewelfare.store>", // Resend requires a verified domain to send from
+      from,
       to: [order.email],
-      subject: "?? Votre programme de fidlit The Welfare",
+      subject: "Votre programme de fidélité The Welfare",
       html: `
-        <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto; color: #2A2424;">
-          <h2 style="color: #2A2424; font-weight: 300;">Flicitations pour votre commande !</h2>
-          <p>Bonjour ${order.first_name || ""},</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #2A2424;">
+          <h2 style="color: #2A2424; font-weight: 300;">Félicitations pour votre commande !</h2>
+          <p>Bonjour ${firstName},</p>
           <p>Merci pour votre achat sur The Welfare Shop. Saviez-vous que vous venez de débloquer <strong>${earnedPoints} points de fidélité</strong> ?</p>
-          <p>Pour activer votre compte, cumuler vos points, et suivre vos commandes, il vous suffit de choisir un mot de passe en cliquant sur le lien ci-dessous :</p>
+          <p>Pour activer votre compte, cumuler vos points et suivre vos commandes, il vous suffit de créer votre compte en cliquant sur le lien ci-dessous :</p>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${registerUrl}" style="background-color: #2A2424; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Activer mon compte fidlit</a>
+            <a href="${registerUrl}" style="background-color: #2A2424; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Activer mon compte fidélité</a>
           </div>
-          <p style="font-size: 14px; color: #666;">Si vous avez dj un compte, vous pouvez ignorer cet e-mail.</p>
+          <p style="font-size: 14px; color: #666;">Si vous avez déjà un compte, vous pouvez ignorer cet e-mail.</p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-          <p style="font-size: 12px; color: #999;">The Welfare Shop - R�v�lez la science d'une peau rayonnante.</p>
+          <p style="font-size: 12px; color: #999;">The Welfare Shop - Révélez la science d'une peau rayonnante.</p>
         </div>
-      `
+      `,
     })
 
     if (error) {
@@ -86,7 +89,6 @@ export default async function loyaltyRegistration({
     } else {
       console.log(`Loyalty registration email sent to ${order.email}`)
     }
-
   } catch (err) {
     console.error("Error in loyalty registration subscriber:", err)
   }

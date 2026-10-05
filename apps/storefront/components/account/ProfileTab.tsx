@@ -1,14 +1,18 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { User, MapPin, Plus, PencilSimple, Trash, CheckCircle, WarningCircle, X } from "@phosphor-icons/react";
 import { sdk } from "@/lib/medusa";
 import { useI18n } from "@/lib/i18n-context";
 
 export default function ProfileTab({ customer, onUpdate }: { customer: any, onUpdate: () => void }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  // Customers who signed up with a phone number carry a made-up address (see /store/customers/me/email)
+  const isPlaceholderEmail = String(customer?.email || "").toLowerCase().endsWith("@phone.thewelfarecm.com");
+  const [newEmail, setNewEmail] = useState("");
+  const [cities, setCities] = useState<string[]>([]);
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [formData, setFormData] = useState({
     first_name: customer?.first_name || "",
@@ -28,9 +32,41 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
     address_2: "",
     city: "",
     postal_code: "",
-    country_code: "FR",
+    country_code: "CM",
     phone: "",
   });
+
+  useEffect(() => {
+    sdk.client
+      .fetch<any>("/store/delivery/cities", { method: "GET" })
+      .then((res) => setCities((res?.cities || []).map((c: any) => c.name).filter(Boolean)))
+      .catch(() => {});
+  }, []);
+
+  const countryName = (code: string) => {
+    try {
+      return new Intl.DisplayNames([locale === "en" ? "en" : "fr"], { type: "region" }).of(String(code).toUpperCase()) || String(code).toUpperCase();
+    } catch {
+      return String(code).toUpperCase();
+    }
+  };
+
+  const handleSaveEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
+    try {
+      await sdk.client.fetch("/store/customers/me/email", { method: "POST", body: { email: newEmail } });
+      setMessage({ type: "success", text: t("E-mail enregistré.") });
+      setNewEmail("");
+      onUpdate();
+    } catch (err: any) {
+      setMessage({ type: "error", text: err.message || t("Une erreur est survenue.") });
+    } finally {
+      setLoading(false);
+      setTimeout(() => setMessage(null), 4000);
+    }
+  };
 
   const handleUpdateInfo = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,7 +76,6 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
       await sdk.store.customer.update({
         first_name: formData.first_name,
         last_name: formData.last_name,
-        phone: formData.phone,
       });
       setMessage({ type: "success", text: t("Informations mises à jour.") });
       setIsEditingInfo(false);
@@ -99,14 +134,14 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
       address_2: addr.address_2 || "",
       city: addr.city || "",
       postal_code: addr.postal_code || "",
-      country_code: addr.country_code || "FR",
+      country_code: addr.country_code || "CM",
       phone: addr.phone || "",
     });
     setEditingAddressId(addr.id);
     setIsAddingAddress(true);
   };
 
-  const InputField = ({ label, type = "text", value, onChange, required = false, disabled = false }: any) => (
+  const InputField = ({ label, type = "text", value, onChange, required = false, disabled = false, list }: any) => (
     <div className="mb-4">
       <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1.5">{label}</label>
       <input
@@ -115,6 +150,7 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
         onChange={onChange}
         required={required}
         disabled={disabled}
+        list={list}
         className="w-full bg-white/50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-[#2A2424] focus:outline-none focus:ring-2 focus:ring-[#C97C85]/30 focus:border-[#C97C85] transition-all disabled:opacity-50 shadow-sm"
       />
     </div>
@@ -178,7 +214,26 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
               </div>
               <div>
                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t("Email")}</p>
-                <p className="text-sm font-medium text-[#2A2424]">{customer?.email}</p>
+                {isPlaceholderEmail ? (
+                  <form onSubmit={handleSaveEmail} className="mt-1">
+                    <p className="text-xs text-gray-500 mb-2">{t("Ajoutez votre e-mail pour recevoir les confirmations de vos commandes.")}</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="email"
+                        required
+                        value={newEmail}
+                        onChange={(e) => setNewEmail(e.target.value)}
+                        placeholder={t("Votre e-mail")}
+                        className="flex-1 min-w-0 bg-white/50 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C97C85]/30 focus:border-[#C97C85]"
+                      />
+                      <button type="submit" disabled={loading} className="px-4 py-2 bg-[#C97C85] text-white text-sm font-semibold rounded-xl hover:bg-[#b0656e] disabled:opacity-70">
+                        {t("Enregistrer")}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <p className="text-sm font-medium text-[#2A2424]">{customer?.email}</p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4 mt-4">
                 <div>
@@ -201,8 +256,8 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
                 <InputField label={t("Prénom")} value={formData.first_name} onChange={(e: any) => setFormData({...formData, first_name: e.target.value})} required />
                 <InputField label={t("Nom")} value={formData.last_name} onChange={(e: any) => setFormData({...formData, last_name: e.target.value})} required />
               </div>
-              <InputField label={t("Email (Lecture seule)")} value={customer?.email} disabled />
-              <InputField label={t("Téléphone")} type="tel" value={formData.phone} onChange={(e: any) => setFormData({...formData, phone: e.target.value})} />
+              {!isPlaceholderEmail && <InputField label={t("Email (Lecture seule)")} value={customer?.email} disabled />}
+              <InputField label={t("Téléphone (identifiant de connexion)")} type="tel" value={customer?.phone || ""} disabled />
               
               <div className="pt-4 flex items-center gap-3">
                 <button type="submit" disabled={loading} className="px-6 py-2.5 bg-[#C97C85] text-white text-sm font-semibold rounded-xl hover:bg-[#b0656e] transition-all shadow-[0_4px_14px_0_rgba(201,124,133,0.39)] hover:shadow-[0_6px_20px_rgba(201,124,133,0.23)] hover:-translate-y-[1px] disabled:opacity-70">
@@ -228,7 +283,7 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
             {!isAddingAddress && (
               <button 
                 onClick={() => {
-                  setAddressForm({ first_name: "", last_name: "", address_1: "", address_2: "", city: "", postal_code: "", country_code: "FR", phone: "" });
+                  setAddressForm({ first_name: "", last_name: "", address_1: "", address_2: "", city: "", postal_code: "", country_code: "CM", phone: "" });
                   setEditingAddressId(null);
                   setIsAddingAddress(true);
                 }}
@@ -255,8 +310,11 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
               <InputField label={t("Complément (Optionnel)")} value={addressForm.address_2} onChange={(e: any) => setAddressForm({...addressForm, address_2: e.target.value})} />
               
               <div className="grid grid-cols-2 gap-4">
-                <InputField label={t("Code Postal")} value={addressForm.postal_code} onChange={(e: any) => setAddressForm({...addressForm, postal_code: e.target.value})} required />
-                <InputField label={t("Ville")} value={addressForm.city} onChange={(e: any) => setAddressForm({...addressForm, city: e.target.value})} required />
+                <InputField label={t("Code postal (optionnel)")} value={addressForm.postal_code} onChange={(e: any) => setAddressForm({...addressForm, postal_code: e.target.value})} />
+                <div>
+                  <InputField label={t("Ville")} value={addressForm.city} list="profile-cities" onChange={(e: any) => setAddressForm({...addressForm, city: e.target.value})} required />
+                  <datalist id="profile-cities">{cities.map((c) => <option key={c} value={c} />)}</datalist>
+                </div>
               </div>
               
               <InputField label={t("Téléphone (Optionnel)")} value={addressForm.phone} onChange={(e: any) => setAddressForm({...addressForm, phone: e.target.value})} />
@@ -275,7 +333,7 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
                     <p className="font-semibold text-[#2A2424] mb-1">{addr.first_name} {addr.last_name}</p>
                     <p className="text-sm text-gray-500 leading-relaxed">
                       {addr.address_1} {addr.address_2 ? `, ${addr.address_2}` : ""}<br />
-                      {addr.postal_code} {addr.city}, {addr.country_code.toUpperCase()}<br />
+                      {[addr.postal_code, addr.city].filter(Boolean).join(" ")}, {countryName(addr.country_code)}<br />
                       {addr.phone && <span className="text-gray-400 mt-1 block">{addr.phone}</span>}
                     </p>
                     

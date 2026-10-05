@@ -6,98 +6,106 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Phone, LockKey, ArrowRight, CheckCircle } from "@phosphor-icons/react";
 import Link from "next/link";
+import { OtpCodeInput } from "@/components/account/OtpCodeInput";
+import { useI18n } from "@/lib/i18n-context";
 
+const MIN_PASSWORD_LENGTH = 8;
+
+// Forgot password: the customer proves she owns the phone with a WhatsApp code, then picks a new password.
 function ResetPasswordForm() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
-  const token = searchParams.get("token");
-  const phoneParam = searchParams.get("phone");
-
-  const [phone, setPhone] = useState(phoneParam || "");
-  const [password, setPassword] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [message, setMessage] = useState("");
   const router = useRouter();
 
-  const handleRequestReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setStatus("loading");
-    setMessage("");
+  const [step, setStep] = useState<"phone" | "code" | "done">("phone");
+  const [phone, setPhone] = useState(searchParams.get("phone") || "");
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
+  const requestCode = async () => {
+    await sdk.client.fetch("/store/password-reset/request", { method: "POST", body: { phone: phone.trim() } });
+  };
+
+  // the API answers in French with a precise reason (rate limit, feature not available yet...)
+  const apiMessage = (err: any) =>
+    typeof err?.message === "string" && err.message.length < 200 ? err.message : t("Une erreur est survenue. Réessayez.");
+
+  const handleRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
     try {
-      // For requesting a reset
-      await sdk.auth.resetPassword("customer", "phonepass", {
-        identifier: phone,
-      });
-      setStatus("success");
-      setMessage("Si ce numéro existe, un code de réinitialisation vous a été envoyé.");
+      await requestCode();
+      setStep("code");
     } catch (err: any) {
-      console.error(err);
-      // Don't leak if the phone number exists or not, just show success
-      setStatus("success");
-      setMessage("Si ce numéro existe, un code de réinitialisation vous a été envoyé.");
+      setError(apiMessage(err));
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleUpdatePassword = async (e: React.FormEvent) => {
+  const handleConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStatus("loading");
-    setMessage("");
-
+    if (code.length < 6) {
+      setError(t("Entrez le code à 6 chiffres reçu par WhatsApp."));
+      return;
+    }
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setError(t("Le mot de passe doit contenir au moins 8 caractères."));
+      return;
+    }
+    setLoading(true);
+    setError("");
     try {
-      // For setting the new password using the token
-      await sdk.auth.updateProvider("customer", "phonepass", {
-        password: password,
-      }, token as string);
-
-      // Auto login after reset
-      await sdk.auth.login("customer", "phonepass", {
-        phone,
-        password,
+      await sdk.client.fetch("/store/password-reset/confirm", {
+        method: "POST",
+        body: { phone: phone.trim(), code, password },
       });
-      
-      setStatus("success");
-      setMessage("Mot de passe mis � jour avec succ�s ! Vous allez �tre redirig�.");
-      setTimeout(() => {
-        router.push("/account");
-      }, 2000);
+      setStep("done");
+      try {
+        await sdk.auth.login("customer", "phonepass", { phone: phone.trim(), password });
+        setTimeout(() => router.push("/account"), 1800);
+      } catch {
+        setTimeout(() => router.push("/account/login"), 1800);
+      }
     } catch (err: any) {
-      console.error(err);
-      setStatus("error");
-      setMessage("Le lien est invalide ou a expir�. Veuillez refaire une demande.");
+      setError(apiMessage(err));
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (status === "success" && !token) {
+  const inputClass =
+    "appearance-none block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#2A2424] focus:border-[#2A2424] sm:text-sm transition-colors";
+  const buttonClass =
+    "w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-[#2A2424] hover:bg-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2A2424] disabled:opacity-50 transition-all group";
+
+  if (step === "done") {
     return (
       <div className="text-center">
         <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
           <CheckCircle className="h-6 w-6 text-green-600" />
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">Code envoyé</h3>
-        <p className="text-sm text-gray-500 mb-6">{message}</p>
-        <Link href="/account/login" className="text-sm font-medium text-[#2A2424] hover:underline">
-          Retour � la connexion
-        </Link>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">{t("Mot de passe mis à jour")}</h3>
+        <p className="text-sm text-gray-500">{t("Vous allez être redirigée vers votre espace.")}</p>
       </div>
     );
   }
 
-  if (token) {
+  if (step === "code") {
     return (
-      <form className="space-y-6" onSubmit={handleUpdatePassword}>
-        {status === "error" && (
-          <div className="bg-red-50 text-red-500 p-3 rounded-lg text-sm text-center">
-            {message}
-          </div>
-        )}
-        {status === "success" && (
-          <div className="bg-green-50 text-green-600 p-3 rounded-lg text-sm text-center">
-            {message}
-          </div>
-        )}
-        
+      <form className="space-y-6" onSubmit={handleConfirm}>
+        {error && <div className="bg-red-50 text-red-500 p-3 rounded-lg text-sm text-center">{error}</div>}
+
+        <p className="text-sm text-gray-600">
+          {t("Entrez le code à 6 chiffres envoyé par WhatsApp au")} <span className="font-medium text-gray-900">{phone}</span>
+        </p>
+        <OtpCodeInput value={code} onChange={setCode} onResend={requestCode} />
+
         <div>
-          <label className="block text-sm font-medium text-gray-700">Nouveau mot de passe</label>
+          <label className="block text-sm font-medium text-gray-700">{t("Nouveau mot de passe")}</label>
           <div className="mt-1 relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
               <LockKey weight="light" className="w-5 h-5" />
@@ -105,31 +113,37 @@ function ResetPasswordForm() {
             <input
               type="password"
               required
+              minLength={MIN_PASSWORD_LENGTH}
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#2A2424] focus:border-[#2A2424] sm:text-sm transition-colors"
-              placeholder="•••••••• "
+              className={inputClass}
+              placeholder="••••••••"
             />
           </div>
+          <p className="mt-1 text-xs text-gray-400">{t("Au moins 8 caractères.")}</p>
         </div>
 
-        <div>
-          <button
-            type="submit"
-            disabled={status === "loading" || status === "success"}
-            className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-[#2A2424] hover:bg-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2A2424] disabled:opacity-50 transition-all"
-          >
-            {status === "loading" ? "Mise � jour..." : "Enregistrer mon mot de passe"}
-          </button>
-        </div>
+        <button type="submit" disabled={loading} className={buttonClass}>
+          {loading ? t("Mise à jour...") : t("Enregistrer mon mot de passe")}
+        </button>
+        <button
+          type="button"
+          onClick={() => { setStep("phone"); setCode(""); setError(""); }}
+          className="w-full text-sm font-medium text-gray-500 hover:text-[#2A2424]"
+        >
+          {t("Modifier le numéro")}
+        </button>
       </form>
     );
   }
 
   return (
-    <form className="space-y-6" onSubmit={handleRequestReset}>
+    <form className="space-y-6" onSubmit={handleRequest}>
+      {error && <div className="bg-red-50 text-red-500 p-3 rounded-lg text-sm text-center">{error}</div>}
+
       <div>
-        <label className="block text-sm font-medium text-gray-700">Numéro de téléphone</label>
+        <label className="block text-sm font-medium text-gray-700">{t("Numéro de téléphone")}</label>
         <div className="mt-1 relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
             <Phone weight="light" className="w-5 h-5" />
@@ -139,53 +153,50 @@ function ResetPasswordForm() {
             required
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            className="appearance-none block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#2A2424] focus:border-[#2A2424] sm:text-sm transition-colors"
+            className={inputClass}
             placeholder="+237 6XX XXX XXX"
           />
         </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="text-sm">
-          <Link href="/account/login" className="font-medium text-[#2A2424] hover:underline">
-            Retour � la connexion
-          </Link>
-        </div>
+      <div className="text-sm">
+        <Link href="/account/login" className="font-medium text-[#2A2424] hover:underline">
+          {t("Retour à la connexion")}
+        </Link>
       </div>
 
-      <div>
-        <button
-          type="submit"
-          disabled={status === "loading"}
-          className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-[#2A2424] hover:bg-black focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2A2424] disabled:opacity-50 transition-all group"
-        >
-          {status === "loading" ? "Envoi..." : "R�initialiser mon mot de passe"}
-          {status !== "loading" && <ArrowRight weight="light" className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />}
-        </button>
-      </div>
+      <button type="submit" disabled={loading} className={buttonClass}>
+        {loading ? t("Envoi...") : t("Recevoir un code par WhatsApp")}
+        {!loading && <ArrowRight weight="light" className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />}
+      </button>
     </form>
+  );
+}
+
+function Header() {
+  const { t } = useI18n();
+  return (
+    <div className="sm:mx-auto sm:w-full sm:max-w-md">
+      <h2 className="text-center text-3xl font-light text-[#2A2424]">{t("Mot de passe oublié")}</h2>
+      <p className="mt-2 text-center text-sm text-gray-600">
+        {t("Entrez votre numéro de téléphone : nous vous envoyons un code par WhatsApp pour choisir un nouveau mot de passe.")}
+      </p>
+    </div>
   );
 }
 
 export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen bg-[#F4EAEB] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="text-center text-3xl font-light text-[#2A2424]">
-          Mot de passe
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Entrez votre numéro de téléphone pour recevoir un code de réinitialisation, ou choisissez votre nouveau mot de passe si vous en avez déjà un.
-        </p>
-      </div>
+      <Header />
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-white py-8 px-4 shadow-xl shadow-pink-900/5 sm:rounded-2xl sm:px-10 border border-pink-100"
         >
-          <Suspense fallback={<div className="text-center p-4">Chargement...</div>}>
+          <Suspense fallback={<div className="text-center p-4">…</div>}>
             <ResetPasswordForm />
           </Suspense>
         </motion.div>
