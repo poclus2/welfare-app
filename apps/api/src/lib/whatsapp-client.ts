@@ -36,23 +36,58 @@ export function toE164(phone: string): string {
   return `+${digits}`
 }
 
-async function sendViaZindua(phone: string, code: string): Promise<void> {
-  const res = await fetch(ZINDUA_URL, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${ZINDUA_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      to: toE164(phone),
-      channel: "whatsapp",
-      template: ZINDUA_TEMPLATE,
-      variables: { code },
-      lang: "fr",
-    }),
-    signal: AbortSignal.timeout(15000),
-  })
-  if (!res.ok) {
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+async function postToZindua(phone: string, code: string): Promise<void> {
+  // Zindua protects its WhatsApp line: two sends less than ~1 s apart get a 429 ("Wait 1s"). If it still
+  // happens, wait what it asks for and try again (at most 2 retries).
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(ZINDUA_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${ZINDUA_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: toE164(phone),
+        channel: "whatsapp",
+        template: ZINDUA_TEMPLATE,
+        variables: { code },
+        lang: "fr",
+      }),
+      signal: AbortSignal.timeout(15000),
+    })
+    if (res.ok) return
+
     const body = await res.text().catch(() => "")
+    if (res.status === 429 && attempt < 2) {
+      let waitMs = 1500
+      try {
+        const retryAfter = Number(JSON.parse(body)?.retryAfterSec)
+        if (Number.isFinite(retryAfter) && retryAfter > 0) waitMs = Math.min(5000, Math.ceil(retryAfter) * 1000 + 300)
+      } catch {}
+      await sleep(waitMs)
+      continue
+    }
     throw new Error(`Zindua error (${res.status}): ${body.slice(0, 300)}`)
   }
+}
+
+// Sends go one at a time, at least ZINDUA_MIN_GAP_MS apart, so two customers asking for a code in the
+// same second don't make one of them fail.
+const ZINDUA_MIN_GAP_MS = 1100
+let zinduaQueue: Promise<unknown> = Promise.resolve()
+let lastZinduaSend = 0
+
+function sendViaZindua(phone: string, code: string): Promise<void> {
+  const run = zinduaQueue.then(async () => {
+    const wait = lastZinduaSend + ZINDUA_MIN_GAP_MS - Date.now()
+    if (wait > 0) await sleep(wait)
+    try {
+      await postToZindua(phone, code)
+    } finally {
+      lastZinduaSend = Date.now()
+    }
+  })
+  zinduaQueue = run.catch(() => undefined)
+  return run
 }
 
 export async function sendWhatsappOtp(phone: string, code: string): Promise<void> {

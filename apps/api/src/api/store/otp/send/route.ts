@@ -1,5 +1,6 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { clientIp, tooManyRequests } from "../../../../lib/rate-limit"
 import { generateAndSendOtp, OtpRateLimitError, OtpPurpose } from "../../../../lib/otp"
 import { isWhatsappSimulated } from "../../../../lib/whatsapp-client"
 import { OTP_MODULE } from "../../../../modules/otp"
@@ -12,6 +13,13 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     return
   }
 
+  // Each code is a paid WhatsApp message: cap what one IP can trigger (generous, since many customers can
+  // share one mobile-network address).
+  if (tooManyRequests(`otp-send:${clientIp(req as any)}`, 30, 15 * 60 * 1000)) {
+    res.status(429).json({ message: "Trop de tentatives récentes. Réessayez dans quelques minutes." })
+    return
+  }
+
   // Simulated mode (WhatsApp not connected yet): the code goes back to the browser for signup, which
   // means it proves nothing about who owns the phone. A passwordless LOGIN on that basis would let
   // anyone sign in to any account knowing only the number, so it stays off in production until the
@@ -20,6 +28,19 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   if (simulated && purpose === "login" && process.env.NODE_ENV === "production") {
     res.status(503).json({ message: "La connexion par code WhatsApp n'est pas encore disponible. Utilisez votre mot de passe." })
     return
+  }
+
+  // Login: don't spend a WhatsApp message on a number that has no account (nor reveal whether it has one).
+  if (purpose === "login") {
+    const authModuleService = req.scope.resolve(Modules.AUTH)
+    const identities = await authModuleService.listAuthIdentities(
+      { provider_identities: { entity_id: phone, provider: "phonepass" } },
+      { relations: ["provider_identities"] }
+    )
+    if (!identities.length) {
+      res.json({ sent: true })
+      return
+    }
   }
 
   // Signup: refuse an e-mail that already has an account BEFORE spending a code (and a paid message) —
