@@ -92,6 +92,7 @@ type EnrichedProduct = {
   stock_total: number;
   category: string; // assigned by RAG
   price?: number;
+  skin_concerns: string[]; // product.metadata.skin_concerns, most relevant first
 };
 
 async function fetchStoreProductsByIds(
@@ -107,7 +108,7 @@ async function fetchStoreProductsByIds(
     // Build query with comma-separated IDs — Medusa store supports id[]
     const query = ids.map((id) => `id[]=${id}`).join("&");
     const res = await fetch(
-      `${medusaUrl}/store/products?${query}&limit=${ids.length}&fields=*variants.prices`,
+      `${medusaUrl}/store/products?${query}&limit=${ids.length}&fields=*variants.prices,+metadata`,
       {
         headers: {
           "x-publishable-api-key": publishableKey,
@@ -140,7 +141,8 @@ async function fetchStoreProductsByIds(
           return acc + (Number(v.inventory_quantity) || 0);
         }, 0),
         category,
-        price
+        price,
+        skin_concerns: Array.isArray(p.metadata?.skin_concerns) ? p.metadata.skin_concerns.map(String) : [],
       };
     });
   } catch {
@@ -295,6 +297,55 @@ function buildSkinKeywords(skinType: string, concerns: string[]): string[] {
 }
 
 // =========================================================================
+// ACNE FIRST — brand rule from the owner: when someone has active acne AND wants to treat spots, the
+// routine must calm the acne first. Treating spots on skin that is still in an inflammatory flare risks
+// making it worse. Decided here in code (not left to the model) from three signals: the goal chosen in
+// the questionnaire, the "active pimples?" answer, and the photo scan's acne score.
+// =========================================================================
+
+// acne_severity_percentage (0-100, from the visual scan) at or above which acne counts as active.
+// A first guess: tune it against real scans (the decision is logged as "[SkinCoach] Acne-first").
+const ACNE_SCAN_THRESHOLD = 30;
+
+const SPOT_RE = /tache|pigment|m[ée]lasma|dark spot/i;
+const ACNE_GOAL_RE = /acn[ée]|imperfection/i;
+
+function answerFor(responses: UserResponse[], questionId: string): string {
+  const r = responses.find((x) => x.questionId === questionId);
+  return typeof r?.answer === "string" ? r.answer : "";
+}
+
+function decideAcnePriority(responses: UserResponse[], scanAcnePct: unknown) {
+  const goal = answerFor(responses, "q_main_goal");
+  const goalIsAcne = ACNE_GOAL_RE.test(goal);
+  const declaredActive = /^oui/i.test(answerFor(responses, "q_active_acne").trim());
+  const pct = Number(scanAcnePct);
+  const detectedActive = Number.isFinite(pct) && pct >= ACNE_SCAN_THRESHOLD;
+  const acneFirst = goalIsAcne || declaredActive || detectedActive;
+  return {
+    acneFirst,
+    // she asked for something else (spots, glow...) but the acne takes priority
+    redirected: acneFirst && !goalIsAcne,
+    // specifically: she asked for spots and they are postponed
+    spotsDeferred: acneFirst && SPOT_RE.test(goal),
+    goal,
+    goalIsAcne,
+    declaredActive,
+    detectedActive,
+    scanAcnePct: Number.isFinite(pct) ? pct : null,
+  };
+}
+
+// A product whose MAIN purpose (first listed concern) is spots / hyperpigmentation is a spot treatment.
+// Products that merely mention spots among other benefits (barrier repair, hydration...) stay.
+// Sunscreens are always kept: sun protection stays in an acne routine (it stops marks from getting worse).
+function isSpotTreatment(p: EnrichedProduct): boolean {
+  if (p.category === "Solaire" || p.skin_concerns.some((c) => /solaire|spf|sun/i.test(c))) return false;
+  const main = p.skin_concerns[0];
+  return !!main && SPOT_RE.test(main);
+}
+
+// =========================================================================
 // MAIN ACTION
 // =========================================================================
 
@@ -398,11 +449,33 @@ FORMAT JSON ATTENDU :
     // =========================================================================
     // APPEL 1.5 : RAG — Catalogue filtré selon la config Admin
     // =========================================================================
-    const productCatalog = await fetchProductCatalogForSkin(
+    const acne = decideAcnePriority(userResponses, qwenResult.metrics?.acne_severity_percentage);
+    console.log(
+      `[SkinCoach] Acne-first: ${acne.acneFirst} (goal: "${acne.goal}", goal is acne: ${acne.goalIsAcne}, declared active: ${acne.declaredActive}, scan acne: ${acne.scanAcnePct}%, threshold ${ACNE_SCAN_THRESHOLD}%)`
+    );
+
+    const observations: string[] = qwenResult.clinical_observations || [];
+    const rawCatalog = await fetchProductCatalogForSkin(
       qwenResult.visual_reasoning || "",
-      qwenResult.clinical_observations || [],
+      // acne first: search for acne products and don't let spot keywords steer the search
+      acne.acneFirst ? ["acné", ...observations.filter((o) => !SPOT_RE.test(o))] : observations,
       aiConfig
     );
+
+    // acne first: spot treatments are kept out of what the model can choose from
+    const excludedProductIds = new Set<string>();
+    const productCatalog = acne.acneFirst
+      ? rawCatalog.filter((p) => {
+          if (isSpotTreatment(p)) {
+            excludedProductIds.add(p.id);
+            return false;
+          }
+          return true;
+        })
+      : rawCatalog;
+    if (excludedProductIds.size) {
+      console.log(`[SkinCoach] Acne-first: ${excludedProductIds.size} spot-treatment products excluded from the catalog`);
+    }
 
     const hasCatalog = productCatalog.length > 0;
 
@@ -454,6 +527,25 @@ RÈGLE DE PRIORISATION (The Welfare Strategy) & BUDGET :
 - Si aucun produit de la liste ne convient ou ne rentre dans le budget pour une étape, N'AJOUTE PAS cette étape (skinimalisme).`
       : `Note: Le catalogue produit n'est pas disponible pour le moment. Génère une routine K-Beauty générique et minimaliste (3 à 5 étapes maximum). Laisse medusa_product_id à null pour chaque étape.`;
 
+    const acneReasons = [
+      acne.goalIsAcne ? "son objectif numéro 1 est de combattre l'acné" : "",
+      acne.declaredActive ? "elle déclare avoir des boutons actifs ou inflammés en ce moment" : "",
+      acne.detectedActive ? `le scan visuel détecte de l'acné active (score ${acne.scanAcnePct}/100)` : "",
+    ].filter(Boolean);
+
+    const acnePriorityBlock = acne.acneFirst
+      ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 PRIORITÉ ABSOLUE — L'ACNÉ D'ABORD (règle de la marque, validée par sa fondatrice)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Objectif déclaré par la cliente : "${acne.goal}". Constat : ${acneReasons.join(" ; ")}.
+On NE traite JAMAIS les taches / l'hyperpigmentation en même temps qu'une acné active : agir sur les taches pendant une poussée inflammatoire risque d'aggraver l'inflammation. La résolution de l'acné passe en premier.
+- Ta routine ('routine_steps') vise UNIQUEMENT à calmer et traiter l'acné : nettoyer sans agresser, réguler le sébum, apaiser l'inflammation, réparer la barrière cutanée, hydrater léger.
+- N'inclus AUCUN produit dont la fonction principale est d'atténuer, d'éclaircir ou d'unifier les taches (éclaircissants, acide tranexamique, acide kojique, arbutine, vitamine C concentrée, exfoliants intensifs).
+- La protection solaire reste possible : présente-la comme une protection de la peau, jamais comme un traitement des taches.
+${acne.redirected ? `- Dans 'empathetic_message', explique avec douceur, en une ou deux phrases, que l'on commence par apaiser l'acné avant de s'occuper de ses autres objectifs. Ne promets aucun délai chiffré et ne joue pas au médecin.` : ""}
+- Ne rédige PAS toi-même la phrase "prochaine étape pour les taches" : elle est ajoutée automatiquement.`
+      : "";
+
     const claudeSystemPrompt = `Tu es le 'Skin Coach VIP' de la marque K-Beauty premium 'The Welfare', basée en Afrique (Cameroun). Tu es l'expert bienveillant qui va concevoir la routine de soin idéale pour chaque cliente.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -467,6 +559,8 @@ RESSENTI ET BESOINS DÉCLARÉS PAR LA CLIENTE (questionnaire)
 ${userChatJson}
 
 ${catalogConstraint}
+
+${acnePriorityBlock}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TA MISSION (4 points obligatoires)
@@ -592,6 +686,12 @@ FORMAT JSON ATTENDU :
       // Normalize: support both routine_steps (new) and kbeauty_routine (legacy)
       let routineSteps = parsed.routine_steps || parsed.kbeauty_routine || [];
       
+      // Acne first: whatever the model returned, a spot treatment never ends up in the routine
+      if (acne.acneFirst && excludedProductIds.size > 0) {
+        routineSteps = routineSteps.filter((s: any) => !excludedProductIds.has(s.medusa_product_id));
+        routineSteps.forEach((s: any, i: number) => { s.step_number = i + 1; });
+      }
+
       // Sécurité absolue : forcer la limite du tableau
       if (routineSteps.length > aiConfig.max_routine_steps) {
         routineSteps = routineSteps.slice(0, aiConfig.max_routine_steps);
@@ -664,6 +764,12 @@ FORMAT JSON ATTENDU :
         metrics: qwenResult.metrics,
         melanin_phototype: qwenResult.melanin_phototype,
       };
+
+      // She asked for spots and they are postponed: say so in plain words, deterministically
+      // (not left to the model), and tell her what to do next.
+      if (acne.spotsDeferred) {
+        finalResult.empathetic_message = `${finalResult.empathetic_message || ""}\n\n💡 Pour vos taches : nous commençons par apaiser votre acné, car traiter les taches sur une peau en poussée risque d'aggraver l'inflammation. Une fois votre peau calmée, refaites votre diagnostic pour traiter vos taches.`.trim();
+      }
 
       // Silent save to Medusa backend
       try {

@@ -49,9 +49,21 @@ const DECISION_TREE: QuestionNode[] = [
     type: "choice",
     options: [
       { label: "Combattre l'acné & imperfections", nextQuestionId: "q_post_wash" },
-      { label: "Atténuer les taches (Hyperpigmentation)", nextQuestionId: "q_post_wash" },
-      { label: "Hydratation & effet Glow", nextQuestionId: "q_post_wash" },
+      { label: "Atténuer les taches (Hyperpigmentation)", nextQuestionId: "q_active_acne" },
+      { label: "Hydratation & effet Glow", nextQuestionId: "q_active_acne" },
       { label: "Anti-âge & fermeté", nextQuestionId: "q_post_wash" }
+    ]
+  },
+  {
+    // Acne comes first: someone who wants to fade spots (or glow) but has active pimples is steered to an
+    // acne-calming routine (see analyze-skin.ts). This question is the declared half of that decision;
+    // the photo scan is the other half.
+    id: "q_active_acne",
+    text: "Une précision importante pour bien vous conseiller : avez-vous des boutons actifs ou inflammés en ce moment ?",
+    type: "choice",
+    options: [
+      { label: "Oui, j'ai des boutons actifs ou inflammés", nextQuestionId: "q_post_wash" },
+      { label: "Non, ma peau est plutôt calme", nextQuestionId: "q_post_wash" }
     ]
   },
   {
