@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchAdmin } from "@/lib/medusa-admin";
 import { cookies } from "next/headers";
+import { revalidateTag } from "next/cache";
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -19,6 +20,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       body: JSON.stringify(payload),
     });
 
+    revalidateTag("admin-products");
     return NextResponse.json(response);
   } catch (err: any) {
     console.error("[Update Product] Error:", err);

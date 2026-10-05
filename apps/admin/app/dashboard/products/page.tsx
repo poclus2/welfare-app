@@ -1,15 +1,40 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { unstable_cache } from "next/cache";
 import Image from "next/image";
 import { Package, Plus, ChevronRight, ChevronLeft, Pencil } from "lucide-react";
 import { fetchAdmin } from "@/lib/medusa-admin";
 import { productStock } from "@/lib/stock";
 import { ProductSearch } from "@/components/products/ProductSearch";
 import { ProductFilters } from "@/components/products/ProductFilters";
+import { PagerLink } from "@/components/products/PagerLink";
 import { ShopPageManager } from "@/components/products/ShopPageManager";
 
 export const dynamic = "force-dynamic";
+
+// Two things made paging slow: the stock filters/sorts download up to 2000 products on EVERY page click,
+// and the KPI counts were 3 extra requests on every click. Both change rarely, so they are kept 30 s
+// (and dropped as soon as a product is saved, see revalidateTag("admin-products")).
+const getFullCatalogue = unstable_cache(
+  async (token: string, q: string) => {
+    const query = new URLSearchParams({ offset: "0", limit: "2000", expand: "variants,collection,options", order: "-created_at" });
+    if (q) query.set("q", q);
+    return fetchAdmin<{ products: any[]; count: number }>(`/products?${query.toString()}`, token);
+  },
+  ["admin-products-full"],
+  { revalidate: 30, tags: ["admin-products"] }
+);
+
+const getKpiCounts = unstable_cache(
+  async (token: string) => {
+    const count = (qs: string) => fetchAdmin<{ count: number }>(`/products?${qs}limit=1&fields=id`, token).then((r) => r.count).catch(() => 0);
+    const [total, published, draft] = await Promise.all([count(""), count("status[]=published&"), count("status[]=draft&")]);
+    return { total, published, draft };
+  },
+  ["admin-products-kpis"],
+  { revalidate: 30, tags: ["admin-products"] }
+);
 
 export default async function ProductsPage({
   searchParams,
@@ -25,9 +50,30 @@ export default async function ProductsPage({
   const q = typeof resolvedParams.q === "string" ? resolvedParams.q : "";
   const order = typeof resolvedParams.order === "string" ? resolvedParams.order : "-created_at";
   const status = typeof resolvedParams.status === "string" ? resolvedParams.status : "";
-  const offset = typeof resolvedParams.offset === "string" ? parseInt(resolvedParams.offset, 10) : 0;
+  const offset = typeof resolvedParams.offset === "string" ? Math.max(0, parseInt(resolvedParams.offset, 10) || 0) : 0;
   const limit = 24;
   const tab = typeof resolvedParams.tab === "string" ? resolvedParams.tab : "catalogue";
+
+  if (tab === "shop") {
+    const allProducts = await fetchAdmin<{ products: any[] }>("/products?limit=2000&expand=variants,collection", token).catch(() => ({ products: [] }));
+    return (
+      <div className="p-5 lg:p-8 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-[#2A2424]" style={{ letterSpacing: "-0.02em" }}>Page Shop</h1>
+            <p className="text-sm text-[#2A2424]/40 mt-0.5">Configurez les sélections de la boutique</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex bg-[#F5F0EB] p-1 rounded-xl">
+              <Link href="/dashboard/products?tab=catalogue" className="px-4 py-2 text-sm font-bold rounded-lg text-[#2A2424]/60 hover:text-[#2A2424] transition-all">Catalogue</Link>
+              <Link href="/dashboard/products?tab=shop" className="px-4 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-[#2A2424] transition-all">Page Shop</Link>
+            </div>
+          </div>
+        </div>
+        <ShopPageManager products={allProducts.products} />
+      </div>
+    );
+  }
 
   // URL of this list at a given offset, keeping search / sort / status. The edit page gets it as `from`
   // so that saving brings the admin back to the exact page they were browsing.
@@ -48,21 +94,26 @@ export default async function ProductsPage({
   const needsFullFetch = isCustomStockFilter || isStockSort;
 
   const query = new URLSearchParams({
-    offset: needsFullFetch ? "0" : offset.toString(),
-    limit: needsFullFetch ? "2000" : limit.toString(),
+    offset: offset.toString(),
+    limit: limit.toString(),
     expand: "variants,collection,options",
-    order: isStockSort ? "-created_at" : order,
+    order,
   });
   if (q) query.set("q", q);
-  if (status && status !== "all" && !isCustomStockFilter) {
+  if (status && status !== "all") {
     // Medusa v2 expects an array for status: a bare `status=draft` is rejected with a 400
     query.append("status[]", status);
   }
 
-  let data = await fetchAdmin<{ products: any[]; count: number; offset: number; limit: number }>(
-    `/products?${query.toString()}`,
-    token
-  ).catch(() => ({ products: [], count: 0, offset: 0, limit: 24 }));
+  // List and KPI counts are independent: ask for both at once
+  const emptyList = { products: [] as any[], count: 0, offset: 0, limit: 24 };
+  const [listResult, counts] = await Promise.all([
+    needsFullFetch
+      ? getFullCatalogue(token, q).catch(() => emptyList)
+      : fetchAdmin<{ products: any[]; count: number; offset: number; limit: number }>(`/products?${query.toString()}`, token).catch(() => emptyList),
+    getKpiCounts(token),
+  ]);
+  let data = listResult as { products: any[]; count: number; offset: number; limit: number };
 
   if (needsFullFetch) {
     // Manually filter and/or sort products based on stock
@@ -94,12 +145,6 @@ export default async function ProductsPage({
     redirect(listUrl(lastOffset));
   }
 
-  const [allProductsData, activeProductsData, draftProductsData] = await Promise.all([
-    fetchAdmin<{ count: number }>(`/products?limit=1`, token).catch(() => ({ count: 0 })),
-    fetchAdmin<{ count: number }>(`/products?status[]=published&limit=1`, token).catch(() => ({ count: 0 })),
-    fetchAdmin<{ count: number }>(`/products?status[]=draft&limit=1`, token).catch(() => ({ count: 0 })),
-  ]);
-
   // Compute low stock from fetched products (inventory < 10 but > 0)
   const lowStockCount = data.products.filter(p => {
     const inv = productStock(p);
@@ -107,34 +152,13 @@ export default async function ProductsPage({
   }).length;
 
   const kpis = {
-    total: allProductsData.count,
-    active: activeProductsData.count,
-    draft: draftProductsData.count,
+    total: counts.total,
+    active: counts.published,
+    draft: counts.draft,
     lowStock: lowStockCount,
   };
 
   
-  if (tab === "shop") {
-    const allProducts = await fetchAdmin<{ products: any[] }>("/products?limit=2000&expand=variants,collection", token).catch(() => ({ products: [] }));
-    return (
-      <div className="p-5 lg:p-8 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-[#2A2424]" style={{ letterSpacing: "-0.02em" }}>Page Shop</h1>
-            <p className="text-sm text-[#2A2424]/40 mt-0.5">Configurez les sélections de la boutique</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex bg-[#F5F0EB] p-1 rounded-xl">
-              <Link href="/dashboard/products?tab=catalogue" className="px-4 py-2 text-sm font-bold rounded-lg text-[#2A2424]/60 hover:text-[#2A2424] transition-all">Catalogue</Link>
-              <Link href="/dashboard/products?tab=shop" className="px-4 py-2 text-sm font-bold rounded-lg bg-white shadow-sm text-[#2A2424] transition-all">Page Shop</Link>
-            </div>
-          </div>
-        </div>
-        <ShopPageManager products={allProducts.products} />
-      </div>
-    );
-  }
-
   const totalPages = Math.ceil(data.count / limit);
   const currentPage = Math.floor(offset / limit) + 1;
 
@@ -219,7 +243,7 @@ export default async function ProductsPage({
           Aucun produit trouvé
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 transition-opacity [html[data-paging]_&]:opacity-40 [html[data-paging]_&]:pointer-events-none">
           {data.products.map((product) => {
             const lowestPrice = product.variants?.reduce((min: number, v: any) => {
               // Whatever currency this variant's price actually uses — never assumed.
@@ -326,17 +350,19 @@ export default async function ProductsPage({
             {offset + 1}–{Math.min(offset + limit, data.count)} sur {data.count} produits
           </p>
           <div className="flex items-center gap-2">
-            <Link
+            <PagerLink
               href={listUrl(Math.max(0, offset - limit))}
+              prefetch
               className={`p-1.5 rounded-lg border border-[#EDE0E0] transition-colors ${currentPage === 1 ? "opacity-40 pointer-events-none" : "hover:bg-[#F5F0EB]"}`}
             >
               <ChevronLeft className="w-4 h-4 text-[#2A2424]" />
-            </Link>
+            </PagerLink>
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              const page = currentPage <= 3 ? i + 1 : currentPage - 2 + i;
+              const windowStart = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
+              const page = windowStart + i;
               if (page > totalPages) return null;
               return (
-                <Link
+                <PagerLink
                   key={page}
                   href={listUrl((page - 1) * limit)}
                   className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-colors ${
@@ -346,15 +372,16 @@ export default async function ProductsPage({
                   }`}
                 >
                   {page}
-                </Link>
+                </PagerLink>
               );
             })}
-            <Link
+            <PagerLink
               href={listUrl(offset + limit)}
+              prefetch
               className={`p-1.5 rounded-lg border border-[#EDE0E0] transition-colors ${currentPage >= totalPages ? "opacity-40 pointer-events-none" : "hover:bg-[#F5F0EB]"}`}
             >
               <ChevronRight className="w-4 h-4 text-[#2A2424]" />
-            </Link>
+            </PagerLink>
           </div>
         </div>
       )}

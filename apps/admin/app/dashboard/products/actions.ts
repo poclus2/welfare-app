@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 import { fetchAdmin } from "@/lib/medusa-admin";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 export async function updateProductMetadata(productId: string, metadata: any) {
   const cookieStore = await cookies();
@@ -14,5 +14,6 @@ export async function updateProductMetadata(productId: string, metadata: any) {
     body: JSON.stringify({ metadata }),
   });
 
+  revalidateTag("admin-products");
   revalidatePath("/dashboard/products");
 }

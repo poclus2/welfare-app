@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchAdmin } from "@/lib/medusa-admin";
 import { cookies } from "next/headers";
+import { revalidateTag } from "next/cache";
 
 export async function GET(req: NextRequest) {
   try {
@@ -54,6 +55,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(payload),
     });
 
+    revalidateTag("admin-products");
     return NextResponse.json(response);
   } catch (err: any) {
     console.error("[Create Product] Error:", err);
