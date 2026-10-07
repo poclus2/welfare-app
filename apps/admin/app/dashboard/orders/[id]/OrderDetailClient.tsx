@@ -9,7 +9,8 @@ import {
   refundPaymentAction, 
   addInternalNoteAction, 
   createFulfillmentAction, 
-  createShipmentAction 
+  createShipmentAction,
+  cancelOrderAction
 } from "../../../actions/orders";
 
 function formatPrice(n: number) {
@@ -76,6 +77,9 @@ export default function OrderDetailClient({ order }: { order: Order }) {
   const [refundAmount, setRefundAmount] = useState("");
   const [refundReason, setRefundReason] = useState("");
   
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+
   // Selected fulfillment to ship
   const [selectedFulfillmentId, setSelectedFulfillmentId] = useState<string | null>(null);
 
@@ -112,6 +116,26 @@ export default function OrderDetailClient({ order }: { order: Order }) {
     if (res.success) {
       setShowRefundModal(false);
       alert("↩️ Remboursement effectué avec succès !");
+    } else {
+      alert(`❌ Erreur: ${res.error}`);
+    }
+  };
+
+  // Cancellable while nothing was handed over: not already cancelled/delivered, no active fulfillment
+  const canCancel =
+    order.status !== "cancelled" &&
+    order.status !== "delivered" &&
+    !(order.fulfillments || []).some((f: any) => !f.canceled_at);
+  const isPaid = order.payment_status === "captured" || order.payment_status === "paid";
+  const isMobileMoney = order.payment.includes("PawaPay");
+
+  const handleCancelOrder = async () => {
+    setIsCancelling(true);
+    const res = await cancelOrderAction(order.rawId);
+    setIsCancelling(false);
+    if (res.success) {
+      setShowCancelModal(false);
+      router.refresh();
     } else {
       alert(`❌ Erreur: ${res.error}`);
     }
@@ -348,7 +372,41 @@ export default function OrderDetailClient({ order }: { order: Order }) {
                   Rembourser
                 </button>
               )}
+              {canCancel && (
+                <button
+                  onClick={() => setShowCancelModal(true)}
+                  className="w-full py-2.5 text-sm font-semibold text-[#2A2424]/50 hover:text-red-600 transition-colors"
+                >
+                  Annuler la commande
+                </button>
+              )}
             </div>
+            {showCancelModal && (
+              <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => !isCancelling && setShowCancelModal(false)}>
+                <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+                  <h3 className="text-base font-bold text-[#2A2424]">Annuler la commande {order.id} ?</h3>
+                  <ul className="mt-3 space-y-1.5 text-sm text-[#2A2424]/70 list-disc pl-5">
+                    <li>Les articles réservés sont remis en stock.</li>
+                    <li>La commande passe au statut « Annulé » ; c&apos;est irréversible.</li>
+                    {isPaid && isMobileMoney && (
+                      <li className="text-red-600 font-semibold">
+                        Le client a payé par Mobile Money : il n&apos;est PAS remboursé automatiquement. Remboursez-le depuis votre compte PawaPay ({formatPrice(order.mobile_money_charged || order.amount)} FCFA débités).
+                      </li>
+                    )}
+                    {isPaid && !isMobileMoney && <li>Le paiement sera marqué comme remboursé.</li>}
+                  </ul>
+                  <div className="mt-6 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+                    <button type="button" disabled={isCancelling} onClick={() => setShowCancelModal(false)} className="px-4 py-2 rounded-xl text-sm font-semibold border border-[#EDE0E0] text-[#2A2424]/70">
+                      Garder la commande
+                    </button>
+                    <button type="button" disabled={isCancelling} onClick={handleCancelOrder} className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-red-600 text-white hover:bg-red-700 disabled:opacity-60">
+                      {isCancelling && <Loader2 className="w-4 h-4 animate-spin" />}
+                      Annuler la commande
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Client & Livraison */}

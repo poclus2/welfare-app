@@ -46,6 +46,13 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ id, deleted: true });
   } catch (err: any) {
     console.error("[Delete Product] Error:", err);
+    // Stock reserved by an order not yet shipped nor cancelled blocks the deletion (Medusa refuses to
+    // delete inventory items with reservations)
+    if (/reservation/i.test(err.message || "")) {
+      return NextResponse.json({
+        error: "Ce produit est réservé par une commande en cours (ni expédiée ni annulée). Expédiez ou annulez cette commande, puis réessayez — ou passez le produit en brouillon pour le cacher.",
+      }, { status: 409 });
+    }
     return NextResponse.json({ error: err.message || "Erreur serveur" }, { status: 500 });
   }
 }

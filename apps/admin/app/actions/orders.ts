@@ -87,3 +87,18 @@ export async function createShipmentAction(orderId: string, fulfillmentId: strin
     return { success: false, error: error.message };
   }
 }
+
+// Cancels an order that was not fulfilled: Medusa releases its stock reservations (which otherwise block
+// e.g. deleting the product), cancels an uncaptured payment and records a refund for a captured one.
+// The provider refund is bookkeeping only for PawaPay: no money goes back to the customer automatically.
+export async function cancelOrderAction(orderId: string) {
+  const token = await getToken();
+  try {
+    await fetchAdmin(`/orders/${orderId}/cancel`, token, { method: "POST", body: JSON.stringify({}) });
+    revalidatePath(`/dashboard/orders/${orderId}`);
+    revalidatePath(`/dashboard/orders`);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
