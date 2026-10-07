@@ -1,12 +1,14 @@
 import { MedusaContainer } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { getStorefrontSalesChannelIds } from "./storefront-channel"
 
 // Keeps the Meilisearch "products" index (the storefront search bar) in step with the catalogue.
 //
 // The @rokmohar plugin is declared under `modules` in medusa-config.ts, so its own subscribers are never
 // loaded and nothing updated the index when a product changed. The index has always been filled by
 // scripts/reindex.ts, so this keeps that exact document shape (brand-prefixed title, price, variant_sku).
-// Only PUBLISHED products belong in the index: draft/proposed/rejected ones are removed.
+// Only products the storefront can open belong in the index: PUBLISHED and linked to a storefront sales
+// channel (otherwise /store/products answers 404 and the search result leads to "Produit introuvable").
 
 const INDEX = "products"
 
@@ -21,6 +23,7 @@ const FIELDS = [
   "collection.title",
   "variants.sku",
   "variants.prices.amount",
+  "sales_channels.id",
 ]
 
 function meili(path: string, init: RequestInit = {}) {
@@ -45,6 +48,10 @@ export function toSearchDocument(p: any) {
   }
 }
 
+function isVisibleInStore(p: any, channelIds: Set<string>) {
+  return p.status === "published" && (p.sales_channels || []).some((sc: any) => sc && channelIds.has(sc.id))
+}
+
 async function expectOk(res: Response, what: string) {
   if (!res.ok) throw new Error(`Meilisearch ${what} failed (${res.status}): ${(await res.text().catch(() => "")).slice(0, 200)}`)
 }
@@ -55,13 +62,14 @@ export async function removeProductFromSearch(id: string) {
   if (!res.ok && res.status !== 404) await expectOk(res, "delete")
 }
 
-/** Indexes the product if it is published, removes it from the index otherwise. */
+/** Indexes the product if the storefront can open it, removes it from the index otherwise. */
 export async function syncProductToSearch(container: MedusaContainer, id: string) {
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const { data } = await query.graph({ entity: "product", fields: FIELDS, filters: { id } })
   const product: any = data[0]
+  const channelIds = new Set(await getStorefrontSalesChannelIds(container))
 
-  if (!product || product.status !== "published") {
+  if (!product || !isVisibleInStore(product, channelIds)) {
     await removeProductFromSearch(id)
     return "removed" as const
   }
@@ -72,7 +80,7 @@ export async function syncProductToSearch(container: MedusaContainer, id: string
   return "indexed" as const
 }
 
-/** Full resync: index every published product, remove every indexed document that is not one. */
+/** Full resync: index every product the storefront can open, remove every indexed document that is not one. */
 export async function resyncSearchIndex(container: MedusaContainer) {
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const { data } = await query.graph({
@@ -81,7 +89,8 @@ export async function resyncSearchIndex(container: MedusaContainer) {
     filters: { status: "published" },
     pagination: { take: 10000 },
   })
-  const docs = (data as any[]).map(toSearchDocument)
+  const channelIds = new Set(await getStorefrontSalesChannelIds(container))
+  const docs = (data as any[]).filter((p) => isVisibleInStore(p, channelIds)).map(toSearchDocument)
   const published = new Set(docs.map((d) => d.id))
 
   // ids currently in the index

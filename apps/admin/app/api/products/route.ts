@@ -50,6 +50,15 @@ export async function POST(req: NextRequest) {
 
     const payload = await req.json();
 
+    // Without a sales channel the storefront answers 404 for the product ("Produit introuvable").
+    // The API also links channel-less products on product.created; doing it here keeps creation atomic.
+    if (!payload.sales_channels?.length) {
+      const { stores } = await fetchAdmin<{ stores: any[] }>("/stores?fields=id,default_sales_channel_id", token)
+        .catch(() => ({ stores: [] as any[] }));
+      const channelId = stores?.[0]?.default_sales_channel_id;
+      if (channelId) payload.sales_channels = [{ id: channelId }];
+    }
+
     const response = await fetchAdmin<{ product: any }>("/products", token, {
       method: "POST",
       body: JSON.stringify(payload),
