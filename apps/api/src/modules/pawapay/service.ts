@@ -78,9 +78,19 @@ class PawapayProviderService extends AbstractPaymentProvider {
       throw new Error(`Montant Mobile Money insuffisant (${paid} payé, ${expected} attendu).`);
     }
 
+    // A COMPLETED deposit means the money is already on our PawaPay account: report it as captured so
+    // Medusa records the payment as paid right away (it captures it itself when authorize returns
+    // "captured") instead of leaving the order "en attente de paiement" until someone clicks capture.
+    // The 3 % Mobile Money fee is charged on top of the order total: keep what was really debited.
     return {
-      status: PaymentSessionStatus.AUTHORIZED,
-      data: { ...data, pawapay_deposit: deposit, status: "authorized" },
+      status: PaymentSessionStatus.CAPTURED,
+      data: {
+        ...data,
+        pawapay_deposit: deposit,
+        amount_charged: paid,
+        mobile_money_fee: expected > 0 ? Math.max(0, paid - expected) : undefined,
+        status: "captured",
+      },
     };
   }
 

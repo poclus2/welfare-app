@@ -81,6 +81,9 @@ export function ProductForm({ initialData, collections, categories = [], returnT
   // Barcode = the link to Odoo (the stock sync finds variants by barcode). Required on creation unless
   // the admin states the product has none (coffret, échantillon...).
   const [newBarcode, setNewBarcode] = useState("");
+  // Initial per-shop stock of the new product (the API aligns the Medusa inventory levels on it)
+  const [newStockB1, setNewStockB1] = useState("");
+  const [newStockB2, setNewStockB2] = useState("");
   const [noBarcode, setNoBarcode] = useState(false);
   const [barcodeStatus, setBarcodeStatus] = useState<Record<string, BarcodeStatus>>({});
   const setStatusFor = (key: string) => (st: BarcodeStatus) => setBarcodeStatus(prev => ({ ...prev, [key]: st }));
@@ -305,6 +308,11 @@ export function ProductForm({ initialData, collections, categories = [], returnT
           manage_inventory: true,
           options: { "Default Option": "Default Variant" },
           ...(!noBarcode && normalizeBarcode(newBarcode) ? { barcode: normalizeBarcode(newBarcode) } : {}),
+          metadata: (() => {
+            const b1 = Math.max(0, parseInt(newStockB1 || "0", 10) || 0);
+            const b2 = Math.max(0, parseInt(newStockB2 || "0", 10) || 0);
+            return { stock_b1: b1, stock_b2: b2, stock_total: b1 + b2 };
+          })(),
           prices: newProductPrice ? [{ currency_code: newProductCurrency, amount: parseInt(newProductPrice, 10) }] : [],
         }];
       }
@@ -410,7 +418,7 @@ export function ProductForm({ initialData, collections, categories = [], returnT
             <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm">
               <h2 className="text-sm font-bold text-[#2A2424] mb-4 flex items-center gap-2">
                 <Tag className="w-4 h-4 text-[#C08A8E]" />
-                Prix & code-barres
+                Prix, stock & code-barres
               </h2>
               <div>
                 <label className={labelClass}>Prix de vente ({newProductCurrency.toUpperCase()})</label>
@@ -436,6 +444,17 @@ export function ProductForm({ initialData, collections, categories = [], returnT
                   Crée une variante par défaut avec ce prix. Vous pourrez ajouter d'autres variantes ensuite depuis cette page.
                 </p>
               </div>
+              <div className="grid grid-cols-2 gap-3 mt-5">
+                <div>
+                  <label className={labelClass}>Stock Hippodrome</label>
+                  <input type="number" min="0" value={newStockB1} onChange={e => setNewStockB1(e.target.value)} placeholder="0" className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Stock Playce</label>
+                  <input type="number" min="0" value={newStockB2} onChange={e => setNewStockB2(e.target.value)} placeholder="0" className={inputClass} />
+                </div>
+              </div>
+              <p className="text-[10px] text-[#2A2424]/40 mt-1">Si le produit est dans Odoo, la synchro remplacera ce stock par celui des boutiques.</p>
               <div className="mt-5 pt-5 border-t border-[#EDE0E0]">
                 {!noBarcode && (
                   <BarcodeField

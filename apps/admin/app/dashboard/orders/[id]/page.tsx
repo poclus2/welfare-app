@@ -15,7 +15,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   // Fetch the specific order
   const data = await fetchAdmin<{ order: any }>(
-    `/orders/${id}?fields=*customer,*shipping_address,*payment_collections,*items,*shipping_methods`,
+    `/orders/${id}?fields=*customer,*shipping_address,*payment_collections,*payment_collections.payments,*items,*shipping_methods`,
     token
   ).catch((e) => {
     console.error(`Failed to fetch order ${id}`, e);
@@ -33,8 +33,18 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   }
 
   // Determine payment provider
-  let payment = o.payment_collections?.[0]?.payments?.[0]?.provider_id || "Non spécifié";
-  if (payment === "pawapay") payment = "Mobile Money (PawaPay)";
+  const paymentRecord = o.payment_collections?.[0]?.payments?.[0];
+  let payment = paymentRecord?.provider_id || "Non spécifié";
+  // Medusa prefixes provider ids ("pp_pawapay_pawapay")
+  const isPawapay = payment.includes("pawapay");
+  if (isPawapay) payment = "Mobile Money (PawaPay)";
+
+  // The 3 % Mobile Money fee is debited on top of the order total and is not an order line:
+  // what was really charged is kept on the payment (amount_charged, or the PawaPay deposit itself).
+  const charged = isPawapay
+    ? Number(paymentRecord?.data?.amount_charged ?? paymentRecord?.data?.pawapay_deposit?.depositedAmount ?? 0)
+    : 0;
+  const mobileMoneyFee = charged > (o.total || 0) ? charged - (o.total || 0) : 0;
 
   // Delivery metadata handling
   let delivery = "domicile";
@@ -102,6 +112,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     payment_status: o.payment_status || "pending",
     fulfillment_status: o.fulfillment_status || "not_fulfilled",
     metadata: o.metadata || {},
+    mobile_money_charged: mobileMoneyFee > 0 ? charged : 0,
+    mobile_money_fee: mobileMoneyFee,
   };
 
   return <OrderDetailClient order={mappedOrder} />;

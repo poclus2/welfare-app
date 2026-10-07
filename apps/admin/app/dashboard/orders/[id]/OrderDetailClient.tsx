@@ -50,6 +50,8 @@ type Order = {
   fulfillments: any[];
   payment_collections: any[];
   payment_status: string;
+  mobile_money_charged?: number;
+  mobile_money_fee?: number;
   fulfillment_status: string;
   metadata: any;
 };
@@ -263,6 +265,18 @@ export default function OrderDetailClient({ order }: { order: Order }) {
                   <span>Total</span>
                   <span>{formatPrice(order.amount)} FCFA</span>
                 </div>
+                {!!order.mobile_money_fee && (
+                  <>
+                    <div className="flex justify-between text-sm font-medium text-[#2A2424]/60">
+                      <span>Frais Mobile Money (3 %)</span>
+                      <span>+{formatPrice(order.mobile_money_fee)} FCFA</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-bold text-emerald-700">
+                      <span>Total débité au client</span>
+                      <span>{formatPrice(order.mobile_money_charged || 0)} FCFA</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
