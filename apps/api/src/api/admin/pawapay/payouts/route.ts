@@ -8,12 +8,20 @@ import {
   normalizeCameroonMsisdn,
   requestPayout,
 } from "../../../../modules/pawapay/client"
-import { allowedPayoutRecipients, PayoutRecord, readPayouts, writePayouts } from "../../../../lib/pawapay-ledger"
+import {
+  allowedPayoutRecipients,
+  computeShopBalance,
+  listPawapayPayments,
+  PayoutRecord,
+  readPayouts,
+  writePayouts,
+} from "../../../../lib/pawapay-ledger"
 
 /**
  * POST /admin/pawapay/payouts  { amount: number, msisdn: string, note?: string }
  * Withdraws money from the PawaPay wallet to one of the shop's own Mobile Money accounts
- * (PAWAPAY_PAYOUT_RECIPIENTS). Every check is done here, not trusted from the admin UI.
+ * (PAWAPAY_PAYOUT_RECIPIENTS), up to the shop's own balance (its validated payments minus refunds and
+ * withdrawals, see computeShopBalance). Every check is done here, not trusted from the admin UI.
  */
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const body = (req.body || {}) as { amount?: unknown; msisdn?: unknown; note?: unknown }
@@ -49,14 +57,21 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     return res.status(400).json({ message: `Montant hors limites PawaPay (${correspondent.min} à ${correspondent.max} XAF par retrait).` })
   }
 
+  // The shop can only withdraw what its own customers paid (the PawaPay account may hold other money)
+  const [payments, existingPayouts] = await Promise.all([listPawapayPayments(req.scope), readPayouts(req.scope)])
+  const shop = computeShopBalance(payments, existingPayouts)
+  if (amount > shop.available) {
+    return res.status(400).json({ message: `Montant supérieur au solde disponible (${Math.floor(shop.available)} XAF).` })
+  }
+  // Safety net, never shown: the wallet itself must hold the amount
   try {
-    const balance = await getWalletBalance("CMR")
-    if (!balance || amount > balance.balance) {
-      return res.status(400).json({ message: `Solde PawaPay insuffisant (${Math.floor(balance?.balance ?? 0)} XAF disponibles).` })
+    const wallet = await getWalletBalance("CMR")
+    if (!wallet || amount > wallet.balance) {
+      return res.status(400).json({ message: "Retrait impossible pour le moment : fonds PawaPay insuffisants. Contactez PawaPay." })
     }
   } catch (e: any) {
     console.error("[PawaPay] balance check failed:", e.message)
-    return res.status(502).json({ message: "Impossible de lire le solde PawaPay. Réessayez." })
+    return res.status(502).json({ message: "Impossible de vérifier les fonds PawaPay. Réessayez." })
   }
 
   const payoutId = crypto.randomUUID()
@@ -94,6 +109,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   }
 
   // Recorded in every case, so a refused or failed attempt stays visible in the history
+  // (re-read: the list may have changed while PawaPay was answering)
   const payouts = await readPayouts(req.scope)
   await writePayouts(req.scope, [record, ...payouts])
 

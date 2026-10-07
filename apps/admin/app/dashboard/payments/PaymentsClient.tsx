@@ -9,8 +9,9 @@ import {
 } from "lucide-react";
 import { requestPayoutAction } from "../../actions/payments";
 
-// Admin "Paiements": the Mobile Money money the shop received through PawaPay, the live PawaPay
-// balance, and withdrawals to the shop's own Mobile Money account. Data: GET /admin/pawapay/overview.
+// Admin "Paiements": the Mobile Money money thewelfarecm.com customers paid through PawaPay, the shop's
+// balance computed from those payments (never the PawaPay wallet balance, which can include other
+// activities), and withdrawals to the shop's own Mobile Money account. Data: GET /admin/pawapay/overview.
 
 export type PaymentRow = {
   payment_id: string;
@@ -41,16 +42,15 @@ export type PayoutRow = {
 };
 
 export type Overview = {
-  balance: { available: boolean; amount?: number; currency?: string; error?: string | null };
+  balance: { amount: number; currency: string };
   stats: {
     received: number;
     payments_count: number;
     fees: number;
     received_this_month: number;
-    recorded_refunds: number;
+    refunded: number;
     withdrawn: number;
     withdrawing: number;
-    expected_balance: number;
   };
   daily: { date: string; amount: number; count: number }[];
   payments: PaymentRow[];
@@ -123,7 +123,7 @@ function PayoutModal({ overview, onClose }: { overview: Overview; onClose: () =>
     value > balance ? "Supérieur au solde disponible." :
     limit && value < limit.min ? `Minimum ${num(limit.min)} FCFA par retrait.` :
     limit && limit.max > 0 && value > limit.max ? `Maximum ${num(limit.max)} FCFA par retrait.` : "";
-  const blocked = !enabled || !recipients.length || !overview.balance.available;
+  const blocked = !enabled || !recipients.length || balance <= 0;
   const canSend = !blocked && !!msisdn && value > 0 && !amountError && confirmed && !sending;
 
   const send = async () => {
@@ -271,7 +271,6 @@ export default function PaymentsClient({ overview, error }: { overview: Overview
 
   const { stats, balance, payout } = overview;
   const maxDay = Math.max(1, ...overview.daily.map((d) => d.amount));
-  const gap = balance.available ? stats.expected_balance - (balance.amount || 0) : 0;
   const avg = stats.payments_count ? stats.received / stats.payments_count : 0;
 
   return (
@@ -298,16 +297,12 @@ export default function PaymentsClient({ overview, error }: { overview: Overview
           <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-[#C08A8E]/25 blur-2xl" />
           <div className="relative">
             <div className="flex items-center gap-2 text-white/60 text-xs font-semibold">
-              <Wallet className="w-4 h-4" /> Solde PawaPay disponible
+              <Wallet className="w-4 h-4" /> Solde disponible
             </div>
-            {balance.available ? (
-              <p className="text-4xl font-bold mt-3" style={{ letterSpacing: "-0.03em" }}>
-                {num(balance.amount || 0)} <span className="text-base font-semibold text-white/50">{balance.currency || "XAF"}</span>
-              </p>
-            ) : (
-              <p className="text-sm mt-3 text-red-200">Solde indisponible : {balance.error || "PawaPay ne répond pas."}</p>
-            )}
-            <p className="text-[11px] text-white/40 mt-1">En direct depuis PawaPay (portefeuille Cameroun)</p>
+            <p className="text-4xl font-bold mt-3" style={{ letterSpacing: "-0.03em" }}>
+              {num(balance.amount)} <span className="text-base font-semibold text-white/50">{balance.currency}</span>
+            </p>
+            <p className="text-[11px] text-white/40 mt-1">Paiements thewelfarecm.com validés, moins remboursements et retraits</p>
 
             <button
               onClick={() => setShowPayout(true)}
@@ -337,28 +332,20 @@ export default function PaymentsClient({ overview, error }: { overview: Overview
       {/* Reconciliation + chart */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-2xl border border-[#EDE0E0] p-5 shadow-sm">
-          <h2 className="text-sm font-bold text-[#2A2424] flex items-center gap-2 mb-4"><Scale className="w-4 h-4 text-[#C08A8E]" /> Rapprochement</h2>
+          <h2 className="text-sm font-bold text-[#2A2424] flex items-center gap-2 mb-4"><Scale className="w-4 h-4 text-[#C08A8E]" /> Détail du solde</h2>
           <dl className="space-y-2 text-sm">
-            <div className="flex justify-between text-[#2A2424]/60"><dt>Encaissé</dt><dd>{fcfa(stats.received)}</dd></div>
+            <div className="flex justify-between text-[#2A2424]/60"><dt>Paiements validés</dt><dd>{fcfa(stats.received)}</dd></div>
+            {stats.refunded > 0 && <div className="flex justify-between text-[#2A2424]/60"><dt>Remboursements</dt><dd>−{fcfa(stats.refunded)}</dd></div>}
             <div className="flex justify-between text-[#2A2424]/60"><dt>Retraits effectués</dt><dd>−{fcfa(stats.withdrawn)}</dd></div>
             {stats.withdrawing > 0 && <div className="flex justify-between text-[#2A2424]/60"><dt>Retraits en cours</dt><dd>−{fcfa(stats.withdrawing)}</dd></div>}
-            <div className="flex justify-between font-semibold text-[#2A2424] pt-2 border-t border-[#F5F0EB]"><dt>Solde attendu</dt><dd>{fcfa(stats.expected_balance)}</dd></div>
-            {balance.available && (
-              <>
-                <div className="flex justify-between font-semibold text-[#2A2424]"><dt>Solde PawaPay réel</dt><dd>{fcfa(balance.amount || 0)}</dd></div>
-                <div className={`flex justify-between text-xs pt-2 border-t border-[#F5F0EB] ${gap > 0 ? "text-amber-700" : "text-emerald-700"}`}>
-                  <dt>Écart</dt>
-                  <dd>{gap > 0 ? "−" : "+"}{fcfa(Math.abs(gap))}{stats.received > 0 && gap > 0 ? ` (${((gap / stats.received) * 100).toFixed(1)} %)` : ""}</dd>
-                </div>
-              </>
-            )}
+            <div className="flex justify-between font-bold text-[#2A2424] pt-2 border-t border-[#F5F0EB]"><dt>Solde disponible</dt><dd>{fcfa(balance.amount)}</dd></div>
           </dl>
           <p className="text-[11px] text-[#2A2424]/40 mt-3 leading-relaxed flex gap-1.5">
-            <Info className="w-3.5 h-3.5 shrink-0 mt-px" /> L&apos;écart correspond surtout à la commission prélevée par PawaPay sur chaque encaissement.
+            <Info className="w-3.5 h-3.5 shrink-0 mt-px" /> Calculé uniquement à partir des commandes payées sur thewelfarecm.com. La commission éventuelle de PawaPay n&apos;est pas déduite.
           </p>
-          {stats.recorded_refunds > 0 && (
+          {stats.refunded > 0 && (
             <p className="text-[11px] text-amber-700 mt-2 leading-relaxed">
-              {fcfa(stats.recorded_refunds)} marqués « remboursés » dans l&apos;admin : ces remboursements doivent être faits depuis PawaPay, ils ne sont pas automatiques.
+              Les remboursements enregistrés dans l&apos;admin doivent être effectués depuis PawaPay : ils ne sont pas automatiques.
             </p>
           )}
         </div>

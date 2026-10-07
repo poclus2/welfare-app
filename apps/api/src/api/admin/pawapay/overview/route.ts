@@ -1,8 +1,8 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import { getCameroonPayoutCorrespondents, getPayout, getWalletBalance, describePayoutFailure } from "../../../../modules/pawapay/client"
+import { getCameroonPayoutCorrespondents, getPayout, describePayoutFailure } from "../../../../modules/pawapay/client"
 import {
   allowedPayoutRecipients,
-  isPayoutDebiting,
+  computeShopBalance,
   listPawapayPayments,
   readPayouts,
   writePayouts,
@@ -10,12 +10,12 @@ import {
 
 /**
  * GET /admin/pawapay/overview
- * Everything the admin "Paiements" page shows: live PawaPay balance, validated Mobile Money payments,
- * withdrawals (pending ones are refreshed from PawaPay), totals and whether withdrawals are possible.
+ * Everything the admin "Paiements" page shows: the shop's balance computed from its own validated Mobile
+ * Money payments (never the PawaPay wallet balance, which can include other activities), withdrawals
+ * (pending ones are refreshed from PawaPay), totals and whether withdrawals are possible.
  */
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
-  const [balanceRes, payoutConfRes, payments, storedPayouts] = await Promise.all([
-    getWalletBalance("CMR").then((b) => ({ ok: true as const, b }), (e) => ({ ok: false as const, error: e.message })),
+  const [payoutConfRes, payments, storedPayouts] = await Promise.all([
     getCameroonPayoutCorrespondents().then((c) => ({ ok: true as const, c }), (e) => ({ ok: false as const, error: e.message })),
     listPawapayPayments(req.scope),
     readPayouts(req.scope),
@@ -53,9 +53,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   monthStart.setDate(1)
   monthStart.setHours(0, 0, 0, 0)
 
-  const received = payments.reduce((s, p) => s + p.charged, 0)
-  const withdrawn = payouts.filter((p) => p.status === "COMPLETED").reduce((s, p) => s + p.amount, 0)
-  const withdrawing = payouts.filter((p) => isPayoutDebiting(p.status) && p.status !== "COMPLETED").reduce((s, p) => s + p.amount, 0)
+  const balance = computeShopBalance(payments, payouts)
 
   // Daily amounts received over the last 30 days (for the chart)
   const days: { date: string; amount: number; count: number }[] = []
@@ -76,20 +74,15 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
   const correspondents = payoutConfRes.ok ? payoutConfRes.c : []
   res.json({
-    balance: balanceRes.ok
-      ? { available: true, amount: balanceRes.b?.balance ?? 0, currency: balanceRes.b?.currency ?? "XAF" }
-      : { available: false, error: "error" in balanceRes ? balanceRes.error : null },
+    balance: { amount: balance.available, currency: "XAF" },
     stats: {
-      received,
+      received: balance.received,
       payments_count: payments.length,
       fees: payments.reduce((s, p) => s + p.fee, 0),
       received_this_month: payments.filter((p) => new Date(p.created_at) >= monthStart).reduce((s, p) => s + p.charged, 0),
-      recorded_refunds: payments.reduce((s, p) => s + p.refunded, 0),
-      withdrawn,
-      withdrawing,
-      // What should be on the wallet if only the shop's payments and withdrawals moved it; the gap with the
-      // live balance is PawaPay's commission (and anything done outside this admin)
-      expected_balance: received - withdrawn - withdrawing,
+      refunded: balance.refunded,
+      withdrawn: balance.withdrawn,
+      withdrawing: balance.withdrawing,
     },
     daily: days,
     payments: payments.slice(0, 500),

@@ -135,3 +135,17 @@ export function allowedPayoutRecipients(): string[] {
 export function isPayoutDebiting(status: string) {
   return ["ACCEPTED", "ENQUEUED", "SUBMITTED", "COMPLETED"].includes(status)
 }
+
+/**
+ * The shop's own balance: what thewelfarecm.com customers paid through PawaPay, minus the refunds
+ * recorded on those orders and the withdrawals (done or in progress). It is NOT the PawaPay wallet
+ * balance — the PawaPay account can hold money from other activities, which must never be shown
+ * here nor withdrawn from this admin.
+ */
+export function computeShopBalance(payments: PawapayPaymentRow[], payouts: PayoutRecord[]) {
+  const received = payments.reduce((s, p) => s + p.charged, 0)
+  const refunded = payments.reduce((s, p) => s + Math.min(p.refunded, p.charged), 0)
+  const withdrawn = payouts.filter((p) => p.status === "COMPLETED").reduce((s, p) => s + p.amount, 0)
+  const withdrawing = payouts.filter((p) => isPayoutDebiting(p.status) && p.status !== "COMPLETED").reduce((s, p) => s + p.amount, 0)
+  return { received, refunded, withdrawn, withdrawing, available: Math.max(0, received - refunded - withdrawn - withdrawing) }
+}
