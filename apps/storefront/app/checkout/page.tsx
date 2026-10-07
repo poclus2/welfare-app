@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { MANUAL_PAYMENT, ussdHref } from "@/lib/manual-payment";
 import { useCart } from "@/lib/cart-context";
 import { useI18n } from "@/lib/i18n-context";
 import { motion, AnimatePresence } from "framer-motion";
@@ -434,21 +435,39 @@ useEffect(() => {
       const response = await sdk.store.cart.complete(cartId);
       
       let ref = "WLF-PENDING";
+      let displayId: number | null = null;
       if (response.type === "order") {
         ref = response.order.id;
+        displayId = (response.order as any).display_id ?? null;
       } else if (response.type === "cart") {
         ref = response.cart.id;
       }
-      
-      // Store in session storage for the confirmation page UI only
+
+      // Store in session storage for the confirmation page UI only (it adapts to the payment mode)
+      const pickupStore = delivery.mode === "retrait" ? STORES.find(s => s.id === delivery.store) : null;
       const order = {
         ref,
+        displayId,
         items,
         identity,
-        delivery,
+        delivery: {
+          ...delivery,
+          neighborhood: citiesData.find(c => c.name === delivery.city)?.neighborhoods?.find((h: any) => h.id === deliveryNeighborhood)?.name || "",
+          eta,
+          storeInfo: pickupStore ? { name: pickupStore.name, address: pickupStore.address, hours: pickupStore.hours } : null,
+        },
+        amounts: {
+          subtotal: Number(totalAmount || 0),
+          discount: Number(discountTotal || 0),
+          delivery: effectiveLivraisonFee,
+          paymentFee,
+          total,
+        },
         total,
         livraisonFee: effectiveLivraisonFee,
         paymentMode,
+        mobileMoneyPhone: paymentMode === "pawapay" ? momoLocal : null,
+        manualProvider: paymentMode === "manuel" ? manualProvider : null,
         createdAt: new Date().toISOString(),
       };
       sessionStorage.setItem("welfare_last_order", JSON.stringify(order));
@@ -918,13 +937,13 @@ useEffect(() => {
                             </div>
 
                             <div className="space-y-2 text-[#2A2424]/80 leading-relaxed bg-white p-3 rounded-lg border border-emerald-100/50">
-                              <p><strong>1.</strong> {t("Cliquez sur")} <strong>"{t("Lancer le paiement")}"</strong> {t("ci-dessous pour ouvrir votre téléphone avec le code")} (<strong className="text-[#2A2424]">{manualProvider === "orange" ? "#150*47*356456#" : "*126*14*673464553#"}</strong>).</p>
+                              <p><strong>1.</strong> {t("Cliquez sur")} <strong>"{t("Lancer le paiement")}"</strong> {t("ci-dessous pour ouvrir votre téléphone avec le code")} (<strong className="text-[#2A2424]">{MANUAL_PAYMENT[manualProvider].code}</strong>).</p>
                               <p><strong>2.</strong> {t("Transférez le montant exact de")} <strong className="text-[#2A2424]">{formatPrice(total)} FCFA</strong>.</p>
                               <p><strong>3.</strong> {t("Une fois terminé, cliquez sur \"Confirmer ma commande\" en bas de page pour valider votre achat.")}</p>
                             </div>
 
                             <a 
-                              href={`tel:${manualProvider === "orange" ? "%23150*47*356456%23" : "*126*14*673464553%23"}`} 
+                              href={ussdHref(manualProvider)} 
                               className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-colors shadow-sm ${manualProvider === "orange" ? "bg-orange-500 hover:bg-orange-600 text-white" : "bg-yellow-400 hover:bg-yellow-500 text-black"}`}
                             >
                               {t("Lancer le paiement (USSD)")} 
