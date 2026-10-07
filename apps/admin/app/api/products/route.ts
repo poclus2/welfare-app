@@ -59,6 +59,16 @@ export async function POST(req: NextRequest) {
       if (channelId) payload.sales_channels = [{ id: channelId }];
     }
 
+    // Without a shipping profile the cart cannot be completed at checkout ("The cart items require
+    // shipping profiles that are not satisfied..."), after the customer has already paid. All our
+    // shipping options use the default profile. The API also links it on product.created.
+    if (!payload.shipping_profile_id) {
+      const { shipping_profiles } = await fetchAdmin<{ shipping_profiles: any[] }>("/shipping-profiles?type=default&fields=id,type", token)
+        .catch(() => ({ shipping_profiles: [] as any[] }));
+      const profileId = shipping_profiles?.find((p) => p.type === "default")?.id;
+      if (profileId) payload.shipping_profile_id = profileId;
+    }
+
     const response = await fetchAdmin<{ product: any }>("/products", token, {
       method: "POST",
       body: JSON.stringify(payload),

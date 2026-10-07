@@ -1,5 +1,5 @@
 import { MedusaContainer } from "@medusajs/framework/types"
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { linkProductsToSalesChannelWorkflow } from "@medusajs/medusa/core-flows"
 
 // The storefront only sees products linked to the sales channel(s) of its publishable API key:
@@ -59,5 +59,43 @@ export async function ensureProductsInStorefront(
 
   // Linking to the first storefront channel is enough for the storefront to see them
   await linkProductsToSalesChannelWorkflow(container).run({ input: { id: channelIds[0], add: missing } })
+  return missing
+}
+
+// Checkout needs every product in the shipping profile of the chosen shipping option (all of ours
+// use the default profile): otherwise completing the cart fails with "The cart items require
+// shipping profiles that are not satisfied by the current shipping methods" — after the Mobile
+// Money payment went through. Products created from our admin had no shipping profile.
+
+/** Links the given products (or every product) that have no shipping profile to the default one. */
+export async function ensureProductsShippable(
+  container: MedusaContainer,
+  productIds?: string[]
+): Promise<string[]> {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const { data: profiles } = await query.graph({
+    entity: "shipping_profile",
+    fields: ["id", "type"],
+    filters: { type: "default" },
+  })
+  const profileId = (profiles as any[])[0]?.id
+  if (!profileId) throw new Error("No default shipping profile found")
+
+  const { data } = await query.graph({
+    entity: "product",
+    fields: ["id", "shipping_profile.id"],
+    filters: productIds ? { id: productIds } : {},
+    pagination: { take: 10000 },
+  })
+  const missing = (data as any[]).filter((p) => !p.shipping_profile?.id).map((p) => p.id)
+  if (!missing.length) return []
+
+  const link = container.resolve(ContainerRegistrationKeys.LINK)
+  await link.create(
+    missing.map((product_id) => ({
+      [Modules.PRODUCT]: { product_id },
+      [Modules.FULFILLMENT]: { shipping_profile_id: profileId },
+    }))
+  )
   return missing
 }
