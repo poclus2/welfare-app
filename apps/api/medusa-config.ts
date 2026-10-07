@@ -20,6 +20,23 @@ module.exports = defineConfig({
   },
   modules: [
     {
+      // Product photos uploaded from the admin (POST /admin/uploads) are stored in ./static, which is
+      // already served at <backend>/static and kept in the welfare-static volume. Without backend_url the
+      // provider returns http://localhost:9000/static/... URLs, unreachable from the shop.
+      resolve: "@medusajs/medusa/file",
+      options: {
+        providers: [
+          {
+            resolve: "@medusajs/medusa/file-local",
+            id: "local",
+            options: {
+              backend_url: `${(process.env.MEDUSA_BACKEND_URL || "http://localhost:9000").replace(/\/+$/, "")}/static`,
+            },
+          },
+        ],
+      },
+    },
+    {
       resolve: "@medusajs/auth",
       options: {
         providers: [

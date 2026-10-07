@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Loader2, UploadCloud, X, Save, ImageIcon, Tag, FlaskConical, Plus, Trash2, Sparkles } from "lucide-react";
-import { AiSheetGenerator } from "./AiSheetGenerator";
+import { Loader2, UploadCloud, X, Save, ImageIcon, Tag, FlaskConical, Plus, Trash2, Sparkles, Camera, Star, Upload, AlertTriangle } from "lucide-react";
+import { AiSheetGenerator, CameraModal } from "./AiSheetGenerator";
+import { shrinkImage } from "@/lib/image-shrink";
 import { BarcodeField, BarcodeStatus } from "./BarcodeField";
 import { normalizeBarcode } from "@/lib/barcode";
 import {
@@ -213,6 +214,45 @@ export function ProductForm({ initialData, collections, categories = [], returnT
   const [images, setImages] = useState<{ url: string }[]>(initialData?.images || []);
   const [newImageUrl, setNewImageUrl] = useState("");
 
+  // Photo upload (POST /api/uploads -> Medusa file module). The first uploaded photo becomes the main
+  // image when there is none yet.
+  type Upload = { id: string; name: string; error?: string };
+  const [uploads, setUploads] = useState<Upload[]>([]);
+  const [dragOver, setDragOver] = useState(false);
+  const [photoCameraOpen, setPhotoCameraOpen] = useState(false);
+  const photoFileRef = useRef<HTMLInputElement>(null);
+  const photoCaptureRef = useRef<HTMLInputElement>(null);
+
+  const uploadFiles = async (files: File[]) => {
+    const list = files.filter(f => f.type.startsWith("image/")).slice(0, 10);
+    for (const [i, file] of list.entries()) {
+      const id = `${Date.now()}-${i}`;
+      setUploads(u => [...u, { id, name: file.name || "photo" }]);
+      try {
+        const small = await shrinkImage(file);
+        const form = new FormData();
+        form.append("files", small, small.name);
+        const res = await fetch("/api/uploads", { method: "POST", body: form });
+        const data = await res.json().catch(() => ({}));
+        const url = data?.files?.[0]?.url;
+        if (!res.ok || !url) throw new Error(data?.error || "Envoi refusé");
+        setImages(prev => (prev.some(im => im.url === url) ? prev : [...prev, { url }]));
+        setThumbnail((prev: string) => prev || url);
+        setUploads(u => u.filter(x => x.id !== id));
+      } catch (e: any) {
+        setUploads(u => u.map(x => (x.id === id ? { ...x, error: e.message || "Échec de l'envoi" } : x)));
+      }
+    }
+  };
+
+  // Every image shown once: the main one first, then the others
+  const gallery = Array.from(new Set([thumbnail, ...images.map(im => im.url)].filter(Boolean))) as string[];
+  const removeImage = (url: string) => {
+    const rest = images.filter(im => im.url !== url);
+    setImages(rest);
+    if (thumbnail === url) setThumbnail(rest[0]?.url || "");
+  };
+
   // Deletion (existing products only), behind a confirmation
   const [confirmDelete, setConfirmDelete] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -234,6 +274,10 @@ export function ProductForm({ initialData, collections, categories = [], returnT
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (uploads.some(u => !u.error)) {
+      setError("Des photos sont encore en cours d'envoi : patientez quelques secondes puis enregistrez.");
+      return;
+    }
 
     // Barcode checks: a wrong digit or a barcode already used elsewhere would silently break the Odoo
     // stock sync for this product (or the other one), so they block saving.
@@ -682,95 +726,122 @@ export function ProductForm({ initialData, collections, categories = [], returnT
               Médias
             </h2>
 
-            {/* Main Image Preview */}
-            {thumbnail ? (
-              <div className="mb-4">
-                <label className={labelClass}>Image principale</label>
-                <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-[#EDE0E0] bg-[#F5F0EB]">
-                  <Image src={thumbnail} alt={title} fill className="object-contain" />
-                  <button
-                    type="button"
-                    onClick={() => setThumbnail("")}
-                    className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1 hover:bg-black transition-colors"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
+            {/* Upload zone */}
+            <div
+              onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={e => { e.preventDefault(); setDragOver(false); uploadFiles(Array.from(e.dataTransfer.files)); }}
+              className={`mb-4 border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center text-center transition-colors ${dragOver ? "border-[#C08A8E] bg-[#FBF3F3]" : "border-[#EDE0E0] bg-[#FDFBF7]"}`}
+            >
+              <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center mb-3">
+                <UploadCloud className="w-5 h-5 text-[#2A2424]/40" />
               </div>
-            ) : (
-              <div className="mb-4 border-2 border-dashed border-[#EDE0E0] rounded-xl p-8 flex flex-col items-center justify-center text-center bg-[#FDFBF7]">
-                <div className="w-12 h-12 rounded-full bg-white shadow-sm flex items-center justify-center mb-3">
-                  <UploadCloud className="w-5 h-5 text-[#2A2424]/40" />
-                </div>
-                <p className="text-sm font-bold text-[#2A2424]">Aucune image principale</p>
-                <p className="text-xs text-[#2A2424]/40 mt-1">Renseignez une URL ci-dessous</p>
-              </div>
-            )}
-
-            {/* Thumbnail URL input */}
-            <div className="mb-4">
-              <label className={labelClass}>URL Image principale</label>
-              <input
-                type="text"
-                value={thumbnail}
-                onChange={e => setThumbnail(e.target.value)}
-                placeholder="https://..."
-                className={inputClass}
-              />
-            </div>
-
-            {/* Secondary images thumbnails */}
-            <div className="mb-4">
-              <label className={labelClass}>Images secondaires ({images.length})</label>
-              
-              {/* Input to add a new image */}
-              <div className="flex items-center gap-2 mb-3 mt-1">
-                <input
-                  type="text"
-                  value={newImageUrl}
-                  onChange={e => setNewImageUrl(e.target.value)}
-                  placeholder="URL d'une nouvelle image..."
-                  className={inputClass}
-                />
+              <p className="text-sm font-bold text-[#2A2424]">Ajoutez les photos du produit</p>
+              <p className="text-xs text-[#2A2424]/40 mt-1 max-w-sm">Glissez-déposez vos fichiers, importez-les ou prenez une photo. La première devient l&apos;image principale.</p>
+              <div className="flex flex-wrap justify-center gap-2 mt-4">
                 <button
                   type="button"
-                  onClick={() => {
-                    if (newImageUrl.trim()) {
-                      setImages([...images, { url: newImageUrl.trim() }]);
-                      setNewImageUrl("");
-                    }
-                  }}
-                  className="px-4 py-2.5 bg-[#F5F0EB] hover:bg-[#EDE0E0] border border-[#EDE0E0] rounded-xl text-sm font-bold text-[#2A2424] transition-colors"
+                  onClick={() => (typeof navigator.mediaDevices?.getUserMedia === "function" ? setPhotoCameraOpen(true) : photoCaptureRef.current?.click())}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-[#EDE0E0] bg-white text-[#2A2424] hover:bg-[#F5F0EB]"
                 >
-                  Ajouter
+                  <Camera className="w-3.5 h-3.5" /> Prendre une photo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => photoFileRef.current?.click()}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-[#2A2424] text-white hover:bg-black"
+                >
+                  <Upload className="w-3.5 h-3.5" /> Importer des photos
                 </button>
               </div>
+              <input ref={photoFileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={e => { uploadFiles(Array.from(e.target.files || [])); e.target.value = ""; }} />
+              <input ref={photoCaptureRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { uploadFiles(Array.from(e.target.files || [])); e.target.value = ""; }} />
+            </div>
 
-              {images.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {images.map((img, i) => (
-                    <div
-                      key={i}
-                      className="relative w-16 h-16 rounded-lg overflow-hidden border border-[#EDE0E0] bg-[#F5F0EB] flex-shrink-0 group"
-                      title={img.url}
-                    >
-                      <Image src={img.url} alt={`Image ${i + 1}`} fill className="object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newImgs = [...images];
-                          newImgs.splice(i, 1);
-                          setImages(newImgs);
-                        }}
-                        className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="w-4 h-4" />
+            {photoCameraOpen && (
+              <CameraModal
+                title="Photographiez le produit sur un fond uni"
+                onClose={() => setPhotoCameraOpen(false)}
+                onCapture={file => { setPhotoCameraOpen(false); uploadFiles([file]); }}
+                onUnavailable={() => { setPhotoCameraOpen(false); photoCaptureRef.current?.click(); }}
+              />
+            )}
+
+            {uploads.length > 0 && (
+              <ul className="mb-4 space-y-1.5">
+                {uploads.map(u => (
+                  <li key={u.id} className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg border ${u.error ? "bg-red-50 border-red-200 text-red-700" : "bg-[#F5F0EB] border-[#EDE0E0] text-[#2A2424]/70"}`}>
+                    {u.error ? <AlertTriangle className="w-3.5 h-3.5 shrink-0" /> : <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />}
+                    <span className="truncate">{u.name}</span>
+                    <span className="ml-auto shrink-0">{u.error || "Envoi…"}</span>
+                    {u.error && (
+                      <button type="button" onClick={() => setUploads(list => list.filter(x => x.id !== u.id))} aria-label="Masquer">
+                        <X className="w-3.5 h-3.5" />
                       </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {/* Gallery */}
+            {gallery.length > 0 && (
+              <div className="mb-4">
+                <label className={labelClass}>Photos ({gallery.length})</label>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {gallery.map(url => (
+                    <div key={url} className={`relative aspect-square rounded-xl overflow-hidden border-2 bg-[#F5F0EB] group ${url === thumbnail ? "border-[#2A2424]" : "border-[#EDE0E0]"}`} title={url}>
+                      <Image src={url} alt={title || "Photo"} fill sizes="(max-width: 640px) 33vw, 200px" className="object-cover" />
+                      {url === thumbnail && (
+                        <span className="absolute left-1.5 top-1.5 px-1.5 py-0.5 rounded-md bg-[#2A2424] text-white text-[9px] font-bold">Principale</span>
+                      )}
+                      <div className="absolute inset-x-0 bottom-0 flex justify-between p-1.5 bg-gradient-to-t from-black/50 to-transparent sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        {url !== thumbnail ? (
+                          <button type="button" onClick={() => setThumbnail(url)} className="p-1 rounded-md bg-white/90 text-[#2A2424]" title="Définir comme image principale">
+                            <Star className="w-3.5 h-3.5" />
+                          </button>
+                        ) : <span />}
+                        <button type="button" onClick={() => removeImage(url)} className="p-1 rounded-md bg-white/90 text-red-600" title="Retirer la photo">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* By URL (images already hosted elsewhere) */}
+            <details className="group">
+              <summary className="text-xs font-semibold text-[#2A2424]/50 cursor-pointer hover:text-[#2A2424]">Ajouter une image par URL</summary>
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label className={labelClass}>URL image principale</label>
+                  <input type="text" value={thumbnail} onChange={e => setThumbnail(e.target.value)} placeholder="https://..." className={inputClass} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={newImageUrl}
+                    onChange={e => setNewImageUrl(e.target.value)}
+                    placeholder="URL d'une image supplémentaire..."
+                    className={inputClass}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (newImageUrl.trim()) {
+                        setImages([...images, { url: newImageUrl.trim() }]);
+                        setNewImageUrl("");
+                      }
+                    }}
+                    className="px-4 py-2.5 bg-[#F5F0EB] hover:bg-[#EDE0E0] border border-[#EDE0E0] rounded-xl text-sm font-bold text-[#2A2424] transition-colors"
+                  >
+                    Ajouter
+                  </button>
+                </div>
+              </div>
+            </details>
           </div>
 
         </div>

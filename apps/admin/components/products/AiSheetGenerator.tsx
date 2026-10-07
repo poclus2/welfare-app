@@ -48,7 +48,17 @@ async function shrink(file: File, budget: number): Promise<Blob> {
 // In-page camera. The file input with `capture` opens the phone's camera app and puts this page in the
 // background, and Android Chrome sometimes reloads it when coming back, which empties the whole form
 // (the photo of the front "did not work"). Shooting from the page itself keeps everything in place.
-function CameraModal({ onCapture, onClose, onUnavailable }: { onCapture: (file: File) => void; onClose: () => void; onUnavailable: () => void }) {
+export function CameraModal({
+  onCapture,
+  onClose,
+  onUnavailable,
+  title = "Cadrez l'étiquette, bien éclairée, sans reflet",
+}: {
+  onCapture: (file: File) => void;
+  onClose: () => void;
+  onUnavailable: () => void;
+  title?: string;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [ready, setReady] = useState(false);
   const cbRef = useRef({ onUnavailable });
@@ -93,7 +103,7 @@ function CameraModal({ onCapture, onClose, onUnavailable }: { onCapture: (file: 
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col">
       <div className="flex items-center justify-between px-4 py-3 text-white">
-        <p className="text-sm font-bold">Cadrez l&apos;étiquette, bien éclairée, sans reflet</p>
+        <p className="text-sm font-bold">{title}</p>
         <button type="button" onClick={onClose} className="p-1.5 rounded-full bg-white/10" aria-label="Fermer">
           <X className="w-4 h-4" />
         </button>

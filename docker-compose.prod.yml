@@ -46,6 +46,7 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-welfare_db}?sslmode=disable
       - REDIS_URL=redis://redis:6379
+      - MEDUSA_BACKEND_URL=${MEDUSA_BACKEND_URL} # public URL of uploaded files (<backend>/static)
       - MEILISEARCH_HOST=http://meilisearch:7700
       - MEILISEARCH_API_KEY=${MEILISEARCH_API_KEY:-meilisearch_master_key}
       - STORE_CORS=${STORE_URL}
