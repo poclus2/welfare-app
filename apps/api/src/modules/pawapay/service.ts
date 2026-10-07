@@ -1,5 +1,5 @@
 import { AbstractPaymentProvider } from "@medusajs/framework/utils"
-import { getDeposit, isValidDepositId } from "./client"
+import { describePawapayFailure, getDeposit, isValidDepositId } from "./client"
 
 const PaymentSessionStatus = {
   AUTHORIZED: "authorized",
@@ -64,7 +64,7 @@ class PawapayProviderService extends AbstractPaymentProvider {
     }
 
     if (deposit.status === "FAILED") {
-      throw new Error(`Paiement Mobile Money échoué : ${deposit.failureReason?.failureMessage || deposit.failureReason?.failureCode || "raison inconnue"}`);
+      throw new Error(describePawapayFailure(deposit.failureReason?.failureCode, deposit.failureReason?.failureMessage));
     }
 
     if (deposit.status !== "COMPLETED") {

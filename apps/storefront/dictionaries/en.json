@@ -938,5 +938,11 @@
   "Scans IA": "AI Scans",
   "Fidélité": "Loyalty",
   "Statut": "Status",
-  "Votre inscription n'avait pas été terminée. Complétez vos informations pour activer votre compte.": "Your sign-up wasn't completed. Fill in your details to activate your account."
+  "Votre inscription n'avait pas été terminée. Complétez vos informations pour activer votre compte.": "Your sign-up wasn't completed. Fill in your details to activate your account.",
+  "MTN Mobile Money, validation sur votre téléphone": "MTN Mobile Money, confirmed on your phone",
+  "Numéro MTN Mobile Money à débiter": "MTN Mobile Money number to charge",
+  "Numéro MTN détecté": "MTN number detected",
+  "Saisissez votre numéro MTN Mobile Money (9 chiffres, ex : 6XXXXXXXX).": "Enter your MTN Mobile Money number (9 digits, e.g. 6XXXXXXXX).",
+  "Vous recevrez une notification (Push USSD) sur ce numéro pour valider le paiement avec votre code PIN.": "You will receive a notification (USSD push) on this number to confirm the payment with your PIN.",
+  "Ce numéro est un numéro {op}. Le paiement automatisé n'accepte que les numéros MTN Mobile Money : saisissez un numéro MTN ou choisissez le paiement manuel.": "This is an {op} number. Automated payment only accepts MTN Mobile Money numbers: enter an MTN number or choose manual payment."
 }

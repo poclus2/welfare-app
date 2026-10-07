@@ -18,6 +18,24 @@ function formatPrice(amount: number) {
   return new Intl.NumberFormat("fr-FR").format(Math.round(amount));
 }
 
+// Cameroonian mobile number → its 9 local digits (6XXXXXXXX), or null. Mirrors normalizeCameroonMsisdn in the API.
+function cameroonLocalNumber(raw: string): string | null {
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (digits.length === 12 && digits.startsWith("237")) digits = digits.slice(3);
+  return /^6\d{8}$/.test(digits) ? digits : null;
+}
+
+// Operator from the number range (same table as detectCameroonOperator in the API); null when unsure.
+function cameroonOperator(local: string): "MTN" | "Orange" | "Nexttel" | null {
+  const p2 = local.slice(0, 2);
+  const p3 = Number(local.slice(0, 3));
+  if (p2 === "67" || (p3 >= 650 && p3 <= 654) || (p3 >= 680 && p3 <= 683)) return "MTN";
+  if (p2 === "69" || (p3 >= 655 && p3 <= 659) || (p3 >= 686 && p3 <= 689)) return "Orange";
+  if (p2 === "66") return "Nexttel";
+  return null;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 type DeliveryMode = "domicile" | "retrait";
 type StoreLocation = "hippodrome" | "playce" | null;
@@ -113,6 +131,9 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [paymentWait, setPaymentWait] = useState("");
   const [mobileNetwork, setMobileNetwork] = useState("MTN_MOMO_CMR");
+  // Number charged by the Mobile Money push — may differ from the contact/WhatsApp number
+  const [momoPhone, setMomoPhone] = useState("");
+  const [momoPhoneError, setMomoPhoneError] = useState("");
   const [manualProvider, setManualProvider] = useState<"orange" | "mtn">("orange");
 
   const [paymentMode, setPaymentMode] = useState<"pawapay" | "manuel">("pawapay");
@@ -285,6 +306,9 @@ useEffect(() => {
         }
       });
       await fetchOptions(); // Refetch options after setting country to CM
+      // Suggest the contact number for Mobile Money only when it is an MTN one (the only network enabled)
+      const contactLocal = cameroonLocalNumber(identity.phone);
+      if (!momoPhone && contactLocal && cameroonOperator(contactLocal) === "MTN") setMomoPhone(contactLocal);
       setStep(2);
     } catch (err) {
       console.error(err);
@@ -303,6 +327,21 @@ useEffect(() => {
       alert(t("Le panier n'est pas initialisé correctement."));
       return;
     }
+    let momoLocal: string | null = null;
+    if (paymentMode === "pawapay") {
+      momoLocal = cameroonLocalNumber(momoPhone);
+      const operator = momoLocal ? cameroonOperator(momoLocal) : null;
+      const error = !momoLocal
+        ? t("Saisissez votre numéro MTN Mobile Money (9 chiffres, ex : 6XXXXXXXX).")
+        : operator && operator !== "MTN"
+          ? t("Ce numéro est un numéro {op}. Le paiement automatisé n'accepte que les numéros MTN Mobile Money : saisissez un numéro MTN ou choisissez le paiement manuel.").replace("{op}", operator)
+          : "";
+      setMomoPhoneError(error);
+      if (error) {
+        document.getElementById("momo-phone")?.focus();
+        return;
+      }
+    }
     setIsLoading(true);
     try {
       // 1. Update Cart Address & Metadata for Delivery
@@ -319,6 +358,7 @@ useEffect(() => {
           delivery_mode: delivery.mode,
           delivery_notes: delivery.notes,
           mobile_network: paymentMode === "pawapay" ? mobileNetwork : null,
+          mobile_money_phone: paymentMode === "pawapay" ? momoLocal : null,
           payment_mode: paymentMode
         }
       });
@@ -355,7 +395,7 @@ useEffect(() => {
       if (paymentMode === "pawapay") {
         const deposit = await sdk.client.fetch<{ depositId: string; amount: number }>("/store/pawapay/deposit", {
           method: "POST",
-          body: { cart_id: cartId, phone: identity.phone, correspondent: mobileNetwork },
+          body: { cart_id: cartId, phone: momoLocal, correspondent: mobileNetwork },
         });
         depositId = deposit.depositId;
         setPaymentWait(`${t("Validez le paiement sur votre téléphone")} (${formatPrice(deposit.amount)} FCFA)`);
@@ -778,7 +818,7 @@ useEffect(() => {
                       
                       <div className="flex-1">
                         <p className="text-sm font-bold text-[#2A2424]">{t("Paiement automatisé (+3%)")}</p>
-                        <p className="text-xs text-[#2A2424]/50">{t("Mobile Money direct (Orange, MTN...)")}</p>
+                        <p className="text-xs text-[#2A2424]/50">{t("MTN Mobile Money, validation sur votre téléphone")}</p>
                       </div>
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${paymentMode === "pawapay" ? "border-[#2A2424] bg-[#2A2424]" : "border-[#EDE0E0]"}`}>
                         {paymentMode === "pawapay" && <Check className="w-3 h-3 text-white" />}
@@ -803,8 +843,32 @@ useEffect(() => {
                                 {/* Only MTN_MOMO_CMR is enabled on the PawaPay account (checked via /active-conf) */}
                                 <option value="ORANGE_CEW_CMR" disabled>{t("Orange Money Cameroun")} ({t("bientôt disponible")})</option>
                               </select>
+                            <label htmlFor="momo-phone" className="block text-[11px] font-bold text-[#2A2424] mt-3 mb-1.5">
+                              {t("Numéro MTN Mobile Money à débiter")}
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2A2424]/50">+237</span>
+                              <input
+                                id="momo-phone"
+                                type="tel"
+                                inputMode="numeric"
+                                autoComplete="tel-national"
+                                placeholder="6XX XX XX XX"
+                                value={momoPhone}
+                                onChange={(e) => { setMomoPhone(e.target.value); setMomoPhoneError(""); }}
+                                className={`${inputBase} pl-14 ${momoPhoneError ? inputErr : inputOk}`}
+                              />
+                            </div>
+                            {(() => {
+                              if (momoPhoneError) return <p className="text-[11px] text-red-500 mt-1.5 leading-relaxed">{momoPhoneError}</p>;
+                              const local = cameroonLocalNumber(momoPhone);
+                              const operator = local ? cameroonOperator(local) : null;
+                              if (operator === "MTN") return <p className="text-[11px] text-green-600 mt-1.5">{t("Numéro MTN détecté")}</p>;
+                              if (operator) return <p className="text-[11px] text-red-500 mt-1.5 leading-relaxed">{t("Ce numéro est un numéro {op}. Le paiement automatisé n'accepte que les numéros MTN Mobile Money : saisissez un numéro MTN ou choisissez le paiement manuel.").replace("{op}", operator)}</p>;
+                              return null;
+                            })()}
                             <p className="text-[11px] text-[#2A2424]/50 mt-2 leading-relaxed">
-                              {t("Vous recevrez une notification (Push USSD) sur votre téléphone après confirmation pour valider le paiement.")}
+                              {t("Vous recevrez une notification (Push USSD) sur ce numéro pour valider le paiement avec votre code PIN.")}
                             </p>
                           </div>
                         </motion.div>

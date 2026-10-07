@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import { getDeposit, isValidDepositId } from "../../../../../modules/pawapay/client"
+import { describePawapayFailure, getDeposit, isValidDepositId } from "../../../../../modules/pawapay/client"
 
 /**
  * GET /store/pawapay/deposit/:id
@@ -19,7 +19,9 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     }
     return res.json({
       status: deposit.status,
-      message: deposit.failureReason?.failureMessage || undefined,
+      message: deposit.status === "FAILED"
+        ? describePawapayFailure(deposit.failureReason?.failureCode, deposit.failureReason?.failureMessage)
+        : undefined,
       failureCode: deposit.failureReason?.failureCode || undefined,
     })
   } catch (e: any) {

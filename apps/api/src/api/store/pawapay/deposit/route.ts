@@ -3,8 +3,10 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import crypto from "crypto"
 import {
   computeMobileMoneyAmount,
+  describePawapayFailure,
   getEnabledCameroonCorrespondents,
   normalizeCameroonMsisdn,
+  operatorMismatchMessage,
   requestDeposit,
 } from "../../../../modules/pawapay/client"
 
@@ -31,6 +33,10 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   }
 
   const correspondent = body.correspondent || "MTN_MOMO_CMR"
+  const mismatch = operatorMismatchMessage(msisdn, correspondent)
+  if (mismatch) {
+    return res.status(400).json({ message: mismatch })
+  }
   try {
     const enabled = await getEnabledCameroonCorrespondents()
     if (!enabled.includes(correspondent)) {
@@ -78,7 +84,10 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     if (result.status === "REJECTED") {
       console.error("[PawaPay] Deposit rejected:", JSON.stringify(result))
       return res.status(400).json({
-        message: `Paiement refusé par PawaPay : ${result.rejectionReason?.rejectionMessage || result.rejectionReason?.rejectionCode || "raison inconnue"}`,
+        message: describePawapayFailure(
+          result.rejectionReason?.rejectionCode,
+          `Paiement refusé : ${result.rejectionReason?.rejectionMessage || result.rejectionReason?.rejectionCode || "raison inconnue"}`
+        ),
       })
     }
 

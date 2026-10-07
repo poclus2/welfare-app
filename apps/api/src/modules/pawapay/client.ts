@@ -42,6 +42,51 @@ export function normalizeCameroonMsisdn(raw: unknown): string | null {
   return digits
 }
 
+/**
+ * Operator owning a Cameroonian MSISDN (2376XXXXXXXX), from its number range.
+ * Returns null for ranges we are not sure about, so they are never blocked.
+ */
+export function detectCameroonOperator(msisdn: string): "MTN" | "ORANGE" | "NEXTTEL" | null {
+  const local = msisdn.slice(3) // 6XXXXXXXX
+  const p2 = local.slice(0, 2)
+  const p3 = Number(local.slice(0, 3))
+  if (p2 === "67" || (p3 >= 650 && p3 <= 654) || (p3 >= 680 && p3 <= 683)) return "MTN"
+  if (p2 === "69" || (p3 >= 655 && p3 <= 659) || (p3 >= 686 && p3 <= 689)) return "ORANGE"
+  if (p2 === "66") return "NEXTTEL"
+  return null
+}
+
+const OPERATOR_LABELS = { MTN: "MTN", ORANGE: "Orange", NEXTTEL: "Nexttel" } as const
+
+/** French message for a deposit refused by the operator (PawaPay failureCode / rejectionCode). */
+export function describePawapayFailure(code: string | undefined, fallback?: string): string {
+  switch (code) {
+    case "PAYER_NOT_FOUND":
+    case "INVALID_PAYER_FORMAT":
+      return "Ce numéro n'a pas de compte MTN Mobile Money actif. Vérifiez le numéro Mobile Money saisi (il peut être différent de votre numéro WhatsApp)."
+    case "INSUFFICIENT_BALANCE":
+      return "Solde Mobile Money insuffisant. Rechargez votre compte puis réessayez."
+    case "PAYMENT_NOT_APPROVED":
+      return "Le paiement n'a pas été validé sur votre téléphone (annulé, code PIN erroné ou délai dépassé)."
+    case "PAYER_LIMIT_REACHED":
+      return "Votre plafond Mobile Money est atteint. Réessayez plus tard ou utilisez le paiement manuel."
+    case "TRANSACTION_ALREADY_IN_PROCESS":
+      return "Une autre transaction est déjà en cours sur ce numéro. Terminez-la puis réessayez."
+    case "CORRESPONDENT_TEMPORARILY_UNAVAILABLE":
+      return "MTN Mobile Money est momentanément indisponible. Réessayez dans quelques minutes ou utilisez le paiement manuel."
+    default:
+      return fallback || "Le paiement Mobile Money a été refusé ou annulé."
+  }
+}
+
+/** Why this number cannot pay with this correspondent, or null when it can (as far as we know). */
+export function operatorMismatchMessage(msisdn: string, correspondent: string): string | null {
+  const operator = detectCameroonOperator(msisdn)
+  const expected = correspondent.startsWith("MTN") ? "MTN" : correspondent.startsWith("ORANGE") ? "ORANGE" : null
+  if (!operator || !expected || operator === expected) return null
+  return `Ce numéro est un numéro ${OPERATOR_LABELS[operator]} : le paiement automatisé n'accepte que les numéros ${OPERATOR_LABELS[expected]} Mobile Money. Saisissez un numéro ${OPERATOR_LABELS[expected]} ou choisissez le paiement manuel.`
+}
+
 export function computeMobileMoneyAmount(cartTotal: number): number {
   const total = Math.round(Number(cartTotal) || 0)
   return total + Math.round(total * PAWAPAY_FEE_RATE)
