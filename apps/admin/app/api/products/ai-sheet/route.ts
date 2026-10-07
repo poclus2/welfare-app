@@ -78,6 +78,79 @@ function extractJson(text: string) {
   return JSON.parse(text.slice(start, end + 1));
 }
 
+// Structured output: OpenRouter forwards it to the provider so the model can only produce JSON of this
+// shape (an unescaped quote in a free text field used to break the whole sheet). Ignored by models
+// that do not support it; the repair pass below covers that case.
+const str_ = { type: "string" };
+const SHEET_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "title", "subtitle", "collection_id", "brand_detected", "category_ids", "raw_inci", "inci_markdown",
+    "skin_types", "skin_concerns", "search_tagline", "commercial_description", "description",
+    "layering_steps", "inci_confidence", "warnings",
+  ],
+  properties: {
+    title: str_,
+    subtitle: str_,
+    collection_id: { type: ["string", "null"] },
+    brand_detected: str_,
+    category_ids: { type: "array", items: str_ },
+    raw_inci: str_,
+    inci_markdown: str_,
+    skin_types: { type: "array", items: str_ },
+    skin_concerns: { type: "array", items: str_ },
+    search_tagline: str_,
+    commercial_description: str_,
+    description: str_,
+    layering_steps: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["step", "label", "timing", "description", "tip", "icon", "highlight"],
+        properties: {
+          step: { type: "integer" },
+          label: str_,
+          timing: str_,
+          description: str_,
+          tip: str_,
+          icon: str_,
+          highlight: { type: "boolean" },
+        },
+      },
+    },
+    inci_confidence: { type: "string", enum: ["high", "medium", "low"] },
+    warnings: { type: "array", items: str_ },
+  },
+};
+
+async function callOpenRouter(apiKey: string, payload: Record<string, unknown>) {
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://admin.thewelfarecm.com",
+      "X-Title": "The Welfare Admin - Fiche produit IA",
+    },
+    body: JSON.stringify({ model: MODEL, temperature: 0.2, ...payload }),
+    signal: AbortSignal.timeout(170_000),
+  });
+  if (!res.ok) {
+    const detail = (await res.text().catch(() => "")).slice(0, 300);
+    console.error(`[AI Sheet] OpenRouter ${res.status}: ${detail}`);
+    if (res.status === 402) throw new Error("Crédit OpenRouter épuisé : rechargez le compte pour utiliser le générateur");
+    if (res.status === 429) throw new Error("Trop de demandes en même temps, réessayez dans un instant");
+    throw new Error(`Le service IA a répondu ${res.status}`);
+  }
+  const body: any = await res.json();
+  const choice = body?.choices?.[0];
+  const text = choice?.message?.content;
+  if (typeof text !== "string" || !text) throw new Error("Réponse de l'IA vide");
+  return { text, truncated: choice?.finish_reason === "length" };
+}
+
 const str = (v: unknown, max = 20000) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 const pick = (v: unknown, allowed: readonly string[], max: number) =>
   Array.from(new Set((Array.isArray(v) ? v : []).filter((x): x is string => typeof x === "string" && allowed.includes(x)))).slice(0, max);
@@ -135,29 +208,48 @@ async function generate(inci: File[], front: File | null, ctx: Context): Promise
   for (const f of inci) content.push({ type: "image_url", image_url: { url: await toDataUrl(f) } });
   if (front) content.push({ type: "image_url", image_url: { url: await toDataUrl(front) } });
 
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://admin.thewelfarecm.com",
-      "X-Title": "The Welfare Admin - Fiche produit IA",
-    },
-    // ~2 500 tokens are used in practice; OpenRouter reserves credit for max_tokens up front
-    body: JSON.stringify({ model: MODEL, max_tokens: 4000, temperature: 0.2, messages: [{ role: "user", content }] }),
-    signal: AbortSignal.timeout(170_000),
-  });
-  if (!res.ok) {
-    const detail = (await res.text().catch(() => "")).slice(0, 300);
-    console.error(`[AI Sheet] OpenRouter ${res.status}: ${detail}`);
-    if (res.status === 402) throw new Error("Crédit OpenRouter épuisé : rechargez le compte pour utiliser le générateur");
-    if (res.status === 429) throw new Error("Trop de demandes en même temps, réessayez dans un instant");
-    throw new Error(`Le service IA a répondu ${res.status}`);
+  // ~2 500-3 500 tokens are used in practice (more with 3 photos); OpenRouter reserves credit for
+  // max_tokens up front, so keep it reasonable
+  const request = { max_tokens: 6000, messages: [{ role: "user", content }] };
+  let result: { text: string; truncated: boolean };
+  try {
+    result = await callOpenRouter(apiKey, {
+      ...request,
+      response_format: { type: "json_schema", json_schema: { name: "product_sheet", strict: true, schema: SHEET_SCHEMA } },
+    });
+  } catch (e: any) {
+    // A provider rejecting the schema must not take the generator down: same request without it
+    if (!/répondu 400/.test(e?.message || "")) throw e;
+    console.error("[AI Sheet] Structured output rejected, retrying without it");
+    result = await callOpenRouter(apiKey, request);
   }
-  const body: any = await res.json();
-  const text = body?.choices?.[0]?.message?.content;
-  if (typeof text !== "string" || !text) throw new Error("Réponse de l'IA vide");
-  return sanitize(extractJson(text), ctx);
+  const { text, truncated } = result;
+
+  try {
+    return sanitize(extractJson(text), ctx);
+  } catch (e: any) {
+    const pos = Number(/position (\d+)/.exec(e?.message || "")?.[1] ?? -1);
+    console.error(
+      `[AI Sheet] Invalid JSON (${truncated ? "truncated" : e?.message}):`,
+      pos >= 0 ? JSON.stringify(text.slice(Math.max(0, pos - 120), pos + 60)) : JSON.stringify(text.slice(0, 200))
+    );
+    if (truncated) throw new Error("La réponse de l'IA a été coupée (fiche trop longue) : réessayez avec moins de photos.");
+  }
+
+  // Repair pass: text only (no photos), so it is quick and cheap
+  const repaired = await callOpenRouter(apiKey, {
+    max_tokens: 6000,
+    messages: [{
+      role: "user",
+      content: `Ce JSON est invalide (guillemet non échappé, virgule manquante...). Renvoie exactement le même contenu sous forme de JSON valide, sans texte autour ni bloc de code :\n\n${text}`,
+    }],
+  });
+  try {
+    return sanitize(extractJson(repaired.text), ctx);
+  } catch (e: any) {
+    console.error("[AI Sheet] Repair failed:", e?.message);
+    throw new Error("La réponse de l'IA était mal formée, même après correction : réessayez.");
+  }
 }
 
 export async function POST(req: NextRequest) {
