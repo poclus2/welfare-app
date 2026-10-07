@@ -143,3 +143,97 @@ export async function getDeposit(depositId: string): Promise<any | null> {
   }
   return Array.isArray(data) && data.length > 0 ? data[0] : null
 }
+
+// ─── Admin "Paiements" page: balance and payouts ────────────────────────────────────────────────
+// Docs: https://docs.pawapay.io/v1/api-reference/wallet-balances/wallet-balances-for-country
+//       https://docs.pawapay.io/v1/api-reference/payouts/request-payout
+
+/** Live balance of the PawaPay wallet for a country (XAF wallet for CMR). */
+export async function getWalletBalance(country = "CMR"): Promise<{ balance: number; currency: string } | null> {
+  const response = await fetch(`${PAWAPAY_BASE_URL}/v1/wallet-balances/${country}`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  const data: any = await response.json().catch(() => null)
+  if (!response.ok) throw new Error(`PawaPay wallet-balances error ${response.status}: ${JSON.stringify(data)}`)
+  const wallet = (data?.balances || []).find((b: any) => b.country === country)
+  return wallet ? { balance: Number(wallet.balance) || 0, currency: wallet.currency } : null
+}
+
+/** Payout limits per Cameroonian correspondent, or empty when payouts are not enabled on the account. */
+export async function getCameroonPayoutCorrespondents(): Promise<{ correspondent: string; min: number; max: number }[]> {
+  const response = await fetch(`${PAWAPAY_BASE_URL}/active-conf`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  if (!response.ok) throw new Error(`PawaPay active-conf error ${response.status}`)
+  const conf: any = await response.json()
+  const cmr = (conf.countries || []).find((c: any) => c.country === "CMR")
+  return (cmr?.correspondents || []).flatMap((c: any) =>
+    (c.operationTypes || [])
+      .filter((o: any) => o.operationType === "PAYOUT")
+      .map((o: any) => ({ correspondent: c.correspondent, min: Number(o.minTransactionLimit) || 0, max: Number(o.maxTransactionLimit) || 0 }))
+  )
+}
+
+export type PawapayPayoutRequest = {
+  payoutId: string
+  amount: string
+  currency: string
+  correspondent: string
+  msisdn: string
+  statementDescription?: string
+}
+
+/** Sends money from the PawaPay wallet to a Mobile Money account. data.status: ACCEPTED | ENQUEUED | REJECTED | DUPLICATE_IGNORED */
+export async function requestPayout(input: PawapayPayoutRequest): Promise<any> {
+  const payload = {
+    payoutId: input.payoutId,
+    amount: input.amount,
+    currency: input.currency,
+    country: "CMR",
+    correspondent: input.correspondent,
+    recipient: { type: "MSISDN", address: { value: input.msisdn } },
+    customerTimestamp: new Date().toISOString(),
+    statementDescription: (input.statementDescription || "The Welfare retrait").replace(/[^a-zA-Z0-9 ]/g, "").slice(0, 22),
+  }
+  const response = await fetch(`${PAWAPAY_BASE_URL}/payouts`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${getToken()}`, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(`PawaPay API error ${response.status}: ${JSON.stringify(data)}`)
+  return data
+}
+
+/** Returns the payout (status: ACCEPTED | ENQUEUED | SUBMITTED | COMPLETED | FAILED) or null if unknown. */
+export async function getPayout(payoutId: string): Promise<any | null> {
+  const response = await fetch(`${PAWAPAY_BASE_URL}/payouts/${encodeURIComponent(payoutId)}`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  })
+  const data = await response.json().catch(() => null)
+  if (!response.ok) throw new Error(`PawaPay API error ${response.status}: ${JSON.stringify(data)}`)
+  return Array.isArray(data) && data.length > 0 ? data[0] : null
+}
+
+/** French message for a refused / failed payout. */
+export function describePayoutFailure(code: string | undefined, fallback?: string): string {
+  switch (code) {
+    case "BALANCE_INSUFFICIENT":
+      return "Solde PawaPay insuffisant pour ce retrait."
+    case "PAYOUTS_NOT_ALLOWED":
+      return "Les retraits ne sont pas activés sur votre compte PawaPay."
+    case "AMOUNT_TOO_SMALL":
+    case "AMOUNT_TOO_LARGE":
+    case "INVALID_AMOUNT":
+      return "Montant de retrait hors des limites autorisées par PawaPay."
+    case "RECIPIENT_NOT_FOUND":
+    case "INVALID_RECIPIENT_FORMAT":
+      return "Ce numéro n'a pas de compte Mobile Money actif."
+    case "RECIPIENT_NOT_ALLOWED_TO_RECEIVE":
+      return "Ce compte Mobile Money ne peut pas recevoir de fonds (plafond ou restriction de l'opérateur)."
+    case "CORRESPONDENT_TEMPORARILY_UNAVAILABLE":
+      return "L'opérateur Mobile Money est momentanément indisponible. Réessayez plus tard."
+    default:
+      return fallback || "Le retrait a été refusé."
+  }
+}

@@ -7,12 +7,13 @@ import {
   LayoutDashboard, ShoppingBag, Package, Users,
   Store, BarChart2, Tag, Settings, LogOut,
   Bell, Search, ChevronDown, Menu, X, Bot, Truck, FileText, Ticket
-, Layers } from "lucide-react";
+, Layers, Wallet } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Vue d'ensemble", icon: LayoutDashboard },
   { href: "/dashboard/orders", label: "Commandes", icon: ShoppingBag, badge: null },
+  { href: "/dashboard/payments", label: "Paiements", icon: Wallet },
   { href: "/dashboard/products", label: "Produits", icon: Package },
   { href: "/dashboard/collections", label: "Marques", icon: Layers },
   { href: "/dashboard/customers", label: "Clients", icon: Users },

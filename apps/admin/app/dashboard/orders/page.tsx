@@ -22,7 +22,8 @@ export default async function OrdersPage() {
   const mappedOrders = data.orders.map((o) => {
     // Determine payment provider
     let payment = o.payment_collections?.[0]?.payments?.[0]?.provider_id || "Non spécifié";
-    if (payment === "pawapay") payment = "Mobile Money (PawaPay)";
+    // Medusa prefixes provider ids ("pp_pawapay_pawapay")
+    if (payment.includes("pawapay")) payment = "Mobile Money (PawaPay)";
 
     // Delivery metadata handling
     let delivery = "domicile";
