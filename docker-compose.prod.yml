@@ -108,6 +108,7 @@ services:
       - POSTHOG_PROJECT_ID=${POSTHOG_PROJECT_ID:-616113}
       - STOREFRONT_URL=http://storefront:3000
       - ADMIN_BLOG_KEY=${ADMIN_BLOG_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY} # AI product sheet (admin product form)
     ports:
       - "3006:3000" # Exposes 3006 to host for Nginx to route to (admin.thewelfare.store)
     restart: unless-stopped
