@@ -30,3 +30,22 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     );
   }
 }
+
+// Product deletion. Medusa soft-deletes the product and its variants: past orders keep their own copy
+// of the lines, and the API subscribers on product.deleted remove it from the search index, the brand
+// product counts and the shop catalogue cache.
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const token = (await cookies()).get("admin_token")?.value;
+    if (!token) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+
+    await fetchAdmin<{ id: string; deleted: boolean }>(`/products/${id}`, token, { method: "DELETE" });
+
+    revalidateTag("admin-products");
+    return NextResponse.json({ id, deleted: true });
+  } catch (err: any) {
+    console.error("[Delete Product] Error:", err);
+    return NextResponse.json({ error: err.message || "Erreur serveur" }, { status: 500 });
+  }
+}

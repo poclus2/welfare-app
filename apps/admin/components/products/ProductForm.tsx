@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Loader2, UploadCloud, X, Save, ImageIcon, Tag, FlaskConical, Plus, Trash2, Sparkles } from "lucide-react";
@@ -213,6 +213,24 @@ export function ProductForm({ initialData, collections, categories = [], returnT
   const [images, setImages] = useState<{ url: string }[]>(initialData?.images || []);
   const [newImageUrl, setNewImageUrl] = useState("");
 
+  // Deletion (existing products only), behind a confirmation
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/products/${initialData.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Erreur lors de la suppression");
+      router.push(returnTo);
+      router.refresh();
+    } catch (err: any) {
+      setError(err.message);
+      setConfirmDelete(false);
+      setIsDeleting(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -340,7 +358,7 @@ export function ProductForm({ initialData, collections, categories = [], returnT
   };
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-4xl space-y-6 pb-20">
+    <form ref={formRef} onSubmit={handleSubmit} className="max-w-4xl space-y-6 pb-20">
       {/* Action Bar */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -848,6 +866,57 @@ export function ProductForm({ initialData, collections, categories = [], returnT
 
         </div>
       </div>
+      {/* Danger zone — existing products only */}
+      {initialData && (
+        <div className="bg-white rounded-2xl border border-red-200 p-6 shadow-sm">
+          <h2 className="text-sm font-bold text-red-700 mb-1">Supprimer ce produit</h2>
+          <p className="text-xs text-[#2A2424]/60 mb-4">
+            Le produit disparaît de la boutique, de la recherche et de l&apos;admin. Les commandes passées sont conservées.
+            Pour le cacher temporairement, passez-le plutôt en <strong>Brouillon</strong>.
+          </p>
+          <button
+            type="button"
+            onClick={() => setConfirmDelete(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-red-300 text-red-600 rounded-xl text-sm font-bold hover:bg-red-50 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" /> Supprimer le produit
+          </button>
+        </div>
+      )}
+
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => !isDeleting && setConfirmDelete(false)}>
+          <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+            <h3 className="text-base font-bold text-[#2A2424]">Supprimer « {initialData.title} » ?</h3>
+            <ul className="mt-3 space-y-1.5 text-sm text-[#2A2424]/70 list-disc pl-5">
+              <li>Il ne sera plus visible ni achetable sur la boutique.</li>
+              <li>Ses variantes et leur stock sont supprimés ; la synchro Odoo l&apos;ignorera.</li>
+              <li>Les commandes déjà passées restent intactes.</li>
+              <li>La suppression ne peut pas être annulée depuis l&apos;admin.</li>
+            </ul>
+            <div className="mt-6 flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+              <button
+                type="button"
+                disabled={isDeleting}
+                // Hide it instead: save as draft right away (submitted after the re-render picks up the status)
+                onClick={() => { setStatus("draft"); setConfirmDelete(false); setTimeout(() => formRef.current?.requestSubmit(), 0); }}
+                className="px-4 py-2 rounded-xl text-sm font-semibold border border-[#EDE0E0] text-[#2A2424]/70 hover:text-[#2A2424]"
+              >
+                Plutôt le passer en brouillon
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleDelete}
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Supprimer définitivement
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }
