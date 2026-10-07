@@ -31,7 +31,9 @@ export function ProductForm({ initialData, collections, categories = [], returnT
   // New-product-only: price for the single default variant created on save.
   // No division needed — amounts are stored as full integers (e.g. 15000), not cents.
   const [newProductPrice, setNewProductPrice] = useState<string>("");
-  const [newProductCurrency] = useState("xof");
+  // The store sells in a single XAF region (Cameroon): an XOF price makes the variant unsellable
+  // (add-to-cart fails with "calculated_amount" undefined).
+  const [newProductCurrency] = useState("xaf");
 
   // Existing-product: one editable row per real variant — price (in whatever
   // currency that variant's price actually uses, never assumed) + per-store stock.
@@ -48,7 +50,7 @@ export function ProductForm({ initialData, collections, categories = [], returnT
     (initialData?.variants || []).map((v: any) => ({
       id: v.id,
       title: v.title || v.barcode || "Variante",
-      currency: v.prices?.[0]?.currency_code || "xof",
+      currency: v.prices?.[0]?.currency_code || "xaf",
       price: v.prices?.[0]?.amount != null ? String(v.prices[0].amount) : "",
       stockB1: v.metadata?.stock_b1 != null ? String(v.metadata.stock_b1) : "",
       stockB2: v.metadata?.stock_b2 != null ? String(v.metadata.stock_b2) : "",
