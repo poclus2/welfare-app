@@ -45,6 +45,76 @@ async function shrink(file: File, budget: number): Promise<Blob> {
   throw new Error("Impossible de compresser la photo, essayez une photo plus nette ou plus petite");
 }
 
+// In-page camera. The file input with `capture` opens the phone's camera app and puts this page in the
+// background, and Android Chrome sometimes reloads it when coming back, which empties the whole form
+// (the photo of the front "did not work"). Shooting from the page itself keeps everything in place.
+function CameraModal({ onCapture, onClose, onUnavailable }: { onCapture: (file: File) => void; onClose: () => void; onUnavailable: () => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [ready, setReady] = useState(false);
+  const cbRef = useRef({ onUnavailable });
+  cbRef.current = { onUnavailable };
+
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+    let cancelled = false;
+    (async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" }, width: { ideal: 2560 }, height: { ideal: 1440 } },
+          audio: false,
+        });
+        if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
+        const v = videoRef.current!;
+        v.srcObject = stream;
+        await v.play();
+        setReady(true);
+      } catch {
+        if (!cancelled) cbRef.current.onUnavailable();
+      }
+    })();
+    return () => {
+      cancelled = true;
+      stream?.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
+
+  const shoot = () => {
+    const v = videoRef.current;
+    if (!v || !v.videoWidth) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = v.videoWidth;
+    canvas.height = v.videoHeight;
+    canvas.getContext("2d")!.drawImage(v, 0, 0);
+    canvas.toBlob((blob) => {
+      if (blob) onCapture(new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" }));
+    }, "image/jpeg", 0.92);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+      <div className="flex items-center justify-between px-4 py-3 text-white">
+        <p className="text-sm font-bold">Cadrez l&apos;étiquette, bien éclairée, sans reflet</p>
+        <button type="button" onClick={onClose} className="p-1.5 rounded-full bg-white/10" aria-label="Fermer">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="flex-1 min-h-0 flex items-center justify-center">
+        <video ref={videoRef} className="max-w-full max-h-full" muted playsInline />
+        {!ready && <Loader2 className="w-6 h-6 text-white animate-spin absolute" />}
+      </div>
+      <div className="py-5 flex justify-center">
+        <button
+          type="button"
+          onClick={shoot}
+          disabled={!ready}
+          className="w-16 h-16 rounded-full bg-white border-4 border-white/40 disabled:opacity-40 active:scale-95 transition-transform"
+          aria-label="Prendre la photo"
+        />
+      </div>
+    </div>
+  );
+}
+
 function PhotoSlot({
   label,
   hint,
@@ -58,12 +128,18 @@ function PhotoSlot({
   hint: string;
   shots: Shot[];
   max: number;
-  onAdd: (files: FileList | null) => void;
+  onAdd: (files: FileList | File[] | null) => void;
   onRemove: (i: number) => void;
   disabled: boolean;
 }) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const openCamera = () => {
+    // No in-page camera (old browser, http): fall back to the phone's camera app
+    if (typeof navigator.mediaDevices?.getUserMedia === "function") setCameraOpen(true);
+    else cameraRef.current?.click();
+  };
   const full = shots.length >= max;
   const btn =
     "flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-[#EDE0E0] bg-white text-[#2A2424] hover:bg-[#F5F0EB] transition-colors disabled:opacity-40";
@@ -86,14 +162,21 @@ function PhotoSlot({
         ))}
       </div>
       <div className="flex gap-2">
-        <button type="button" className={btn} disabled={disabled || full} onClick={() => cameraRef.current?.click()}>
+        <button type="button" className={btn} disabled={disabled || full} onClick={openCamera}>
           <Camera className="w-3.5 h-3.5" /> Prendre une photo
         </button>
         <button type="button" className={btn} disabled={disabled || full} onClick={() => fileRef.current?.click()}>
           <Upload className="w-3.5 h-3.5" /> Importer
         </button>
       </div>
-      {/* capture opens the rear camera on phones; on a computer it falls back to the file picker */}
+      {cameraOpen && (
+        <CameraModal
+          onClose={() => setCameraOpen(false)}
+          onCapture={(file) => { setCameraOpen(false); onAdd([file]); }}
+          onUnavailable={() => { setCameraOpen(false); cameraRef.current?.click(); }}
+        />
+      )}
+      {/* fallback: capture opens the phone's camera app; on a computer it falls back to the file picker */}
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { onAdd(e.target.files); e.target.value = ""; }} />
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple={max > 1} className="hidden" onChange={(e) => { onAdd(e.target.files); e.target.value = ""; }} />
     </div>
@@ -135,7 +218,7 @@ export function AiSheetGenerator({
   shotsRef.current = [...inci, ...front];
   useEffect(() => () => shotsRef.current.forEach((s) => URL.revokeObjectURL(s.preview)), []);
 
-  const add = (setter: React.Dispatch<React.SetStateAction<Shot[]>>, max: number) => (files: FileList | null) => {
+  const add = (setter: React.Dispatch<React.SetStateAction<Shot[]>>, max: number) => (files: FileList | File[] | null) => {
     if (!files?.length) return;
     setError("");
     setter((prev) => {

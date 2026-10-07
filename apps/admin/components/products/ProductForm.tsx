@@ -374,6 +374,51 @@ export function ProductForm({ initialData, collections, categories = [], returnT
         </div>
       )}
 
+      {/* Step 1 on creation: the barcode. Scanning it first tells right away whether the product is
+          already in the catalogue (e.g. imported from Odoo), before any time is spent on the sheet. */}
+      {!initialData && (
+        <div className="bg-white rounded-2xl border border-[#EDE0E0] p-5 sm:p-6 shadow-sm">
+          <h2 className="text-sm font-bold text-[#2A2424] mb-1 flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-[#2A2424] text-white text-[11px] flex items-center justify-center">1</span>
+            Scannez le code-barres
+          </h2>
+          <p className="text-[11px] text-[#2A2424]/50 mb-4">On vérifie d&apos;abord que le produit n&apos;existe pas déjà dans le catalogue.</p>
+          {!noBarcode && (
+            <BarcodeField
+              value={newBarcode}
+              onChange={setNewBarcode}
+              onStatus={setStatusFor("new")}
+              inputClass={inputClass}
+              labelClass={labelClass}
+            />
+          )}
+          {!noBarcode && (barcodeStatus["new"]?.duplicates.length ?? 0) > 0 && (
+            <div className="mt-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+              <p className="text-sm font-bold text-red-700">Ce produit existe déjà dans le catalogue</p>
+              {barcodeStatus["new"].duplicates.map(d => (
+                <p key={d.variant_id} className="text-sm text-red-700 mt-1">
+                  « {d.product_title} » —{" "}
+                  <a href={`/dashboard/products/${d.product_id}`} className="underline font-bold">ouvrir sa fiche</a>
+                </p>
+              ))}
+              <p className="text-[11px] text-red-600/80 mt-1">Modifiez le produit existant plutôt que d&apos;en créer un second : l&apos;enregistrement est bloqué.</p>
+            </div>
+          )}
+          {!noBarcode && barcodeStatus["new"]?.check === "gtin" && !barcodeStatus["new"]?.checking && barcodeStatus["new"]?.duplicates.length === 0 && (
+            <p className="mt-2 text-xs font-bold text-emerald-700">✓ Nouveau produit : continuez avec la fiche ci-dessous.</p>
+          )}
+          <label className="flex items-center gap-2 mt-3 text-xs text-[#2A2424]/60 cursor-pointer">
+            <input type="checkbox" checked={noBarcode} onChange={e => setNoBarcode(e.target.checked)} />
+            Ce produit n&apos;a pas de code-barres (coffret, échantillon…)
+          </label>
+          <p className="text-[10px] text-[#2A2424]/40 mt-1">
+            {noBarcode
+              ? "Sans code-barres, le stock ne sera jamais synchronisé depuis Odoo : il faudra le saisir à la main."
+              : "Le même code-barres doit exister dans Odoo (Hippodrome / Playce) pour que le stock se synchronise."}
+          </p>
+        </div>
+      )}
+
       <AiSheetGenerator
         collections={collections}
         categories={categories}
@@ -418,7 +463,7 @@ export function ProductForm({ initialData, collections, categories = [], returnT
             <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 shadow-sm">
               <h2 className="text-sm font-bold text-[#2A2424] mb-4 flex items-center gap-2">
                 <Tag className="w-4 h-4 text-[#C08A8E]" />
-                Prix, stock & code-barres
+                Prix & stock
               </h2>
               <div>
                 <label className={labelClass}>Prix de vente ({newProductCurrency.toUpperCase()})</label>
@@ -455,26 +500,6 @@ export function ProductForm({ initialData, collections, categories = [], returnT
                 </div>
               </div>
               <p className="text-[10px] text-[#2A2424]/40 mt-1">Si le produit est dans Odoo, la synchro remplacera ce stock par celui des boutiques.</p>
-              <div className="mt-5 pt-5 border-t border-[#EDE0E0]">
-                {!noBarcode && (
-                  <BarcodeField
-                    value={newBarcode}
-                    onChange={setNewBarcode}
-                    onStatus={setStatusFor("new")}
-                    inputClass={inputClass}
-                    labelClass={labelClass}
-                  />
-                )}
-                <label className="flex items-center gap-2 mt-2 text-xs text-[#2A2424]/60 cursor-pointer">
-                  <input type="checkbox" checked={noBarcode} onChange={e => setNoBarcode(e.target.checked)} />
-                  Ce produit n&apos;a pas de code-barres (coffret, échantillon…)
-                </label>
-                <p className="text-[10px] text-[#2A2424]/40 mt-1">
-                  {noBarcode
-                    ? "Sans code-barres, le stock ne sera jamais synchronisé depuis Odoo : il faudra le saisir à la main."
-                    : "Le même code-barres doit exister dans Odoo (Hippodrome / Playce) pour que le stock se synchronise."}
-                </p>
-              </div>
             </div>
           )}
 

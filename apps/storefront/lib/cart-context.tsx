@@ -75,8 +75,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try {
       setState(s => ({ ...s, isLoading: true }));
       const { cart } = await sdk.store.cart.retrieve(id, {
-        fields: "*items,*items.variant,*items.variant.product,*promotions,subtotal,discount_total,total,metadata",
+        fields: "*items,*items.variant,*items.variant.product,*promotions,subtotal,discount_total,total,metadata,completed_at",
       });
+
+      // A cart already turned into an order (e.g. completed outside this browser, or the page was closed
+      // right after payment) can no longer be changed: start from an empty cart instead of failing
+      if ((cart as any).completed_at) {
+        setState(s => ({ ...s, cartId: null, items: [], isLoading: false, subtotal: 0, discountTotal: 0, medusaTotal: null, promoCodes: [], pendingPromoCode: null, freeShipping: false }));
+        localStorage.removeItem("welfare_cart_id");
+        return;
+      }
 
       const parsedItems = cart.items?.map((item: any) => ({
         id: item.id,
@@ -123,22 +131,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try {
       setState(s => ({ ...s, isLoading: true }));
       
-      let currentCartId = localStorage.getItem("welfare_cart_id");
-      if (!currentCartId) {
+      const createCart = async () => {
         // Fetch regions first
         const { regions } = await sdk.store.region.list();
         const regionId = regions[0]?.id;
 
         const { cart } = await sdk.store.cart.create(regionId ? { region_id: regionId } : {});
-        currentCartId = cart.id;
-        localStorage.setItem("welfare_cart_id", currentCartId);
-      }
+        localStorage.setItem("welfare_cart_id", cart.id);
+        return cart.id;
+      };
 
-      // Add line item
-      await sdk.store.cart.createLineItem(currentCartId, {
-        variant_id: variantId,
-        quantity: quantity,
-      });
+      let currentCartId = localStorage.getItem("welfare_cart_id") || await createCart();
+
+      // Add line item. If the saved cart was already turned into an order, start a new cart once.
+      try {
+        await sdk.store.cart.createLineItem(currentCartId, { variant_id: variantId, quantity });
+      } catch (e: any) {
+        if (!/already completed/i.test(e?.message || "")) throw e;
+        currentCartId = await createCart();
+        await sdk.store.cart.createLineItem(currentCartId, { variant_id: variantId, quantity });
+      }
 
       await refreshCart(currentCartId);
       openCart();
