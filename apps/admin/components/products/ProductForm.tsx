@@ -238,6 +238,7 @@ export function ProductForm({ initialData, collections, categories = [], returnT
         if (!res.ok || !url) throw new Error(data?.error || "Envoi refusé");
         setImages(prev => (prev.some(im => im.url === url) ? prev : [...prev, { url }]));
         setThumbnail((prev: string) => prev || url);
+        setLastRemoved(null); // "Annuler" would restore a list without this new photo
         setUploads(u => u.filter(x => x.id !== id));
       } catch (e: any) {
         setUploads(u => u.map(x => (x.id === id ? { ...x, error: e.message || "Échec de l'envoi" } : x)));
@@ -247,10 +248,19 @@ export function ProductForm({ initialData, collections, categories = [], returnT
 
   // Every image shown once: the main one first, then the others
   const gallery = Array.from(new Set([thumbnail, ...images.map(im => im.url)].filter(Boolean))) as string[];
+  // A removed photo can be put back until the form is saved (the removal only takes effect then)
+  const [lastRemoved, setLastRemoved] = useState<{ url: string; wasMain: boolean; images: { url: string }[] } | null>(null);
   const removeImage = (url: string) => {
+    setLastRemoved({ url, wasMain: thumbnail === url, images });
     const rest = images.filter(im => im.url !== url);
     setImages(rest);
     if (thumbnail === url) setThumbnail(rest[0]?.url || "");
+  };
+  const undoRemove = () => {
+    if (!lastRemoved) return;
+    setImages(lastRemoved.images);
+    if (lastRemoved.wasMain) setThumbnail(lastRemoved.url);
+    setLastRemoved(null);
   };
 
   // Deletion (existing products only), behind a confirmation
@@ -315,7 +325,7 @@ export function ProductForm({ initialData, collections, categories = [], returnT
         categories: selectedCategoryIds.map(id => ({ id })),
         status,
         discountable: true,
-        thumbnail,
+        thumbnail: thumbnail || null,
         images: images.map(img => ({ url: img.url })),
       };
 
@@ -795,19 +805,28 @@ export function ProductForm({ initialData, collections, categories = [], returnT
                       {url === thumbnail && (
                         <span className="absolute left-1.5 top-1.5 px-1.5 py-0.5 rounded-md bg-[#2A2424] text-white text-[9px] font-bold">Principale</span>
                       )}
-                      <div className="absolute inset-x-0 bottom-0 flex justify-between p-1.5 bg-gradient-to-t from-black/50 to-transparent sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <div className="absolute inset-x-0 bottom-0 flex justify-between gap-1 p-1.5 bg-gradient-to-t from-black/60 to-transparent">
                         {url !== thumbnail ? (
-                          <button type="button" onClick={() => setThumbnail(url)} className="p-1 rounded-md bg-white/90 text-[#2A2424]" title="Définir comme image principale">
-                            <Star className="w-3.5 h-3.5" />
+                          <button type="button" onClick={() => setThumbnail(url)} className="p-1.5 rounded-lg bg-white/95 text-[#2A2424] hover:bg-white shadow-sm" title="Définir comme image principale" aria-label="Définir comme image principale">
+                            <Star className="w-4 h-4" />
                           </button>
                         ) : <span />}
-                        <button type="button" onClick={() => removeImage(url)} className="p-1 rounded-md bg-white/90 text-red-600" title="Retirer la photo">
-                          <X className="w-3.5 h-3.5" />
+                        <button type="button" onClick={() => removeImage(url)} className="p-1.5 rounded-lg bg-white/95 text-red-600 hover:bg-red-600 hover:text-white shadow-sm transition-colors" title="Supprimer la photo" aria-label="Supprimer la photo">
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {lastRemoved && (
+              <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-[#EDE0E0] bg-[#F5F0EB] px-3 py-2 text-xs text-[#2A2424]/80">
+                <span>Photo retirée. Elle sera supprimée du produit à l&apos;enregistrement.</span>
+                <button type="button" onClick={undoRemove} className="font-bold text-[#2A2424] underline underline-offset-2 whitespace-nowrap">
+                  Annuler
+                </button>
               </div>
             )}
 
@@ -833,6 +852,7 @@ export function ProductForm({ initialData, collections, categories = [], returnT
                       if (newImageUrl.trim()) {
                         setImages([...images, { url: newImageUrl.trim() }]);
                         setNewImageUrl("");
+                        setLastRemoved(null);
                       }
                     }}
                     className="px-4 py-2.5 bg-[#F5F0EB] hover:bg-[#EDE0E0] border border-[#EDE0E0] rounded-xl text-sm font-bold text-[#2A2424] transition-colors"
