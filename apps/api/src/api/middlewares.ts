@@ -20,6 +20,12 @@ export default defineMiddlewares({
       method: ["POST"],
       middlewares: [authenticate("customer", ["session", "bearer"])],
     },
+    // A creator's dashboard: only her own figures, found from her customer account
+    ...["/store/creator/me", "/store/creator/history", "/store/creator/rank"].map((matcher) => ({
+      matcher,
+      method: ["GET"] as any,
+      middlewares: [authenticate("customer", ["session", "bearer"])],
+    })),
     {
       matcher: "/store/skin-scans/:id/claim",
       method: ["POST"],

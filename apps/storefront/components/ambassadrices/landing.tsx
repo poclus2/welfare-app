@@ -293,6 +293,7 @@ function ApplicationForm() {
   const { t } = useI18n();
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [form, setForm] = useState({ firstName:"", lastName:"", email:"", phone:"", instagram:"", tiktok:"", youtube:"", followers:"", content:"", motivation:"", other:"", country:"", city:"", media_kit_url:"" });
   
   const set = (e: any) =>
@@ -312,6 +313,7 @@ function ApplicationForm() {
     <form onSubmit={async e => { 
       e.preventDefault(); 
       setLoading(true); 
+      setSubmitError("");
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000"}/store/creator-applications`, {
           method: "POST",
@@ -336,8 +338,15 @@ function ApplicationForm() {
             media_kit_url: form.media_kit_url,
           })
         });
-        if(res.ok) setSent(true);
-      } catch(e) { console.error(e) }
+        if (res.ok) setSent(true);
+        else {
+          const data = await res.json().catch(() => ({}));
+          setSubmitError(data.message || t("Impossible d'envoyer votre candidature. Réessayez."));
+        }
+      } catch(e) {
+        console.error(e);
+        setSubmitError(t("Impossible d'envoyer votre candidature. Réessayez."));
+      }
       finally { setLoading(false) }
     }} className="flex flex-col gap-5">
       
@@ -358,8 +367,8 @@ function ApplicationForm() {
           <input name="email" type="email" value={form.email} onChange={set} placeholder="aminata@email.com" required className="w-full bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 text-sm text-[#2A2424] outline-none focus:border-[#E5B6B9] focus:bg-white transition-all duration-200" />
         </div>
         <div>
-          <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#2A2424]/45 mb-2">{t("Téléphone WhatsApp")}</label>
-          <input name="phone" value={form.phone} onChange={set} placeholder="+221 77 000 00 00" className="w-full bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 text-sm text-[#2A2424] outline-none focus:border-[#E5B6B9] focus:bg-white transition-all duration-200" />
+          <label className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#2A2424]/45 mb-2">{t("Téléphone WhatsApp *")}</label>
+          <input name="phone" type="tel" value={form.phone} onChange={set} placeholder="+237 6 00 00 00 00" required className="w-full bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 text-sm text-[#2A2424] outline-none focus:border-[#E5B6B9] focus:bg-white transition-all duration-200" />
         </div>
       </div>
 
@@ -425,6 +434,14 @@ function ApplicationForm() {
         <p className="text-xs text-[#2A2424]/40 mb-3">{t("Facultatif — Collez un lien Google Drive, Notion, Linktree ou similaire")}</p>
         <input name="media_kit_url" value={form.media_kit_url} onChange={set} placeholder="https://drive.google.com/..." className="w-full bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 text-sm text-[#2A2424] outline-none focus:border-[#E5B6B9] focus:bg-white transition-all duration-200" />
       </div>
+
+      <p className="text-xs text-[#2A2424]/45 -mt-1">
+        {t("Utilisez le numéro WhatsApp avec lequel vous créerez votre compte The Welfare : c'est lui qui vous donnera accès à votre espace créatrice.")}
+      </p>
+
+      {submitError && (
+        <p className="text-sm text-red-600 font-medium">{submitError}</p>
+      )}
 
       <button type="submit" disabled={loading} className="w-full bg-[#2A2424] text-white rounded-xl py-4 font-bold text-sm mt-2 hover:bg-[#2A2424]/90 transition-colors disabled:opacity-50">
         {loading ? <CircleNotch className="w-5 h-5 animate-spin mx-auto" /> : t("Envoyer ma candidature")}
@@ -541,7 +558,7 @@ function HeroVideoSlider() {
 /* ═══════════════════════════════════════════════════════════════
    MAIN EXPORT
 ═══════════════════════════════════════════════════════════════ */
-export function LandingAmbassadrice() {
+export function LandingAmbassadrice({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
   return (
     <div className="w-full flex flex-col font-sans bg-[#FDFDFC]">
 
@@ -580,6 +597,19 @@ export function LandingAmbassadrice() {
                 Comment ça marche ?
               </a>
             </motion.div>
+
+            {/* Approved creators reach their dashboard through their customer account */}
+            <motion.p variants={fadeUp} initial="hidden" animate="visible" custom={3} className="-mt-10 mb-14 text-sm text-[#2A2424]/60">
+              {isLoggedIn ? (
+                <>Déjà créatrice partenaire ? Votre espace s&apos;ouvre avec le compte inscrit sur le numéro WhatsApp de votre candidature.</>
+              ) : (
+                <>Déjà créatrice partenaire ?{" "}
+                  <a href="/account/login?redirect=%2Fambassadrices" className="font-semibold text-[#C2164A] underline underline-offset-2">
+                    Connectez-vous à votre espace
+                  </a>
+                </>
+              )}
+            </motion.p>
 
             {/* Mini social proof */}
             <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={4} className="flex items-center gap-4">

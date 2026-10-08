@@ -1,28 +1,19 @@
-import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { AuthenticatedMedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { CREATOR_PARTNER_MODULE } from "../../../../modules/creator_partner"
+import { resolveCreatorForCustomer } from "../../../../lib/creator-account"
 
-export async function GET(req: MedusaRequest, res: MedusaResponse) {
+// The logged-in customer's own creator dashboard (customer auth required, see middlewares.ts).
+// 404 = this account is not a creator.
+export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) {
   const service = req.scope.resolve(CREATOR_PARTNER_MODULE) as any
-  const { code, customer_id, email } = req.query as any
-  
-  if (!code && !customer_id && !email) {
-    return res.status(400).json({ error: "code, customer_id or email required" })
-  }
-  
-  let creators: any[] = []
-  if (code) {
-    creators = await service.listCreatorPartners({ code }, {})
-  } else if (customer_id) {
-    creators = await service.listCreatorPartners({ customer_id }, {})
-  } else if (email) {
-    creators = await service.listCreatorPartners({ email }, {})
-  }
-  
-  if (!creators.length) {
+  const creator = await resolveCreatorForCustomer(
+    req.scope,
+    req.auth_context?.actor_id,
+    req.auth_context?.auth_identity_id
+  )
+  if (!creator) {
     return res.status(404).json({ error: "Creator not found" })
   }
-  
-  const creator = creators[0]
   const now = new Date()
   const year = now.getFullYear()
   const month = now.getMonth() + 1

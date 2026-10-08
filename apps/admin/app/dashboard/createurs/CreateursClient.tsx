@@ -100,12 +100,15 @@ export function CreateursClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (!res.ok) throw new Error("Erreur");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Erreur lors de la mise à jour");
+      }
       setSelectedApp((prev: any) => (prev ? { ...prev, status: newStatus } : null));
       router.refresh();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Erreur lors de la mise à jour");
+      alert(e?.message || "Erreur lors de la mise à jour");
     } finally {
       setIsUpdating(null);
     }
@@ -370,6 +373,33 @@ function CreatorsTab({ creators, config, onChanged, copiedCode, onCopy }: any) {
     }
   };
 
+  // Her dashboard opens when she logs in with the phone of her application; this is for when she
+  // signed up with another number
+  const linkCustomer = async (creator: any) => {
+    const phone = window.prompt(
+      `Numéro de téléphone du compte client de ${creator.first_name} ${creator.last_name} :`,
+      creator.phone || ""
+    );
+    if (!phone?.trim()) return;
+    setUpdatingId(creator.id);
+    try {
+      const res = await fetch(`/api/admin/creator-partners/${creator.id}/link-customer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phone.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Rattachement impossible");
+      const c = data.customer;
+      alert(`Espace rattaché au compte de ${[c?.first_name, c?.last_name].filter(Boolean).join(" ") || c?.phone || "la cliente"}.`);
+      onChanged();
+    } catch (e: any) {
+      alert(e?.message || "Rattachement impossible");
+    } finally {
+      setUpdatingId("");
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
@@ -445,13 +475,14 @@ function CreatorsTab({ creators, config, onChanged, copiedCode, onCopy }: any) {
                 <th className="py-3 px-6 font-medium">Créateur</th>
                 <th className="py-3 px-6 font-medium">Code</th>
                 <th className="py-3 px-6 font-medium">Statut</th>
+                <th className="py-3 px-6 font-medium">Compte client</th>
                 <th className="py-3 px-6 font-medium text-right">Créateur du mois</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#EDE0E0]">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="py-12 text-center text-gray-500">Aucun créateur trouvé.</td>
+                  <td colSpan={5} className="py-12 text-center text-gray-500">Aucun créateur trouvé.</td>
                 </tr>
               ) : (
                 filtered.map((c: any) => (
@@ -471,6 +502,24 @@ function CreatorsTab({ creators, config, onChanged, copiedCode, onCopy }: any) {
                       </button>
                     </td>
                     <td className="py-4 px-6"><StatusBadge status={c.status} /></td>
+                    <td className="py-4 px-6">
+                      {c.customer_id?.startsWith("cus_") ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700">
+                          <Check className="w-3.5 h-3.5" /> Rattaché
+                        </span>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500" title="Le rattachement se fera quand elle se connectera avec le numéro de sa candidature">En attente</span>
+                          <button
+                            onClick={() => linkCustomer(c)}
+                            disabled={updatingId === c.id}
+                            className="text-xs font-semibold text-[#C08A8E] hover:underline disabled:opacity-50"
+                          >
+                            Rattacher
+                          </button>
+                        </div>
+                      )}
+                    </td>
                     <td className="py-4 px-6 text-right">
                       <button
                         onClick={() => toggleCreatorOfMonth(c)}

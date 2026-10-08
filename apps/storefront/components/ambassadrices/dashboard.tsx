@@ -3,12 +3,12 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Copy, Check, QrCode, TrendUp, Users, ShoppingBag,
-  ChartLineUp, Clock, Trophy, CircleNotch, Sparkle
+  ChartLineUp, Clock, Trophy
 } from "@phosphor-icons/react";
+import Link from "next/link";
 import { useI18n } from "@/lib/i18n-context";
+import { sdk } from "@/lib/medusa";
 
-const MEDUSA_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000";
-const PUB_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "";
 
 const MONTHS_FR = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
 
@@ -34,94 +34,26 @@ function StatCard({ label, value, sub, accent = false }: { label: string; value:
   );
 }
 
-export function DashboardInfluenceur() {
+// Shown to a logged-in customer whose account is a creator space: `initialData` is her
+// /store/creator/me answer (the API only ever returns the logged-in creator's own figures).
+export function DashboardInfluenceur({ initialData }: { initialData: any }) {
   const { t } = useI18n();
-  const [data, setData] = useState<any>(null);
+  const data = initialData;
   const [history, setHistory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState("");
-  const [email, setEmail] = useState("");
-  const [emailInput, setEmailInput] = useState("");
-  const [notFound, setNotFound] = useState(false);
 
-  const loadData = async (emailToUse: string) => {
-    setLoading(true);
-    setNotFound(false);
-    try {
-      const headers: Record<string, string> = {};
-      if (PUB_KEY) headers["x-publishable-api-key"] = PUB_KEY;
-      const [meRes, histRes] = await Promise.all([
-        fetch(`${MEDUSA_URL}/store/creator/me?email=${encodeURIComponent(emailToUse)}`, { headers }),
-        fetch(`${MEDUSA_URL}/store/creator/history?email=${encodeURIComponent(emailToUse)}`, { headers }),
-      ]);
-      if (!meRes.ok) { setNotFound(true); setLoading(false); return; }
-      const meData = await meRes.json();
-      const histData = histRes.ok ? await histRes.json() : { history: [] };
-      setData(meData);
-      setHistory(histData.history || []);
-    } catch (e) {
-      setNotFound(true);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEmailSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setEmail(emailInput);
-    loadData(emailInput);
-  };
+  useEffect(() => {
+    sdk.client
+      .fetch("/store/creator/history", { method: "GET" })
+      .then((res: any) => setHistory(res?.history || []))
+      .catch(() => setHistory([]));
+  }, []);
 
   const copy = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
     setCopied(key);
     setTimeout(() => setCopied(""), 2000);
   };
-
-  // Email login screen
-  if (!email || notFound) {
-    return (
-      <div className="w-full max-w-md mx-auto py-24 px-6">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-[#F4EAEB] rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Sparkle className="w-8 h-8 text-[#C2164A]" weight="fill" />
-          </div>
-          <h2 className="text-2xl font-bold text-[#2A2424]" style={{ letterSpacing: "-0.02em" }}>
-            {t("Mon Espace Créateur")}
-          </h2>
-          <p className="text-[#2A2424]/60 mt-2 text-sm">
-            {t("Entrez votre email pour accéder à votre tableau de bord.")}
-          </p>
-          {notFound && (
-            <p className="text-red-500 text-sm mt-3 font-medium">
-              {t("Aucun compte créateur trouvé pour cet email.")}
-            </p>
-          )}
-        </div>
-        <form onSubmit={handleEmailSubmit} className="flex flex-col gap-3">
-          <input
-            type="email"
-            value={emailInput}
-            onChange={e => setEmailInput(e.target.value)}
-            placeholder="votre@email.com"
-            required
-            className="w-full bg-[#F8F5F2] border border-[#EDE0E0] rounded-xl px-4 py-3.5 text-sm text-[#2A2424] outline-none focus:border-[#E5B6B9] focus:bg-white transition-all"
-          />
-          <button type="submit" className="w-full bg-[#2A2424] text-white rounded-xl py-3.5 font-bold text-sm hover:bg-black transition-colors">
-            {t("Accéder à mon tableau de bord")}
-          </button>
-        </form>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="w-full flex items-center justify-center py-32">
-        <CircleNotch className="w-10 h-10 text-[#C2164A] animate-spin" />
-      </div>
-    );
-  }
 
   if (!data) return null;
 
@@ -148,12 +80,12 @@ export function DashboardInfluenceur() {
             </span>
           )}
         </div>
-        <button
-          onClick={() => { setEmail(""); setEmailInput(""); setData(null); setNotFound(false); }}
+        <Link
+          href="/account"
           className="text-xs text-[#2A2424]/40 hover:text-[#2A2424] transition-colors underline underline-offset-2"
         >
-          {t("Changer de compte")}
-        </button>
+          {t("Mon compte client")}
+        </Link>
       </div>
 
       {/* Section 1 — KPIs Ce mois-ci */}

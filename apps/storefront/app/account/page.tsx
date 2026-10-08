@@ -159,6 +159,7 @@ export default function AccountPage() {
   const [customer, setCustomer] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [scans, setScans] = useState<any[]>([]);
+  const [isCreator, setIsCreator] = useState(false); // her account opens a creator space (/ambassadrices)
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false); // the account itself could not be loaded (network...)
   const [partialError, setPartialError] = useState(false); // orders or diagnostics could not be loaded
@@ -190,6 +191,9 @@ export default function AccountPage() {
       if (ordersRes) setOrders((ordersRes as any).orders || []);
       if (scansRes) setScans((scansRes as any).scans || []);
       if (!ordersRes || !scansRes) setPartialError(true);
+
+      // 404 = not a creator: nothing to show, not an error
+      sdk.client.fetch("/store/creator/me", { method: "GET" }).then(() => setIsCreator(true)).catch(() => setIsCreator(false));
     } catch (err: any) {
       console.error(err);
       // Only "not logged in" goes back to the login page: a network hiccup shouldn't log her out of the page
@@ -330,6 +334,15 @@ export default function AccountPage() {
                 </button>
               );
             })}
+            {isCreator && (
+              <Link
+                href="/ambassadrices"
+                className="snap-start whitespace-nowrap md:w-full flex items-center gap-2 md:gap-3 px-4 py-2.5 md:py-3 rounded-xl transition-all duration-200 text-sm font-medium text-[#E5B6B9] hover:text-[#F4EAEB] hover:bg-[#F4EAEB]/5 bg-white/5 md:bg-transparent"
+              >
+                <Sparkle weight="fill" className="w-4 h-4 md:w-5 md:h-5" />
+                {t("Espace créatrice")}
+              </Link>
+            )}
           </nav>
 
           {/* Bottom section (Desktop only or just styled nicely) */}
