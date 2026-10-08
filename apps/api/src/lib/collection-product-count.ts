@@ -10,7 +10,7 @@ export async function syncCollectionProductCounts(container: any) {
   const productModuleService = container.resolve(Modules.PRODUCT)
 
   const { data: collections } = await query.graph({
-    entity: "collection",
+    entity: "product_collection",
     fields: ["id", "metadata", "products.id"],
   })
 
