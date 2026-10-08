@@ -24,7 +24,7 @@ function RegisterForm() {
 
   const [step, setStep] = useState<"info" | "otp">("info");
   const [phone, setPhone] = useState(phoneParam || "");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(searchParams.get("email") || "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [firstName, setFirstName] = useState("");
@@ -71,15 +71,17 @@ function RegisterForm() {
     setError("");
 
     try {
-      await sdk.client.fetch("/store/otp/verify", {
+      const verified: any = await sdk.client.fetch("/store/otp/verify", {
         method: "POST",
         body: { phone, code, purpose: "signup" },
       });
 
+      // The API only creates the account of a number that was just verified (signup_ticket)
       const token = await sdk.auth.register("customer", "phonepass", {
         phone,
         password,
-      });
+        signup_ticket: verified?.signup_ticket,
+      } as any);
 
       const customerEmail =
         email.trim() || `${phone.replace(/\D/g, "")}@phone.thewelfarecm.com`;
@@ -105,6 +107,11 @@ function RegisterForm() {
     } catch (err: any) {
       console.error(err);
       const errMsg = err?.message || JSON.stringify(err) || "";
+      if (errMsg.includes("Vérification du numéro")) {
+        setCode("");
+        setError(t("La vérification du numéro a expiré. Redemandez un code."));
+        return;
+      }
       const isPhoneExists =
         errMsg.toLowerCase().includes("already exists") ||
         errMsg.toLowerCase().includes("identity") ||

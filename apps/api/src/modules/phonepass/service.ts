@@ -1,6 +1,7 @@
 import { AbstractAuthModuleProvider, isString, MedusaError } from "@medusajs/framework/utils"
 import { isPresent } from "@medusajs/framework/utils"
 import scrypt from "scrypt-kdf"
+import { verifySignupTicket } from "../../lib/login-ticket"
 
 type PhonePassOptions = {
   hashConfig?: { logN: number; r: number; p: number }
@@ -110,6 +111,11 @@ class PhonePassAuthService extends AbstractAuthModuleProvider {
     }
     if (!phone || !isString(phone)) {
       return { success: false, error: "Phone should be a string" }
+    }
+    // The number must have been verified by WhatsApp code just before (see lib/login-ticket.ts)
+    const { signup_ticket } = userData.body ?? {}
+    if (!isString(signup_ticket) || !verifySignupTicket(signup_ticket, phone)) {
+      return { success: false, error: "Vérification du numéro expirée. Redemandez un code." }
     }
 
     try {

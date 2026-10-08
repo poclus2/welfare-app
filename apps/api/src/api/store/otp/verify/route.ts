@@ -2,7 +2,7 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules } from "@medusajs/framework/utils"
 import { verifyOtp, OtpPurpose } from "../../../../lib/otp"
 import { OTP_MODULE } from "../../../../modules/otp"
-import { issueLoginTicket } from "../../../../lib/login-ticket"
+import { issueLoginTicket, issueSignupTicket } from "../../../../lib/login-ticket"
 
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const { phone, code, purpose } = (req.body || {}) as { phone?: string; code?: string; purpose?: OtpPurpose }
@@ -36,5 +36,6 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     return
   }
 
-  res.json({ verified: true })
+  // phonepass registration requires this ticket: it proves the number was verified
+  res.json({ verified: true, signup_ticket: issueSignupTicket(phone) })
 }
