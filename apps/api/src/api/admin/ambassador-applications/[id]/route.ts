@@ -4,6 +4,7 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { AMBASSADOR_APPLICATION_MODULE } from "../../../../modules/ambassador_application"
 import { createPromotionsWorkflow } from "@medusajs/medusa/core-flows"
 import { Resend } from "resend"
+import { EMAIL_FROM } from "../../../../lib/email"
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
   const service = req.scope.resolve(AMBASSADOR_APPLICATION_MODULE) as any
@@ -136,7 +137,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       if (process.env.RESEND_API_KEY) {
         const resend = new Resend(process.env.RESEND_API_KEY);
         await resend.emails.send({
-          from: "The Welfare <contact@thewelfare.store>",
+          from: EMAIL_FROM,
           to: app.email,
           subject: "Bienvenue dans le programme Créateurs Partenaires The Welfare !",
           html: `

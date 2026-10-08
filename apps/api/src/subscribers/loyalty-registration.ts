@@ -2,6 +2,7 @@ import { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 import { Modules } from "@medusajs/framework/utils"
 import { Resend } from "resend"
 import { pointsForTotal } from "../lib/loyalty"
+import { EMAIL_FROM } from "../lib/email"
 
 // order.placed: credit loyalty points to the customer (once per order), and invite guests to open an
 // account so they can collect them.
@@ -60,8 +61,7 @@ export default async function loyaltyRegistration({
     const resend = new Resend(resendApiKey)
     const storeUrl = process.env.STORE_CORS?.split(",")[0] || "https://thewelfarecm.com"
     const registerUrl = `${storeUrl}/account/register?email=${encodeURIComponent(order.email)}`
-    // Resend only sends from a verified domain
-    const from = process.env.LOYALTY_EMAIL_FROM || "The Welfare Shop <hello@thewelfarecm.com>"
+    const from = process.env.LOYALTY_EMAIL_FROM || EMAIL_FROM
     const firstName = order.shipping_address?.first_name || ""
 
     const { error } = await resend.emails.send({
