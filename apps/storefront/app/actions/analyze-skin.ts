@@ -686,7 +686,21 @@ FORMAT JSON ATTENDU :
 
       // Normalize: support both routine_steps (new) and kbeauty_routine (legacy)
       let routineSteps = parsed.routine_steps || parsed.kbeauty_routine || [];
-      
+
+      // Only products from the catalog given to the model may be recommended (in manual mode, the
+      // admin's per-step selection): the prompt asks for it, this enforces it.
+      if (hasCatalog) {
+        const allowedIds = new Set(productCatalog.map((p) => p.id));
+        const offCatalog = routineSteps.filter((s: any) => !allowedIds.has(s.medusa_product_id));
+        if (offCatalog.length) {
+          console.warn(
+            `[SkinCoach] ${offCatalog.length} step(s) dropped: product not in the catalog (${offCatalog.map((s: any) => s.medusa_product_id || s.product_name).join(", ")})`
+          );
+          routineSteps = routineSteps.filter((s: any) => allowedIds.has(s.medusa_product_id));
+          routineSteps.forEach((s: any, i: number) => { s.step_number = i + 1; });
+        }
+      }
+
       // Acne first: whatever the model returned, a spot treatment never ends up in the routine
       if (acne.acneFirst && excludedProductIds.size > 0) {
         routineSteps = routineSteps.filter((s: any) => !excludedProductIds.has(s.medusa_product_id));
