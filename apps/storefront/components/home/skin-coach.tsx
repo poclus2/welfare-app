@@ -26,7 +26,7 @@ export function SkinCoach() {
           </h2>
           
           <p className="text-[#2A2424]/70 text-lg mb-10 leading-relaxed">
-            {t("Éliminez les doutes. Scannez votre visage, répondez à trois questions simples et laissez notre IA concevoir une routine approuvée par des dermatologues, parfaitement adaptée aux besoins uniques de votre peau.")}
+            {t("Éliminez les doutes. Scannez votre visage, répondez à quelques questions et laissez notre IA concevoir votre routine sur-mesure, en suivant des règles de soin validées par des dermatologues.")}
           </p>
           
           <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">

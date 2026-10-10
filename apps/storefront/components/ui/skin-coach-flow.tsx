@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {  Scan, CaretRight, Camera, ArrowCounterClockwise, PaperPlaneTilt, Lightning } from "@phosphor-icons/react";
+import {  Scan, CaretRight, Camera, ArrowCounterClockwise, PaperPlaneTilt, Lightning, Images, X } from "@phosphor-icons/react";
 import Webcam from "react-webcam";
 import { analyzeSkin, SkinAnalysisResult } from "@/app/actions/analyze-skin";
 import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
@@ -18,8 +18,40 @@ type Message = {
   sender: "ai" | "user";
   text?: string;
   image?: string;
+  images?: string[];
   options?: Option[];
 };
+
+// Photos of the products she already uses (camera or gallery), sent to the prescription model only
+const MAX_ROUTINE_PHOTOS = 4;
+
+// Gallery photos are often 3-12 MB: shrink them to a JPEG small enough for the server action body limit
+// while keeping the labels readable.
+function resizeImageFile(file: File, maxSide = 1280, quality = 0.8): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        URL.revokeObjectURL(url);
+        return reject(new Error("canvas"));
+      }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("decode"));
+    };
+    img.src = url;
+  });
+}
 
 type Option = {
   label: string;
@@ -92,9 +124,19 @@ const DECISION_TREE: QuestionNode[] = [
     text: "C'est noté. Comment réagit généralement votre peau aux nouveaux produits ?",
     type: "choice",
     options: [
-      { label: "Très bien, elle supporte tout", nextQuestionId: "q_has_allergies" },
-      { label: "Sensible, parfois des rougeurs", nextQuestionId: "q_has_allergies" },
-      { label: "Très réactive et intolérante", nextQuestionId: "q_has_allergies" }
+      { label: "Très bien, elle supporte tout", nextQuestionId: "q_pregnancy" },
+      { label: "Sensible, parfois des rougeurs", nextQuestionId: "q_pregnancy" },
+      { label: "Très réactive et intolérante", nextQuestionId: "q_pregnancy" }
+    ]
+  },
+  {
+    // Pregnancy / breastfeeding: some actives are then excluded in code (lib/skin-safety.ts reads "Oui...")
+    id: "q_pregnancy",
+    text: "Êtes-vous actuellement enceinte ou en train d'allaiter ?",
+    type: "choice",
+    options: [
+      { label: "Oui, enceinte ou allaitante", nextQuestionId: "q_has_allergies" },
+      { label: "Non, ou je ne suis pas concernée", nextQuestionId: "q_has_allergies" }
     ]
   },
   {
@@ -177,7 +219,7 @@ const AIAvatar = () => (
 );
 
 // ─── Progress steps ──────────────────────────────────────────────────────────
-const TOTAL_STEPS = 9;
+const TOTAL_STEPS = 10;
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
@@ -186,6 +228,7 @@ export default function SkinCoachFlow() {
   const router = useRouter();
   const [captures, setCaptures] = useState<CaptureResult | null>(null);
   const [hasCaptured, setHasCaptured] = useState(false);
+  const [photoConsent, setPhotoConsent] = useState(false);
 
   const [currentQuestionId, setCurrentQuestionId] = useState<string>("q_main_goal");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -202,8 +245,12 @@ export default function SkinCoachFlow() {
   const [otherText, setOtherText] = useState("");
 
   const [showCamera, setShowCamera] = useState(false);
-  const [cameraNextQuestionId, setCameraNextQuestionId] = useState<string | undefined>(undefined);
   const webcamRef = useRef<Webcam>(null);
+
+  // Product photos waiting to be sent with the "current routine" answer
+  const [pendingPhotos, setPendingPhotos] = useState<string[]>([]);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const setResult = useSkinCoachStore((state) => state.setResult);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -255,12 +302,14 @@ export default function SkinCoachFlow() {
     setProgressPercent(5);
     setStepIndex(0);
     setIsGenerating(false);
+    setPendingPhotos([]);
+    setPhotoError(null);
   };
 
   const executeAnalysis = async (finalResponses: UserResponse[]) => {
     if (!captures) return;
     try {
-      const result = await analyzeSkin(captures, finalResponses);
+      const result = await analyzeSkin(captures, finalResponses, photoConsent);
       if (result.success && result.data) {
         setResult(result.data);
         setAnalysisProgress(100);
@@ -297,13 +346,53 @@ export default function SkinCoachFlow() {
     processNextStep(newResponses, nextQuestionId);
   };
 
-  const handlePhotoSubmit = (base64Image: string, nextQuestionId?: string) => {
-    if (!nextQuestionId) return;
-    const newResponses = [...userResponses, { questionId: currentQuestionId, answer: { type: "image" as const, base64: base64Image } }];
+  const addPendingPhotos = (photos: string[]) => {
+    setPhotoError(null);
+    setPendingPhotos((prev) => {
+      const room = MAX_ROUTINE_PHOTOS - prev.length;
+      if (photos.length > room) setPhotoError(t(`Vous pouvez ajouter jusqu'à ${MAX_ROUTINE_PHOTOS} photos.`));
+      return [...prev, ...photos.slice(0, Math.max(room, 0))];
+    });
+  };
+
+  const handleGalleryFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const photos: string[] = [];
+    let failed = 0;
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith("image/") && !/\.(heic|heif)$/i.test(file.name)) {
+        failed++;
+        continue;
+      }
+      try {
+        photos.push(await resizeImageFile(file));
+      } catch {
+        failed++;
+      }
+    }
+    addPendingPhotos(photos);
+    if (failed) setPhotoError(t("Certaines photos n'ont pas pu être lues. Essayez avec une photo JPEG ou PNG."));
+  };
+
+  // "Current routine" answer: product names and/or photos (camera or gallery), sent together
+  const handleRoutineSubmit = (nextQuestionId?: string) => {
+    const text = inputText.trim();
+    if ((!text && pendingPhotos.length === 0) || !nextQuestionId) return;
+    const newResponses: UserResponse[] = [
+      ...userResponses,
+      ...(text ? [{ questionId: currentQuestionId, answer: text }] : []),
+      ...pendingPhotos.map((base64) => ({ questionId: currentQuestionId, answer: { type: "image" as const, base64 } })),
+    ];
     setUserResponses(newResponses);
-    const userMsg: Message = { id: `msg-user-${Date.now()}`, sender: "user", image: base64Image };
-    setMessages((prev) => [...prev, userMsg]);
-    setShowCamera(false);
+    const now = Date.now();
+    setMessages((prev) => [
+      ...prev,
+      ...(text ? [{ id: `msg-user-${now}`, sender: "user" as const, text }] : []),
+      ...(pendingPhotos.length ? [{ id: `msg-user-photos-${now}`, sender: "user" as const, images: pendingPhotos }] : []),
+    ]);
+    setInputText("");
+    setPendingPhotos([]);
+    setPhotoError(null);
     processNextStep(newResponses, nextQuestionId);
   };
 
@@ -350,6 +439,7 @@ export default function SkinCoachFlow() {
           <SmartCameraCapture
             onComplete={handleCaptureComplete}
             onCancel={() => router.push("/")}
+            onConsent={() => setPhotoConsent(true)}
           />
         ) : (
           <div className="relative w-full h-full flex flex-row">
@@ -445,7 +535,13 @@ export default function SkinCoachFlow() {
                         : { background: "white", border: "1px solid rgba(200,134,138,0.15)", color: "#3D2B2D", boxShadow: "0 2px 8px rgba(200,134,138,0.08)" }
                       }
                     >
-                      {msg.image ? (
+                      {msg.images ? (
+                        <div className={`grid gap-1.5 ${msg.images.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+                          {msg.images.map((src, i) => (
+                            <img key={i} src={src} alt={t("Photo de produit")} className="w-full aspect-square rounded-xl object-cover" />
+                          ))}
+                        </div>
+                      ) : msg.image ? (
                         <img src={msg.image} alt={t("Photo utilisateur")} className="w-full h-auto rounded-xl object-cover" />
                       ) : (
                         msg.text ? t(msg.text) : null
@@ -619,6 +715,41 @@ export default function SkinCoachFlow() {
               className="px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shrink-0"
               style={{ borderTop: "1px solid rgba(200,134,138,0.1)" }}
             >
+              {currentNode.type === "text_or_photo" && (
+                <>
+                  {/* Product photos picked so far, sent together with the text */}
+                  {pendingPhotos.length > 0 && (
+                    <div className="flex gap-2 mb-3 overflow-x-auto">
+                      {pendingPhotos.map((src, i) => (
+                        <div key={i} className="relative shrink-0">
+                          <img src={src} alt={t("Photo de produit")} className="w-16 h-16 rounded-xl object-cover border border-rose-100" />
+                          <button
+                            onClick={() => setPendingPhotos((prev) => prev.filter((_, j) => j !== i))}
+                            aria-label={t("Retirer la photo")}
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#2A2424] text-white flex items-center justify-center shadow"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {photoError && (
+                    <p className="text-xs mb-2" style={{ color: "#B06068" }}>{photoError}</p>
+                  )}
+                  <input
+                    ref={galleryInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      handleGalleryFiles(e.target.files);
+                      e.target.value = ""; // the same photo can be picked again after removing it
+                    }}
+                  />
+                </>
+              )}
               <div className="flex items-center gap-3 relative">
                   <div className="flex-1 relative">
                     <input
@@ -627,11 +758,12 @@ export default function SkinCoachFlow() {
                       onChange={(e) => setInputText(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
-                          handleTextSubmit(inputText, currentNode.nextQuestionId);
+                          if (currentNode.type === "text_or_photo") handleRoutineSubmit(currentNode.nextQuestionId);
+                          else handleTextSubmit(inputText, currentNode.nextQuestionId);
                         }
                       }}
-                      placeholder={t("Votre réponse...")}
-                      className={`w-full text-[14px] py-4 ${currentNode.type === "text_or_photo" ? 'pl-5 pr-14' : 'pl-5 pr-5'} rounded-2xl outline-none transition-all`}
+                      placeholder={t(currentNode.type === "text_or_photo" ? "Nom des produits, ou ajoutez des photos" : "Votre réponse...")}
+                      className={`w-full text-[14px] py-4 ${currentNode.type === "text_or_photo" ? 'pl-5 pr-[5.5rem]' : 'pl-5 pr-5'} rounded-2xl outline-none transition-all`}
                       style={{
                         background: "white",
                         border: "1.5px solid rgba(200,134,138,0.25)",
@@ -640,21 +772,33 @@ export default function SkinCoachFlow() {
                       }}
                     />
                     {currentNode.type === "text_or_photo" && (
-                      <button
-                        onClick={() => {
-                          setCameraNextQuestionId(currentNode.nextQuestionId);
-                          setShowCamera(true);
-                        }}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors"
-                        style={{ color: "rgba(200,134,138,0.8)" }}
-                      >
-                        <Camera className="w-5 h-5" />
-                      </button>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-3" style={{ color: "rgba(200,134,138,0.8)" }}>
+                        <button
+                          onClick={() => galleryInputRef.current?.click()}
+                          disabled={pendingPhotos.length >= MAX_ROUTINE_PHOTOS}
+                          aria-label={t("Choisir dans la galerie")}
+                          className="transition-colors disabled:opacity-30"
+                        >
+                          <Images className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => setShowCamera(true)}
+                          disabled={pendingPhotos.length >= MAX_ROUTINE_PHOTOS}
+                          aria-label={t("Prendre une photo")}
+                          className="transition-colors disabled:opacity-30"
+                        >
+                          <Camera className="w-5 h-5" />
+                        </button>
+                      </div>
                     )}
                   </div>
                   <button
-                    onClick={() => handleTextSubmit(inputText, currentNode.nextQuestionId)}
-                    disabled={!inputText.trim()}
+                    onClick={() =>
+                      currentNode.type === "text_or_photo"
+                        ? handleRoutineSubmit(currentNode.nextQuestionId)
+                        : handleTextSubmit(inputText, currentNode.nextQuestionId)
+                    }
+                    disabled={!inputText.trim() && !(currentNode.type === "text_or_photo" && pendingPhotos.length > 0)}
                     className="p-4 rounded-2xl transition-all disabled:opacity-30 shadow-md active:scale-95"
                     style={{ background: "linear-gradient(135deg, #C8868A, #E5B6B9)" }}
                   >
@@ -697,8 +841,9 @@ export default function SkinCoachFlow() {
                 <button
                   onClick={() => {
                     const src = webcamRef.current?.getScreenshot();
-                    if (src && cameraNextQuestionId) {
-                      handlePhotoSubmit(src, cameraNextQuestionId);
+                    if (src) {
+                      addPendingPhotos([src]);
+                      setShowCamera(false);
                     }
                   }}
                   className="w-20 h-20 bg-white/20 rounded-full border-4 border-white flex items-center justify-center p-2 backdrop-blur-sm hover:scale-105 active:scale-95 transition-transform"

@@ -617,6 +617,15 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
               ))}
             </div>
           </motion.div>
+
+          {/* ─── MEDICAL DISCLAIMER ─── */}
+          <motion.p
+            variants={itemVariants}
+            className="text-[11px] leading-relaxed text-center px-2"
+            style={{ color: "rgba(61,43,45,0.5)" }}
+          >
+            Ce diagnostic est établi par une intelligence artificielle à partir de vos photos et de vos réponses. Il ne constitue pas un avis médical et ne remplace pas la consultation d'un dermatologue. En cas de lésions, de douleur, d'irritation persistante, de grossesse ou de traitement en cours, demandez conseil à un professionnel de santé avant de commencer une nouvelle routine.
+          </motion.p>
         </motion.div>
       </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {  X, PaperPlaneRight, CaretDown, ChatTeardropText } from "@phosphor-icons/react";
 import { IconIA } from "@/components/ui/icons/IconIA";
@@ -11,6 +12,7 @@ export function ChatWidget() {
   const { isOpen, messages, productContext, isLoading, toggleChat, closeChat, addMessage, setLoading } = useChatStore();
   const [input, setInput] = useState("");
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     if (isOpen) {
@@ -54,6 +56,9 @@ export function ChatWidget() {
       handleSend();
     }
   };
+
+  // The Skin Coach has its own assistant, and the bubble would cover its send button / bottom bar
+  if (pathname?.startsWith("/skin-coach")) return null;
 
   return (
     <>

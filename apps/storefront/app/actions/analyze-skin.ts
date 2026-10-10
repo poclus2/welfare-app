@@ -1,5 +1,7 @@
 "use server";
 
+import { exclusionReason, needsInciCheck, readSafetyProfile } from "@/lib/skin-safety";
+
 export type UserResponse = {
   questionId: string;
   answer: string | { type: "image"; base64: string };
@@ -94,6 +96,7 @@ type EnrichedProduct = {
   category: string; // assigned by RAG
   price?: number;
   skin_concerns: string[]; // product.metadata.skin_concerns, most relevant first
+  inci: string; // product.metadata.raw_inci, checked against allergies / pregnancy
 };
 
 async function fetchStoreProductsByIds(
@@ -144,6 +147,7 @@ async function fetchStoreProductsByIds(
         category,
         price,
         skin_concerns: Array.isArray(p.metadata?.skin_concerns) ? p.metadata.skin_concerns.map(String) : [],
+        inci: typeof p.metadata?.raw_inci === "string" ? p.metadata.raw_inci : "",
       };
     });
   } catch {
@@ -352,9 +356,15 @@ function isSpotTreatment(p: EnrichedProduct): boolean {
 
 export async function analyzeSkin(
   images: { front: string; left: string; right: string },
-  userResponses: UserResponse[]
+  userResponses: UserResponse[],
+  photoConsent: boolean
 ): Promise<{ success: boolean; data?: SkinAnalysisResult; error?: string }> {
   try {
+    // The face photos are analysed and stored only with the consent given on the scan intro screen
+    if (photoConsent !== true) {
+      return { success: false, error: "Votre accord pour l'analyse de vos photos est nécessaire." };
+    }
+
     if (!process.env.OPENROUTER_API_KEY) {
       console.error("Clé API OpenRouter manquante.");
       return { success: false, error: "Configuration serveur incomplète (Clé API manquante)." };
@@ -465,7 +475,7 @@ FORMAT JSON ATTENDU :
 
     // acne first: spot treatments are kept out of what the model can choose from
     const excludedProductIds = new Set<string>();
-    const productCatalog = acne.acneFirst
+    const acneCatalog = acne.acneFirst
       ? rawCatalog.filter((p) => {
           if (isSpotTreatment(p)) {
             excludedProductIds.add(p.id);
@@ -478,6 +488,20 @@ FORMAT JSON ATTENDU :
       console.log(`[SkinCoach] Acne-first: ${excludedProductIds.size} spot-treatment products excluded from the catalog`);
     }
 
+    // Allergies and pregnancy: unsafe products are removed here, from their INCI list (lib/skin-safety.ts)
+    const safety = readSafetyProfile(answerFor(userResponses, "q_allergies_list"), answerFor(userResponses, "q_pregnancy"));
+    const safetyExclusions = new Map<string, number>();
+    const productCatalog = acneCatalog.filter((p) => {
+      const reason = exclusionReason(p, safety);
+      if (reason) safetyExclusions.set(reason, (safetyExclusions.get(reason) || 0) + 1);
+      return !reason;
+    });
+    if (needsInciCheck(safety) || safety.otherAllergy) {
+      console.log(
+        `[SkinCoach] Safety: allergies [${safety.allergies.map((a) => a.name).join(", ")}]${safety.otherAllergy ? ` + other "${safety.otherAllergy}"` : ""}, pregnant: ${safety.pregnant} — ${acneCatalog.length - productCatalog.length}/${acneCatalog.length} products excluded ${JSON.stringify(Object.fromEntries(safetyExclusions))}`
+      );
+    }
+
     const hasCatalog = productCatalog.length > 0;
 
     // Build catalog text with stock hints and full AI descriptions (for precise AI prioritization)
@@ -485,7 +509,9 @@ FORMAT JSON ATTENDU :
       ? productCatalog
           .map(
             (p) =>
-              `[${p.category}] ${p.title} (medusa_product_id: "${p.id}", stock: ${p.stock_total}, PRIX: ${p.price || 15000} FCFA)\n  COMPOSITION ET FICHE IA: ${(p.description || "Aucune description").replace(/\n/g, "  ")}\n`
+              `[${p.category}] ${p.title} (medusa_product_id: "${p.id}", stock: ${p.stock_total}, PRIX: ${p.price || 15000} FCFA)\n  COMPOSITION ET FICHE IA: ${(p.description || "Aucune description").replace(/\n/g, "  ")}\n` +
+              // a free-text allergy can only be checked by the model, so it gets the full ingredient list
+              (safety.otherAllergy ? `  INCI COMPLET: ${p.inci || "inconnu"}\n` : "")
           )
           .join("\n")
       : "Aucun produit spécifique disponible pour le moment.";
@@ -547,6 +573,27 @@ ${acne.redirected ? `- Dans 'empathetic_message', explique avec douceur, en une 
 - Ne rédige PAS toi-même la phrase "prochaine étape pour les taches" : elle est ajoutée automatiquement.`
       : "";
 
+    const safetyLines = [
+      safety.allergies.length
+        ? `- Allergies / sensibilités déclarées : ${safety.allergies.map((a) => a.name).join(", ")}. Les produits qui en contiennent ont déjà été retirés du catalogue.`
+        : "",
+      safety.allergies.some((a) => a.name.startsWith("aloé"))
+        ? `- Elle réagit à certains extraits de plantes : reste prudent avec les produits très riches en extraits botaniques et privilégie des formules simples.`
+        : "",
+      safety.otherAllergy
+        ? `- Autre allergie déclarée, en texte libre : "${safety.otherAllergy}". Vérifie l'INCI COMPLET de chaque produit et n'en recommande AUCUN qui contient cet ingrédient ou une forme proche. En cas de doute, n'ajoute pas l'étape.`
+        : "",
+      safety.pregnant
+        ? `- Elle est enceinte ou allaite : les rétinoïdes, l'hydroquinone et l'acide salicylique sans rinçage ont déjà été retirés. Propose une routine douce et, dans 'empathetic_message', invite-la avec bienveillance à faire valider sa routine par son médecin ou sa sage-femme.`
+        : "",
+    ].filter(Boolean);
+    const safetyBlock = safetyLines.length
+      ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ SÉCURITÉ DE LA CLIENTE (prioritaire sur tout le reste)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${safetyLines.join("\n")}`
+      : "";
+
     const claudeSystemPrompt = `Tu es le 'Skin Coach VIP' de la marque K-Beauty premium 'The Welfare', basée en Afrique (Cameroun). Tu es l'expert bienveillant qui va concevoir la routine de soin idéale pour chaque cliente.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -560,6 +607,8 @@ RESSENTI ET BESOINS DÉCLARÉS PAR LA CLIENTE (questionnaire)
 ${userChatJson}
 
 ${catalogConstraint}
+
+${safetyBlock}
 
 ${acnePriorityBlock}
 

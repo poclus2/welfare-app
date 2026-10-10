@@ -16,9 +16,10 @@ export type CaptureResult = {
 interface Props {
   onComplete: (images: CaptureResult) => void;
   onCancel: () => void;
+  onConsent: () => void; // the customer agreed to the analysis and storage of her photos
 }
 
-export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
+export default function SmartCameraCapture({ onComplete, onCancel, onConsent }: Props) {
   const webcamRef = useRef<Webcam>(null);
   const requestRef = useRef<number | undefined>(undefined);
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -28,6 +29,7 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
 
   // States
   const [showIntroModal, setShowIntroModal] = useState(true);
+  const [consentChecked, setConsentChecked] = useState(false);
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [step, setStep] = useState<"FRONT" | "LEFT" | "RIGHT" | "DONE">("FRONT");
   const [feedback, setFeedback] = useState<string>("Placez votre visage au centre du cadre");
@@ -256,14 +258,14 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.3 }}
-            className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-6"
+            className="absolute inset-0 z-50 flex justify-center overflow-y-auto bg-black/80 backdrop-blur-sm p-4 sm:p-6"
           >
             <motion.div
               initial={{ scale: 0.9, y: 20, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               transition={{ type: "spring", stiffness: 280, damping: 22, delay: 0.05 }}
-              className="bg-white border border-[rgba(200,134,138,0.2)] rounded-3xl p-8 max-w-md w-full shadow-[0_8px_30px_rgba(200,134,138,0.15)] relative overflow-hidden"
+              className="bg-white border border-[rgba(200,134,138,0.2)] rounded-3xl p-6 sm:p-8 my-auto max-w-md w-full shadow-[0_8px_30px_rgba(200,134,138,0.15)] relative overflow-hidden"
             >
               {/* Decorative gradient */}
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#C8868A] via-[#E8B4B8] to-[#C8868A] rounded-t-3xl" />
@@ -316,12 +318,30 @@ export default function SmartCameraCapture({ onComplete, onCancel }: Props) {
                 </div>
               </div>
 
+              {/* Consent: required before any photo is taken (analyze-skin.ts refuses without it) */}
+              <label className="flex items-start gap-3 mb-6 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={consentChecked}
+                  onChange={(e) => setConsentChecked(e.target.checked)}
+                  className="mt-0.5 w-5 h-5 shrink-0 accent-[#3D2B2D]"
+                />
+                <span className="text-xs leading-relaxed" style={{ color: "rgba(61,43,45,0.75)" }}>
+                  J'accepte que mes 3 photos et mes réponses soient analysées par l'intelligence artificielle de The Welfare, via nos prestataires d'IA situés hors du Cameroun, pour établir mon diagnostic de peau. Mes photos sont supprimées sous 2 heures si je ne crée pas de compte, et au bout de 6 mois si je l'enregistre dans mon compte.
+                </span>
+              </label>
+
               {/* CTA Button */}
               <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setShowIntroModal(false)}
-                className="w-full py-4 font-bold text-lg rounded-2xl shadow-lg transition-all"
+                whileHover={consentChecked ? { scale: 1.02 } : undefined}
+                whileTap={consentChecked ? { scale: 0.98 } : undefined}
+                disabled={!consentChecked}
+                onClick={() => {
+                  if (!consentChecked) return;
+                  onConsent();
+                  setShowIntroModal(false);
+                }}
+                className="w-full py-4 font-bold text-lg rounded-2xl shadow-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ backgroundColor: "#3D2B2D", color: "#FAF7F2", boxShadow: "0 10px 25px rgba(61,43,45,0.2)" }}
               >
                 Commencer le scan
