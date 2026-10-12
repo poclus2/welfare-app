@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ArrowLeft, ChevronRight, Activity, FileText, CheckCircle2, ScanFace, User, Calendar, Droplets, Zap, Eye, Circle, Sparkles } from "lucide-react";
 import { ScanImageGallery } from "./ScanImageGallery";
 import { PrintButton } from "./PrintButton";
+import { ScanReview } from "./ScanReview";
+import { ScanAudit } from "./ScanAudit";
 
 export const dynamic = "force-dynamic";
 
@@ -275,6 +277,18 @@ export default async function SkinScanDetailsPage({ params }: { params: Promise<
               </div>
             )}
           </div>
+
+          <ScanReview
+            scanId={scan.id}
+            routine={Array.isArray(scan.routine) ? scan.routine : []}
+            reviewedRoutine={scan.reviewed_routine}
+            reviewStatus={scan.review_status}
+            corrections={scan.review_corrections}
+            reviewedBy={scan.reviewed_by}
+            reviewedAt={scan.reviewed_at}
+          />
+
+          <ScanAudit scan={scan} />
         </div>
 
         {/* RIGHT: Metrics sidebar */}

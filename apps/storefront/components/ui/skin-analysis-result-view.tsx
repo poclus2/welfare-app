@@ -17,27 +17,16 @@ interface Props {
   locked?: boolean;
 }
 
-function computeOverallScore(metrics?: SkinAnalysisResult["metrics"]): number {
-  if (!metrics) return 72;
-  const { acne_severity_percentage, sebum_level_percentage, pore_visibility_percentage, eye_contour_fatigue_percentage, hydration_barrier_percentage } = metrics;
-  const score = Math.round(
-    (100 - acne_severity_percentage) * 0.25 +
-    (100 - sebum_level_percentage) * 0.2 +
-    (100 - pore_visibility_percentage) * 0.2 +
-    (100 - eye_contour_fatigue_percentage) * 0.15 +
-    hydration_barrier_percentage * 0.2
-  );
-  return Math.min(100, Math.max(0, score));
+// The photo analysis gives estimates, not measurements (client feedback, 2026-10-12): each indicator is shown
+// as a level, without a number, and there is no overall score nor skin age.
+type Level = { label: string; tone: 0 | 1 | 2 }; // 0 = fine, 2 = to take care of
+
+function levelOf(value: number, type: "good" | "bad"): Level {
+  if (type === "good") return value >= 66 ? { label: "Bonne", tone: 0 } : value >= 33 ? { label: "Moyenne", tone: 1 } : { label: "Faible", tone: 2 };
+  return value < 33 ? { label: "Faible", tone: 0 } : value < 66 ? { label: "Modéré", tone: 1 } : { label: "Marqué", tone: 2 };
 }
 
-function scoreLabel(score: number): { label: string; color: string } {
-  if (score >= 80) return { label: "Excellent", color: "#10b981" };
-  if (score >= 65) return { label: "Bon", color: "#34d399" };
-  if (score >= 50) return { label: "Moyen", color: "#f59e0b" };
-  return { label: "À améliorer", color: "#f87171" };
-}
-
-// ─── Individual Metric Card ─────────────────────────────────────────────────
+const TONE_COLOR = ["#10b981", "#f59e0b", "#f87171"];
 
 interface MetricCardProps {
   label: string;
@@ -48,16 +37,8 @@ interface MetricCardProps {
 }
 
 const MetricCard = ({ label, value, type, icon, delay }: MetricCardProps) => {
-  let barColor: string;
-  let displayValue = type === "bad" ? 100 - value : value;
-
-  if (displayValue >= 70) barColor = "#10b981";
-  else if (displayValue >= 45) barColor = "#f59e0b";
-  else barColor = "#f87171";
-
-  const status = displayValue >= 70 ? "Bon" : displayValue >= 45 ? "Moyen" : "À traiter";
-  const statusColor = displayValue >= 70 ? "text-emerald-500" : displayValue >= 45 ? "text-amber-500" : "text-rose-400";
-
+  const level = levelOf(value, type);
+  const filled = type === "good" ? 3 - level.tone : level.tone + 1; // segments lit: how much of it there is
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -66,29 +47,20 @@ const MetricCard = ({ label, value, type, icon, delay }: MetricCardProps) => {
       className="rounded-2xl p-4 flex flex-col gap-3"
       style={{ background: "white", border: "1px solid rgba(200,134,138,0.15)", boxShadow: "0 2px 10px rgba(200,134,138,0.08)" }}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{ background: "rgba(200,134,138,0.1)", border: "1px solid rgba(200,134,138,0.18)" }}>
-            {icon}
-          </div>
-          <span className="text-xs font-semibold leading-tight" style={{ color: "rgba(61,43,45,0.6)" }}>{label}</span>
+      <div className="flex items-center gap-2">
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+          style={{ background: "rgba(200,134,138,0.1)", border: "1px solid rgba(200,134,138,0.18)" }}>
+          {icon}
         </div>
-        <span className={`text-xs font-bold ${statusColor}`}>{status}</span>
+        <span className="text-xs font-semibold leading-tight" style={{ color: "rgba(61,43,45,0.6)" }}>{label}</span>
       </div>
       <div>
-        <div className="flex justify-between items-baseline mb-1.5">
-          <span className="text-2xl font-black" style={{ color: "#3D2B2D" }}>{displayValue}</span>
-          <span className="text-xs font-medium" style={{ color: "rgba(61,43,45,0.3)" }}>/100</span>
-        </div>
-        <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(200,134,138,0.1)" }}>
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${displayValue}%` }}
-            transition={{ duration: 1.4, ease: "easeOut", delay: delay + 0.2 }}
-            className="h-full rounded-full"
-            style={{ background: `linear-gradient(90deg, ${barColor}88, ${barColor})` }}
-          />
+        <span className="text-lg font-black" style={{ color: TONE_COLOR[level.tone] }}>{level.label}</span>
+        <div className="flex gap-1 mt-1.5">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex-1 h-1.5 rounded-full"
+              style={{ background: i < filled ? TONE_COLOR[level.tone] : "rgba(200,134,138,0.12)" }} />
+          ))}
         </div>
       </div>
     </motion.div>
@@ -356,8 +328,6 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
   const [addingAll, setAddingAll] = useState(false);
   const [allAdded, setAllAdded] = useState(false);
 
-  const overallScore = computeOverallScore(result.metrics);
-  const { label: overallLabel, color: overallColor } = scoreLabel(overallScore);
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -500,63 +470,9 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
                 </p>
               )}
 
-              {/* Overall Score */}
-              <div className="flex items-end gap-5">
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: "rgba(61,43,45,0.35)" }}>
-                    Score Global
-                  </p>
-                  <div className="flex items-baseline gap-1">
-                    <motion.span
-                      className="text-6xl font-black"
-                      style={{ color: overallColor, letterSpacing: "-0.04em" }}
-                      initial={{ opacity: 0, scale: 0.5 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ type: "spring", bounce: 0.4, delay: 0.3 }}
-                    >
-                      {overallScore}
-                    </motion.span>
-                    <span className="text-xl font-bold" style={{ color: "rgba(61,43,45,0.2)" }}>/100</span>
-                  </div>
-                  <span className="text-sm font-bold" style={{ color: overallColor }}>{overallLabel}</span>
-                </div>
-
-                {/* Semi-circular arc gauge */}
-                <div className="flex-1 flex justify-end">
-                  <svg width="90" height="55" viewBox="0 0 90 55">
-                    <path
-                      d="M 10 50 A 35 35 0 0 1 80 50"
-                      fill="none"
-                      stroke="rgba(200,134,138,0.12)"
-                      strokeWidth="8"
-                      strokeLinecap="round"
-                    />
-                    <motion.path
-                      d="M 10 50 A 35 35 0 0 1 80 50"
-                      fill="none"
-                      stroke={overallColor}
-                      strokeWidth="8"
-                      strokeLinecap="round"
-                      strokeDasharray="110"
-                      initial={{ strokeDashoffset: 110 }}
-                      animate={{ strokeDashoffset: 110 - (110 * overallScore / 100) }}
-                      transition={{ duration: 1.5, ease: "easeOut", delay: 0.4 }}
-                    />
-                    {result.estimated_skin_age && (
-                      <>
-                        <text x="45" y="44" textAnchor="middle" fill="#3D2B2D" fontSize="13" fontWeight="800">{result.estimated_skin_age}</text>
-                        <text x="45" y="54" textAnchor="middle" fill="rgba(61,43,45,0.35)" fontSize="7" fontWeight="600">ANS</text>
-                      </>
-                    )}
-                  </svg>
-                </div>
-              </div>
-
-              {result.estimated_skin_age && (
-                <p className="text-[11px] mt-3" style={{ color: "rgba(61,43,45,0.35)" }}>
-                  Âge cutané estimé par l&apos;IA · {result.estimated_skin_age} ans
-                </p>
-              )}
+              <p className="text-[11px]" style={{ color: "rgba(61,43,45,0.4)" }}>
+                D&apos;après vos photos et vos réponses au questionnaire
+              </p>
             </div>
           </motion.div>
         </motion.div>
@@ -569,13 +485,17 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
           <motion.div variants={itemVariants}>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-1 h-4 rounded-full" style={{ background: "#C8868A" }} />
-              <h2 className="text-sm font-bold" style={{ color: "#3D2B2D" }}>Indices Cutanés</h2>
+              <h2 className="text-sm font-bold" style={{ color: "#3D2B2D" }}>Ce que montrent vos photos</h2>
             </div>
             <div className="grid grid-cols-2 gap-3">
               {metricDefs.map((m, i) => (
                 <MetricCard key={m.label} label={m.label} value={m.value} type={m.type} icon={m.icon} delay={i * 0.1} />
               ))}
             </div>
+            <p className="text-[11px] leading-relaxed mt-3" style={{ color: "rgba(61,43,45,0.45)" }}>
+              Estimations visuelles faites d&apos;après vos photos, à titre indicatif : ce ne sont pas des mesures, et elles peuvent varier
+              avec la lumière ou la qualité des photos. Votre routine tient aussi compte de vos réponses au questionnaire.
+            </p>
           </motion.div>
 
           {/* ─── EMPATHETIC MESSAGE ─── */}
@@ -608,6 +528,24 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
               ))}
             </div>
           </motion.div>
+
+          {/* ─── REVIEW BY A SKIN ADVISOR (pilot) ─── */}
+          {result.review && (
+            <motion.div variants={itemVariants} className="rounded-2xl p-4 flex gap-3"
+              style={{ background: "#F2FBF6", border: "1px solid rgba(16,185,129,0.35)" }}>
+              <CheckCircle className="w-5 h-5 shrink-0 mt-0.5" style={{ color: "#10b981" }} />
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: "#0f9f6e" }}>
+                  {result.review.status === "corrected" ? "Routine revue par une conseillère The Welfare" : "Routine validée par une conseillère The Welfare"}
+                </p>
+                {result.review.status === "corrected" && (result.review.corrections || []).map((c, idx) => (
+                  <p key={idx} className="text-[13px] leading-relaxed" style={{ color: "rgba(61,43,45,0.8)" }}>
+                    {c.from ? <>{c.from} → <strong>{c.to}</strong></> : <strong>{c.to}</strong>} : {c.reason}
+                  </p>
+                ))}
+              </div>
+            </motion.div>
+          )}
 
           {/* ─── NOTICES (decided in code: doctor's opinion, treatment, budget, missing step) ─── */}
           {result.notices && result.notices.length > 0 && (

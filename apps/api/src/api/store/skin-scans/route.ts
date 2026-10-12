@@ -30,6 +30,17 @@ if (!process.env.SKIN_SCAN_TOKEN) {
 
 const text = (v: unknown, max = MAX_TEXT_CHARS) => (typeof v === "string" ? v.slice(0, max) : null)
 
+// JSON kept only when it is reasonably small (audit trail, answers, notices)
+const MAX_JSON_CHARS = 300_000
+const json = (v: unknown) => {
+  if (v === null || v === undefined || typeof v !== "object") return null
+  try {
+    return JSON.stringify(v).length <= MAX_JSON_CHARS ? v : null
+  } catch {
+    return null
+  }
+}
+
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
   if (!tokenOk(req.headers["x-skin-scan-token"])) {
     return res.status(401).json({ message: "Unauthorized" })
@@ -64,6 +75,9 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     images,
     qwen_raw_summary: text(body.qwen_raw_summary),
     claude_raw_summary: text(body.claude_raw_summary),
+    responses: json(body.responses),
+    analysis_log: json(body.analysis_log),
+    notices: Array.isArray(body.notices) ? json(body.notices.slice(0, 10)) : null,
   })
 
   res.status(200).json({ scan: { id: scan.id } })
@@ -82,6 +96,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     { order: { created_at: "DESC" } }
   )
 
-  // the photos stay on the server: they are heavy and the customer's history doesn't show them
-  res.status(200).json({ scans: scans.map(({ images, ...rest }: any) => rest) })
+  // the photos stay on the server: they are heavy and the customer's history doesn't show them; the audit
+  // trail is for the team only
+  res.status(200).json({ scans: scans.map(({ images, analysis_log, reviewed_by, ...rest }: any) => rest) })
 }

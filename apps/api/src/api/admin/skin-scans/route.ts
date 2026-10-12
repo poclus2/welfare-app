@@ -19,8 +19,9 @@ export async function GET(
     }
   )
 
+  // the list doesn't need the photos nor the audit trail (heavy): the detail route returns them
   res.status(200).json({ 
-    skin_scans: data,
+    skin_scans: data.map(({ images, analysis_log, ...rest }: any) => ({ ...rest, has_images: !!images && Object.keys(images).length > 0 })),
     count: total,
     limit,
     offset

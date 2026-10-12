@@ -45,8 +45,15 @@ export type RoutineStep = {
 // Messages decided in code (never written by the model), shown above the routine
 export type SkinNotice = { kind: "referral" | "caution" | "budget" | "missing"; text: string };
 
+// Pilot: a skin advisor validated or corrected the routine afterwards (admin, POST /admin/skin-scans/:id/review)
+export type SkinReview = {
+  status: "validated" | "corrected";
+  corrections?: { step_name: string; from: string; to: string; reason: string }[];
+};
+
 export type SkinAnalysisResult = {
   notices?: SkinNotice[];
+  review?: SkinReview;
   final_skin_type: string;
   estimated_skin_age: number;
   melanin_phototype?: string;
@@ -409,6 +416,9 @@ FORMAT JSON ATTENDU :
 
 type FaceImages = { front: string; left: string; right: string };
 
+const VISUAL_MODEL = "qwen/qwen3-vl-235b-a22b-instruct";
+const ROUTINE_MODEL = "anthropic/claude-opus-4.8";
+
 export type SignedVisualAnalysis = { result: any; signature: string };
 
 // What the customer reads when a step fails; the code is shown with it and logged.
@@ -427,8 +437,9 @@ async function runVisualAnalysis(images: FaceImages): Promise<{ ok: true; result
   const ai = await callOpenRouter(
     "visual",
     {
-      model: "qwen/qwen3-vl-235b-a22b-instruct",
+      model: VISUAL_MODEL,
       max_tokens: 4000,
+      temperature: 0, // the same face should get the same reading (client feedback: unstable scores)
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: QWEN_SYSTEM_PROMPT },
@@ -539,16 +550,26 @@ export async function analyzeSkin(
     const aiConfig = await fetchAIConfig();
     console.log(`[SkinCoach] Mode IA: ${aiConfig.mode} | Stock seuil: ${aiConfig.min_stock_threshold}`);
 
+    // Audit trail saved with the scan (client feedback: every decision must be explainable afterwards)
+    const startedAt = Date.now();
+    const log: Record<string, any> = {
+      version: "2026-10-12",
+      models: { visual: VISUAL_MODEL, routine: ROUTINE_MODEL },
+      config: { mode: aiConfig.mode, max_routine_steps: aiConfig.max_routine_steps, min_stock_threshold: aiConfig.min_stock_threshold },
+    };
+
     // APPEL 1 : reuse the analysis started during the questionnaire, or run it now
     let qwenResult: any;
     if (earlyVisual && visualIsAuthentic(images, earlyVisual)) {
       qwenResult = earlyVisual.result;
+      log.visual_source = "questionnaire";
       console.log("[SkinCoach] Visual analysis reused from the questionnaire phase");
     } else {
       if (earlyVisual) console.warn("[SkinCoach] Early visual analysis rejected (signature mismatch): running it again");
       const visual = await runVisualAnalysis(images);
       if (!visual.ok) return failure(visual);
       qwenResult = visual.result;
+      log.visual_source = "final";
     }
 
     // =========================================================================
@@ -569,6 +590,9 @@ export async function analyzeSkin(
     const safety = readSafetyProfile(answers, medical);
     // skin type from the questionnaire: chooses the moisturizer texture
     const profile = readSkinProfile(userResponses);
+    log.visual = qwenResult;
+    log.medical = medical;
+    log.profile = profile;
     const maxSteps = medical.referral ? ESSENTIAL_FUNCTIONS.length : aiConfig.max_routine_steps;
     const budgetAnswer = userResponses.find((r) => typeof r.answer === "string" && r.answer.includes("FCFA"));
     const maxBudget = budgetMax(typeof budgetAnswer?.answer === "string" ? budgetAnswer.answer : "");
@@ -621,6 +645,7 @@ export async function analyzeSkin(
         ).map((p) => ({ ...p, fallback: true }));
         productCatalog = [...productCatalog, ...extra];
         console.log(`[SkinCoach] Manual selection: no product left for [${emptySteps.join(", ")}], ${extra.length} in-stock product(s) added`);
+        log.completed_steps = { steps: emptySteps, added: extra.map((p) => p.title) };
       }
     }
 
@@ -634,6 +659,20 @@ export async function analyzeSkin(
     }
 
     const hasCatalog = productCatalog.length > 0;
+    log.acne = acne;
+    log.safety = {
+      allergies: safety.allergies.map((a) => a.name),
+      other_allergy: safety.otherAllergy,
+      pregnant: safety.pregnant,
+      gentle_only: safety.gentleOnly,
+      no_depigmenting: safety.noDepigmenting,
+    };
+    log.budget_max = Number.isFinite(maxBudget) ? maxBudget : null;
+    log.catalog = {
+      products: productCatalog.map((p) => p.title),
+      excluded: Object.fromEntries(safetyExclusions),
+      acne_first_excluded: excludedProductIds.size,
+    };
 
     // Build catalog text with stock hints and full AI descriptions (for precise AI prioritization)
     const miniCatalogText = hasCatalog
@@ -905,7 +944,7 @@ FORMAT JSON ATTENDU :
       },
     ];
     const claudeRequest = (messages: Record<string, unknown>[]) => ({
-      model: "anthropic/claude-opus-4.8",
+      model: ROUTINE_MODEL,
       max_tokens: 4000,
       response_format: { type: "json_object" },
       messages,
@@ -914,6 +953,7 @@ FORMAT JSON ATTENDU :
     const ai = await callOpenRouter("routine", claudeRequest(claudeMessages), { timeoutMs: 150_000 });
     if (!ai.ok) return failure({ ok: false, code: `ROUTINE_${ai.code}`, error: aiErrorMessage(ai.code, "routine"), retryable: true });
     let parsed = parseJsonAnswer(ai.content);
+    log.routine_answer = ai.content.slice(0, 20_000);
     if (!parsed || typeof parsed !== "object") {
       console.error("[Appel 2 Claude] Parsing error:", ai.content.slice(0, 500));
       return failure({ ok: false, code: "ROUTINE_AI_FORMAT", error: aiErrorMessage("AI_FORMAT", "routine"), retryable: true });
@@ -931,6 +971,7 @@ FORMAT JSON ATTENDU :
           `[SkinCoach] Routine check (${label}): ${c.steps.length} step(s), total ${c.total} FCFA, budget ${Number.isFinite(c.budgetMax) ? c.budgetMax : "none"}, missing [${c.missing.join(", ")}], unavailable [${c.unavailable.join(", ")}]${c.dropped.length ? `, dropped: ${c.dropped.join(" | ")}` : ""}`
         );
       let check = checkRoutine(parsed.routine_steps || parsed.kbeauty_routine || [], productCatalog, checkOpts);
+      log.check_model = { dropped: check.dropped, missing: check.missing, unavailable: check.unavailable, texture: check.textureIssue, total: check.total };
       logCheck("model", check);
       if (check.dropped.some((d) => d.includes("BLOQUÉ"))) {
         console.error("[SkinCoach] Routine check: the model chose a product the safety filter should have removed");
@@ -952,12 +993,14 @@ FORMAT JSON ATTENDU :
           { timeoutMs: 150_000, attempts: 2 }
         );
         const fixed = fix.ok ? parseJsonAnswer(fix.content) : null;
+        log.correction = { problems, answer: fix.ok ? fix.content.slice(0, 20_000) : `error ${fix.code}` } as Record<string, any>;
         if (fixed && typeof fixed === "object") {
           const fixedCheck = checkRoutine(fixed.routine_steps || fixed.kbeauty_routine || [], productCatalog, checkOpts);
           logCheck("after correction", fixedCheck);
           if (fixedCheck.steps.length && routineProblems(fixedCheck).length <= problems.length) {
             check = fixedCheck;
             parsed = { ...parsed, ...fixed };
+            log.correction.accepted = true;
           }
         } else {
           console.warn(`[SkinCoach] Routine check: correction round failed (${fix.ok ? "unreadable answer" : fix.code})`);
@@ -969,12 +1012,14 @@ FORMAT JSON ATTENDU :
       if (check.missing.length) {
         const completed = addMissingEssentials(check, productCatalog, { safety, excludedIds: excludedProductIds, profile });
         routineSteps = completed.steps;
+        if (completed.added.length) log.added_by_code = completed.added;
         if (completed.added.length) console.warn(`[SkinCoach] Routine check: essential step(s) added by code: ${completed.added.join(", ")}`);
       }
 
       // Budget and moisturizer texture settled in code: as close as possible to the model's choice, within the
       // budget; when no complete routine fits, the cheapest one (owner's decision)
       const fitted = fitEssentials(routineSteps, productCatalog, { safety, excludedIds: excludedProductIds, budgetMax: maxBudget, profile });
+      if (fitted.changed.length) log.adjusted_by_code = fitted.changed;
       if (fitted.changed.length) console.log(`[SkinCoach] Routine check: essentials adjusted by code: ${fitted.changed.join(" | ")}`);
       routineSteps = fitted.steps;
 
@@ -983,6 +1028,7 @@ FORMAT JSON ATTENDU :
         const p = productCatalog.find((c) => c.id === s.medusa_product_id);
         const reason = p ? exclusionReason(p, safety) : "hors catalogue";
         if (reason) console.error(`[SkinCoach] Final gate blocked ${s.product_name}: ${reason}`);
+        if (reason) (log.final_gate_blocked ||= []).push(`${s.product_name}: ${reason}`);
         return !reason;
       });
       routineSteps.forEach((s, i) => { s.step_number = i + 1; });
@@ -1061,7 +1107,11 @@ FORMAT JSON ATTENDU :
             qwenResult.visual_reasoning ||
             JSON.stringify(qwenResult.clinical_observations),
           // the notices (doctor's opinion, budget, missing step) are kept with the message for the admin
-          claude_raw_summary: [finalResult.empathetic_message || "", ...notices.map((n) => `[${n.kind}] ${n.text}`)].join("\n\n"),
+          claude_raw_summary: finalResult.empathetic_message || "",
+          notices,
+          // the questionnaire as answered (product photos left out) and the audit trail
+          responses: userResponses.map((r) => ({ questionId: r.questionId, answer: typeof r.answer === "string" ? r.answer : "[photo de produit]" })),
+          analysis_log: { ...log, duration_ms: Date.now() - startedAt },
         }),
       });
       if (saveRes.ok) {

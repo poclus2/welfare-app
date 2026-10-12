@@ -81,9 +81,17 @@ function getNextTier(points: number): TierType | null {
 
 // Older records were saved with this placeholder instead of the real message
 const PLACEHOLDER_SUMMARY = "Generated from UI";
+// Scans saved on 2026-10-12 morning carry their notices at the end of the message, as "[kind] text" blocks:
+// they are taken out of the message and shown as notices
+const LEGACY_NOTICE = /\n*\[(referral|caution|budget|missing)\] ([^\n]+)/g;
 const scanMessage = (scan: any): string => {
-  const v = typeof scan?.claude_raw_summary === "string" ? scan.claude_raw_summary.trim() : "";
+  const v = typeof scan?.claude_raw_summary === "string" ? scan.claude_raw_summary.replace(LEGACY_NOTICE, "").trim() : "";
   return v && v !== PLACEHOLDER_SUMMARY ? v : "";
+};
+const scanNotices = (scan: any) => {
+  if (Array.isArray(scan?.notices)) return scan.notices;
+  const raw = typeof scan?.claude_raw_summary === "string" ? scan.claude_raw_summary : "";
+  return [...raw.matchAll(LEGACY_NOTICE)].map((m) => ({ kind: m[1], text: m[2] }));
 };
 
 const SkinCoachScanCard = ({ scan, onClick }: { scan: any, onClick: () => void }) => {
@@ -128,13 +136,17 @@ const SkinCoachScanCard = ({ scan, onClick }: { scan: any, onClick: () => void }
           {displaySummary}
         </p>
         
-        {scan.estimated_skin_age && (
+        {(scan.melanin_phototype || scan.review_status) && (
           <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100/60">
-            <div className="flex flex-col">
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t("Âge estimé")}</span>
-              <span className="text-sm font-semibold text-[#2A2424]">{scan.estimated_skin_age} {t("ans")}</span>
-            </div>
-            <div className="w-px h-8 bg-gray-100"></div>
+            {scan.review_status && (
+              <>
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t("Conseillère")}</span>
+                  <span className="text-sm font-semibold text-emerald-600">{scan.review_status === "corrected" ? t("Routine revue") : t("Routine validée")}</span>
+                </div>
+                <div className="w-px h-8 bg-gray-100"></div>
+              </>
+            )}
             <div className="flex flex-col">
               <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t("Phototype")}</span>
               <span className="text-sm font-semibold text-[#2A2424]">{scan.melanin_phototype || "N/A"}</span>
@@ -228,7 +240,10 @@ export default function AccountPage() {
       estimated_skin_age: scan.estimated_skin_age,
       melanin_phototype: scan.melanin_phototype,
       empathetic_message: scanMessage(scan) || t("Voici votre diagnostic personnalisé."),
-      kbeauty_routine: scan.routine || [],
+      // a routine corrected by a skin advisor replaces the one the Skin Coach proposed
+      kbeauty_routine: (Array.isArray(scan.reviewed_routine) && scan.reviewed_routine.length ? scan.reviewed_routine : scan.routine) || [],
+      notices: scanNotices(scan),
+      review: scan.review_status ? { status: scan.review_status, corrections: scan.review_corrections || [] } : undefined,
       metrics: scan.metrics,
         id: scan.id
       } as any);

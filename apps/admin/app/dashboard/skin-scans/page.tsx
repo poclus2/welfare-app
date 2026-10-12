@@ -25,15 +25,6 @@ function SkinTypeBadge({ type }: { type: string }) {
   );
 }
 
-function AgeIndicator({ age }: { age: number }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <User className="w-3.5 h-3.5 text-[#C08A8E]" />
-      <span className="text-sm font-semibold text-[#2A2424]">{age} ans</span>
-    </div>
-  );
-}
-
 export default async function SkinScansPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get("admin_token")?.value;
@@ -127,7 +118,7 @@ export default async function SkinScansPage() {
                 <tr className="bg-[#F5F0EB]/60">
                   <th className="text-left px-6 py-3.5 text-[10px] font-bold text-[#2A2424]/40 uppercase tracking-widest whitespace-nowrap">#</th>
                   <th className="text-left px-6 py-3.5 text-[10px] font-bold text-[#2A2424]/40 uppercase tracking-widest whitespace-nowrap">Type de Peau</th>
-                  <th className="text-left px-6 py-3.5 text-[10px] font-bold text-[#2A2424]/40 uppercase tracking-widest whitespace-nowrap">Âge Cutané</th>
+                  <th className="text-left px-6 py-3.5 text-[10px] font-bold text-[#2A2424]/40 uppercase tracking-widest whitespace-nowrap">Relecture</th>
                   <th className="text-left px-6 py-3.5 text-[10px] font-bold text-[#2A2424]/40 uppercase tracking-widest whitespace-nowrap">Date</th>
                   <th className="text-right px-6 py-3.5 text-[10px] font-bold text-[#2A2424]/40 uppercase tracking-widest whitespace-nowrap">Détails</th>
                 </tr>
@@ -145,10 +136,14 @@ export default async function SkinScansPage() {
                       }
                     </td>
                     <td className="px-6 py-4">
-                      {scan.estimated_skin_age
-                        ? <AgeIndicator age={scan.estimated_skin_age} />
-                        : <span className="text-xs text-[#2A2424]/30 italic">—</span>
-                      }
+                      {/* pilot: which diagnostics a skin advisor still has to look at */}
+                      {scan.review_status === "corrected" ? (
+                        <span className="text-[11px] font-bold px-2 py-1 rounded-lg bg-violet-50 text-violet-700">Corrigée</span>
+                      ) : scan.review_status === "validated" ? (
+                        <span className="text-[11px] font-bold px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700">Validée</span>
+                      ) : (
+                        <span className="text-[11px] font-bold px-2 py-1 rounded-lg bg-amber-50 text-amber-700">À revoir</span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1.5">
