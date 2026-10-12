@@ -6,6 +6,7 @@ import {  Scan, CaretRight, Camera, ArrowCounterClockwise, PaperPlaneTilt, Light
 import Webcam from "react-webcam";
 import { analyzeFace, analyzeSkin, SkinAnalysisResult } from "@/app/actions/analyze-skin";
 import posthog from "posthog-js";
+import { acneFollowUp, FOLLOWUP_ACNE, FOLLOWUP_SPOTS } from "@/lib/skin-profile";
 import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
 import { useRouter } from "next/navigation";
 import SmartCameraCapture, { CaptureResult } from "./smart-camera-capture";
@@ -236,6 +237,15 @@ const DECISION_TREE: QuestionNode[] = [
     ]
   }
 ];
+
+// Follow-up questions asked at the end when the photos and the answers disagree (lib/skin-profile.ts)
+const FOLLOWUP_DONE = "q_finish_after_followup";
+const FOLLOWUP_NODES: QuestionNode[] = [FOLLOWUP_ACNE, FOLLOWUP_SPOTS].map((q) => ({
+  id: q.id,
+  text: q.text,
+  type: "choice",
+  options: q.options.map((label) => ({ label, nextQuestionId: FOLLOWUP_DONE })),
+}));
 
 // ─── Reusable AI Avatar ──────────────────────────────────────────────────────
 
@@ -505,8 +515,20 @@ export default function SkinCoachFlow() {
       return newProgress > 95 ? 95 : newProgress;
     });
 
-    setTimeout(() => {
+    setTimeout(async () => {
+      // End of the questionnaire: when the photos and the answers disagree about acne, one follow-up question
+      // is asked first (lib/skin-profile.ts), then the analysis starts
       if (nextQuestionId === "q_finish") {
+        const followUp = await pendingFollowUp(newResponses);
+        if (followUp) {
+          posthog.capture("skin_coach_followup_asked", { question: followUp.id });
+          setMessages((prev) => [...prev, { id: `msg-ai-${Date.now()}`, sender: "ai", text: followUp.text, options: followUp.options }]);
+          setCurrentQuestionId(followUp.id);
+          setIsTyping(false);
+          return;
+        }
+      }
+      if (nextQuestionId === "q_finish" || nextQuestionId === FOLLOWUP_DONE) {
         setProgressPercent(100);
         setAnalysisProgress(0);
         setIsGenerating(true);
@@ -527,7 +549,16 @@ export default function SkinCoachFlow() {
     }, 1200);
   };
 
-  const currentNode = DECISION_TREE.find((n) => n.id === currentQuestionId);
+  // The photo analysis started after the capture: waited for (at most 45 s) to compare it with the answers
+  const pendingFollowUp = async (responses: UserResponse[]): Promise<QuestionNode | null> => {
+    if (!earlyVisualRef.current) return null;
+    const early = await Promise.race([earlyVisualRef.current, new Promise<null>((r) => setTimeout(() => r(null), 45_000))]);
+    if (!early?.success) return null;
+    const question = acneFollowUp(early.visual.result?.metrics?.acne_severity_percentage, responses);
+    return question ? FOLLOWUP_NODES.find((n) => n.id === question.id) || null : null;
+  };
+
+  const currentNode = DECISION_TREE.find((n) => n.id === currentQuestionId) || FOLLOWUP_NODES.find((n) => n.id === currentQuestionId);
 
   return (
     <div

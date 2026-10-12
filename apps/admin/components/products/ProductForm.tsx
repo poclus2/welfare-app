@@ -11,7 +11,9 @@ import { normalizeBarcode } from "@/lib/barcode";
 import {
   AiProductSheet,
   LayeringStep,
+  ROUTINE_FUNCTION_OPTIONS,
   SKIN_CONCERN_OPTIONS,
+  TEXTURE_OPTIONS,
   SKIN_TYPE_OPTIONS,
   STEP_ICONS,
   STEP_ICON_LABELS,
@@ -126,6 +128,9 @@ export function ProductForm({ initialData, collections, categories = [], returnT
   const [inciMarkdown, setInciMarkdown] = useState<string>(meta.inci_markdown || "");
   const [skinTypes, setSkinTypes] = useState<string[]>(Array.isArray(meta.skin_types) ? meta.skin_types : []);
   const [skinConcerns, setSkinConcerns] = useState<string[]>(Array.isArray(meta.skin_concerns) ? meta.skin_concerns : []);
+  // Skin Coach: role in a face routine and texture (cleanser / moisturizer / sunscreen, gel / cream…)
+  const [routineFunction, setRoutineFunction] = useState<string>(meta.routine_function || "");
+  const [texture, setTexture] = useState<string>(meta.texture || "");
   const [searchTagline, setSearchTagline] = useState<string>(meta.search_tagline || "");
   const [commercialDescription, setCommercialDescription] = useState<string>(meta.commercial_description || "");
   const [layeringSteps, setLayeringSteps] = useState<LayeringStep[]>(Array.isArray(meta.layering_steps) ? meta.layering_steps : []);
@@ -161,12 +166,13 @@ export function ProductForm({ initialData, collections, categories = [], returnT
 
   const snapshot = () => ({
     title, subtitle, handle, description, collectionId, selectedCategoryIds,
-    rawInci, inciMarkdown, skinTypes, skinConcerns, searchTagline, commercialDescription, layeringSteps,
+    rawInci, inciMarkdown, skinTypes, skinConcerns, routineFunction, texture, searchTagline, commercialDescription, layeringSteps,
   });
   const restore = (v: ReturnType<typeof snapshot>) => {
     setTitle(v.title); setSubtitle(v.subtitle); setHandle(v.handle); setDescription(v.description);
     setCollectionId(v.collectionId); setSelectedCategoryIds(v.selectedCategoryIds);
     setRawInci(v.rawInci); setInciMarkdown(v.inciMarkdown); setSkinTypes(v.skinTypes); setSkinConcerns(v.skinConcerns);
+    setRoutineFunction(v.routineFunction); setTexture(v.texture);
     setSearchTagline(v.searchTagline); setCommercialDescription(v.commercialDescription); setLayeringSteps(v.layeringSteps);
   };
 
@@ -190,6 +196,8 @@ export function ProductForm({ initialData, collections, categories = [], returnT
     set("inci_markdown", sheet.inci_markdown, setInciMarkdown, !sheet.inci_markdown);
     set("skin_types", sheet.skin_types, setSkinTypes, !sheet.skin_types.length);
     set("skin_concerns", sheet.skin_concerns, setSkinConcerns, !sheet.skin_concerns.length);
+    set("routine_function", sheet.routine_function, setRoutineFunction, !sheet.routine_function);
+    set("texture", sheet.texture, setTexture, !sheet.texture);
     set("search_tagline", sheet.search_tagline, setSearchTagline, !sheet.search_tagline);
     set("commercial_description", sheet.commercial_description, setCommercialDescription, !sheet.commercial_description);
     set("layering_steps", sheet.layering_steps, setLayeringSteps, !sheet.layering_steps.length);
@@ -336,6 +344,8 @@ export function ProductForm({ initialData, collections, categories = [], returnT
         inci_markdown: inciMarkdown.trim(),
         skin_types: skinTypes,
         skin_concerns: skinConcerns,
+        routine_function: routineFunction,
+        texture,
         search_tagline: searchTagline.trim(),
         commercial_description: commercialDescription.trim(),
         layering_steps: renumber(layeringSteps.filter(s => s.label.trim())),
@@ -679,6 +689,23 @@ export function ProductForm({ initialData, collections, categories = [], returnT
               <div>
                 <label className={labelClass}>Préoccupations<AiBadge show={ai("skin_concerns")} /></label>
                 <ChipPicker options={SKIN_CONCERN_OPTIONS} value={skinConcerns} onChange={v => { setSkinConcerns(v); touched("skin_concerns"); }} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>Fonction (Skin Coach)<AiBadge show={ai("routine_function")} /></label>
+                  <select value={routineFunction} onChange={e => { setRoutineFunction(e.target.value); touched("routine_function"); }} className={inputClass}>
+                    <option value="">— Non renseignée —</option>
+                    {ROUTINE_FUNCTION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass}>Texture<AiBadge show={ai("texture")} /></label>
+                  <select value={texture} onChange={e => { setTexture(e.target.value); touched("texture"); }} className={inputClass}>
+                    <option value="">— Non renseignée —</option>
+                    {TEXTURE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+                <p className="sm:col-span-2 text-[10px] text-[#2A2424]/40 -mt-1">Le Skin Coach compose chaque routine avec un nettoyant, un hydratant et une protection solaire, et choisit la texture de l&apos;hydratant selon la peau : un toner ou une essence n&apos;est jamais « Hydratant ».</p>
               </div>
               <div>
                 <label className={labelClass}>Accroche (recherche)<AiBadge show={ai("search_tagline")} /></label>

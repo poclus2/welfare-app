@@ -6,7 +6,11 @@ import {
   addMissingEssentials,
   BUDGET_TOLERANCE,
   budgetMax,
+  candidatesFor,
   checkRoutine,
+  cheapestEssentials,
+  fitEssentials,
+  isFaceCare,
   ESSENTIAL_FUNCTIONS,
   fmt,
   FUNCTION_LABEL,
@@ -18,6 +22,7 @@ import {
   withArticle,
 } from "@/lib/skin-routine";
 import { callOpenRouter, parseJsonAnswer, type AiErrorCode } from "@/lib/openrouter";
+import { ACNE_SCAN_LOW, ACNE_SCAN_THRESHOLD, answerOf, FOLLOWUP_ACNE, FOLLOWUP_SPOTS, moisturizerTextures, readAcne, readSkinProfile, TEXTURE_LABEL } from "@/lib/skin-profile";
 
 export type UserResponse = {
   questionId: string;
@@ -118,6 +123,8 @@ type EnrichedProduct = {
   price?: number;
   skin_concerns: string[]; // product.metadata.skin_concerns, most relevant first
   inci: string; // product.metadata.raw_inci, checked against allergies / pregnancy
+  routine_function?: string; // product.metadata.routine_function (admin product form)
+  texture?: string; // product.metadata.texture
   fallback?: boolean; // added to complete a manual-selection step left without any product
 };
 
@@ -169,6 +176,8 @@ async function fetchStoreProductsByIds(
         category,
         price,
         skin_concerns: Array.isArray(p.metadata?.skin_concerns) ? p.metadata.skin_concerns.map(String) : [],
+        routine_function: typeof p.metadata?.routine_function === "string" ? p.metadata.routine_function : undefined,
+        texture: typeof p.metadata?.texture === "string" && p.metadata.texture ? p.metadata.texture : undefined,
         inci: typeof p.metadata?.raw_inci === "string" ? p.metadata.raw_inci : "",
       };
     });
@@ -324,42 +333,31 @@ function buildSkinKeywords(skinType: string, concerns: string[]): string[] {
 }
 
 // =========================================================================
+// =========================================================================
 // ACNE FIRST — brand rule from the owner: when someone has active acne AND wants to treat spots, the
 // routine must calm the acne first. Treating spots on skin that is still in an inflammatory flare risks
-// making it worse. Decided here in code (not left to the model) from three signals: the goal chosen in
-// the questionnaire, the "active pimples?" answer, and the photo scan's acne score.
+// making it worse. Decided here in code (not left to the model) from the goal chosen in the questionnaire,
+// the "active pimples?" answer, the photo scan's acne score, and the follow-up question asked when the
+// photos and the answers disagree (lib/skin-profile.ts). Breakouts that come and go but nothing active
+// today (owner's decision): an acne-prone routine, without the acne-first rule.
 // =========================================================================
 
-// acne_severity_percentage (0-100, from the visual scan) at or above which acne counts as active.
-// A first guess: tune it against real scans (the decision is logged as "[SkinCoach] Acne-first").
-const ACNE_SCAN_THRESHOLD = 30;
-
 const SPOT_RE = /tache|pigment|m[ée]lasma|dark spot/i;
-const ACNE_GOAL_RE = /acn[ée]|imperfection/i;
 
 function answerFor(responses: UserResponse[], questionId: string): string {
-  const r = responses.find((x) => x.questionId === questionId);
-  return typeof r?.answer === "string" ? r.answer : "";
+  return answerOf(responses, questionId);
 }
 
 function decideAcnePriority(responses: UserResponse[], scanAcnePct: unknown) {
-  const goal = answerFor(responses, "q_main_goal");
-  const goalIsAcne = ACNE_GOAL_RE.test(goal);
-  const declaredActive = /^oui/i.test(answerFor(responses, "q_active_acne").trim());
-  const pct = Number(scanAcnePct);
-  const detectedActive = Number.isFinite(pct) && pct >= ACNE_SCAN_THRESHOLD;
-  const acneFirst = goalIsAcne || declaredActive || detectedActive;
+  const reading = readAcne(responses, scanAcnePct);
+  const acneFirst = reading.goalIsAcne || reading.declaredActive || reading.detectedActive;
   return {
+    ...reading,
     acneFirst,
     // she asked for something else (spots, glow...) but the acne takes priority
-    redirected: acneFirst && !goalIsAcne,
+    redirected: acneFirst && !reading.goalIsAcne,
     // specifically: she asked for spots and they are postponed
-    spotsDeferred: acneFirst && SPOT_RE.test(goal),
-    goal,
-    goalIsAcne,
-    declaredActive,
-    detectedActive,
-    scanAcnePct: Number.isFinite(pct) ? pct : null,
+    spotsDeferred: acneFirst && SPOT_RE.test(reading.goal),
   };
 }
 
@@ -569,6 +567,8 @@ export async function analyzeSkin(
       );
     }
     const safety = readSafetyProfile(answers, medical);
+    // skin type from the questionnaire: chooses the moisturizer texture
+    const profile = readSkinProfile(userResponses);
     const maxSteps = medical.referral ? ESSENTIAL_FUNCTIONS.length : aiConfig.max_routine_steps;
     const budgetAnswer = userResponses.find((r) => typeof r.answer === "string" && r.answer.includes("FCFA"));
     const maxBudget = budgetMax(typeof budgetAnswer?.answer === "string" ? budgetAnswer.answer : "");
@@ -595,6 +595,7 @@ export async function analyzeSkin(
     const safetyExclusions = new Map<string, number>();
     const filterCatalog = (products: EnrichedProduct[]) =>
       products.filter((p) => {
+        if (!isFaceCare(p)) return false; // lips, body, accessories
         if (acne.acneFirst && isSpotTreatment(p)) {
           excludedProductIds.add(p.id);
           return false;
@@ -639,7 +640,7 @@ export async function analyzeSkin(
       ? productCatalog
           .map(
             (p) =>
-              `[${p.category} · fonction : ${FUNCTION_LABEL[productFunction(p)]}]${p.fallback ? " (complément automatique, hors sélection de l'équipe)" : ""} ${p.title} (medusa_product_id: "${p.id}", stock: ${p.stock_total}, PRIX: ${p.price || 15000} FCFA)\n  COMPOSITION ET FICHE IA: ${(p.description || "Aucune description").replace(/\n/g, "  ")}\n` +
+              `[${p.category} · fonction : ${FUNCTION_LABEL[productFunction(p)]}${p.texture ? ` · texture : ${TEXTURE_LABEL[p.texture] || p.texture}` : ""}]${p.fallback ? " (complément automatique, hors sélection de l'équipe)" : ""} ${p.title} (medusa_product_id: "${p.id}", stock: ${p.stock_total}, PRIX: ${p.price || 15000} FCFA)\n  COMPOSITION ET FICHE IA: ${(p.description || "Aucune description").replace(/\n/g, "  ")}\n` +
               // a free-text allergy can only be checked by the model, so it gets the full ingredient list
               (safety.otherAllergy ? `  INCI COMPLET: ${p.inci || "inconnu"}\n` : "")
           )
@@ -736,6 +737,57 @@ ${acne.redirected ? `- Dans 'empathetic_message', explique avec douceur, en une 
 ${safetyLines.join("\n")}`
       : "";
 
+    // ---- Routine plan, set by code: essential functions, moisturizer texture, budget, justified extra ----
+    const textures = moisturizerTextures(profile);
+    const cheapest = hasCatalog ? cheapestEssentials(productCatalog, { safety, excludedIds: excludedProductIds, profile }) : null;
+    const goalForExtra = acne.acneFirst ? "acné" : acne.goal;
+    const EXTRA_FOR_GOAL: [RegExp, RegExp][] = [
+      [/acn|imperfection/i, /acn|imperfection|pores|s[ée]bum/i],
+      [/tache|pigment/i, /tache|pigment|[ée]clat|teint/i],
+      [/[aâ]ge|ferme/i, /anti-?[aâ]ge|rides|fermet|[ée]lasticit/i],
+      [/hydrat|glow|[ée]clat/i, /hydrat|[ée]clat|barri[èe]re/i],
+    ];
+    const extraConcern = EXTRA_FOR_GOAL.find(([goal]) => goal.test(goalForExtra))?.[1];
+    const extras =
+      extraConcern && hasCatalog && !medical.referral
+        ? productCatalog
+            .filter((p) => productFunction(p) === "other" && (p.skin_concerns || []).some((c) => extraConcern.test(c)))
+            .map((p) => p.title)
+            .slice(0, 8)
+        : [];
+    const essentialsOverBudget = !!cheapest && Number.isFinite(maxBudget) && cheapest.total > maxBudget + BUDGET_TOLERANCE;
+    const planBlock = hasCatalog
+      ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PLAN DE ROUTINE (établi par notre contrôle, à respecter)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Fonctions essentielles, dans cet ordre : nettoyant, hydratant, protection solaire.
+- Hydratant pour sa ${profile.label} : texture conseillée ${textures.preferred.map((t) => TEXTURE_LABEL[t]).join(", ")} ; à éviter : ${textures.avoid.map((t) => TEXTURE_LABEL[t]).join(", ")}${profile.dryZones ? " ; pas de crème matifiante ou « oil control » sur des joues qui tiraillent" : ""}. Quand la texture d'un produit n'est pas indiquée, déduis-la de sa fiche.
+${cheapest ? `- Combinaison essentielle la moins chère disponible : ${fmt(cheapest.total)} FCFA${essentialsOverBudget ? " : c'est au-dessus de son budget, propose quand même les 3 essentiels, en choisissant les moins chers" : ""}.` : ""}
+- Soin complémentaire possible pour son objectif : ${extras.length ? extras.join(" ; ") : "aucun soin ciblé disponible, n'en ajoute pas"}. Seulement si le budget le permet et si c'est justifié pour elle.`
+      : "";
+
+    // ---- What the photos show, what she declared, what is uncertain (client feedback: keep them apart) ----
+    const m = qwenResult.metrics || {};
+    const pct = acne.scanAcnePct;
+    const acneSeen =
+      pct == null ? "non mesuré"
+      : pct >= ACNE_SCAN_THRESHOLD ? "imperfections actives visibles"
+      : pct < ACNE_SCAN_LOW ? "pas de bouton actif visible"
+      : "quelques imperfections légères";
+    const followUp = [FOLLOWUP_ACNE, FOLLOWUP_SPOTS]
+      .map((q) => ({ q: q.text, a: answerOf(userResponses, q.id) }))
+      .find((x) => x.a);
+    const activeAnswer = answerOf(userResponses, "q_active_acne");
+    const synthesisBlock = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SYNTHÈSE : OBSERVÉ, DÉCLARÉ, INCERTAIN (établie par notre contrôle)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Observé sur les photos : imperfections ${pct ?? "?"}/100 (${acneSeen}), sébum ${m.sebum_level_percentage ?? "?"}/100, hydratation ${m.hydration_barrier_percentage ?? "?"}/100.
+- Déclaré par la cliente : objectif « ${acne.goal} »${activeAnswer ? ` ; boutons actifs : « ${activeAnswer} »` : ""} ; après le nettoyage : « ${answerOf(userResponses, "q_post_wash")} » ; à midi : « ${answerOf(userResponses, "q_midday_behavior")} » ; réaction aux nouveaux produits : « ${answerOf(userResponses, "q_sensitivity")} ».
+${followUp ? `- Précision demandée : « ${followUp.q} » → réponse : « ${followUp.a} ».` : ""}
+${acne.acneProne ? "- Peau sujette aux poussées : rien d'actif aujourd'hui. Routine qui prévient les imperfections, sans traiter une acné absente." : ""}
+${acne.uncertain ? `- Incertain : ${acne.uncertain}. Présente-le comme une hypothèse, sans conclure.` : ""}
+CONSIGNE : dans 'empathetic_message', distingue clairement ce que montrent les photos, ce qu'elle a déclaré et ce qui reste incertain. Ne confirme jamais une acné active que les photos ne montrent pas sans sa confirmation, et tiens compte des imperfections visibles même si elle ne les a pas mentionnées.`;
+
     const medicalBlock = medical.referral
       ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🩺 AVIS DERMATOLOGIQUE RECOMMANDÉ (décidé par notre contrôle, non négociable)
@@ -758,6 +810,10 @@ RESSENTI ET BESOINS DÉCLARÉS PAR LA CLIENTE (questionnaire)
 ${userChatJson}
 
 ${catalogConstraint}
+
+${planBlock}
+
+${synthesisBlock}
 
 ${safetyBlock}
 
@@ -869,7 +925,7 @@ FORMAT JSON ATTENDU :
     const notices: SkinNotice[] = [];
     let routineSteps: CheckedStep[];
     if (hasCatalog) {
-      const checkOpts = { safety, excludedIds: excludedProductIds, maxSteps, budgetMax: maxBudget, essentialsOnly: medical.referral };
+      const checkOpts = { safety, excludedIds: excludedProductIds, maxSteps, budgetMax: maxBudget, essentialsOnly: medical.referral, profile };
       const logCheck = (label: string, c: RoutineCheck) =>
         console.log(
           `[SkinCoach] Routine check (${label}): ${c.steps.length} step(s), total ${c.total} FCFA, budget ${Number.isFinite(c.budgetMax) ? c.budgetMax : "none"}, missing [${c.missing.join(", ")}], unavailable [${c.unavailable.join(", ")}]${c.dropped.length ? `, dropped: ${c.dropped.join(" | ")}` : ""}`
@@ -911,10 +967,16 @@ FORMAT JSON ATTENDU :
       // Last resort: an essential function still missing is added by code
       routineSteps = check.steps;
       if (check.missing.length) {
-        const completed = addMissingEssentials(check, productCatalog, { safety, excludedIds: excludedProductIds });
+        const completed = addMissingEssentials(check, productCatalog, { safety, excludedIds: excludedProductIds, profile });
         routineSteps = completed.steps;
         if (completed.added.length) console.warn(`[SkinCoach] Routine check: essential step(s) added by code: ${completed.added.join(", ")}`);
       }
+
+      // Budget and moisturizer texture settled in code: as close as possible to the model's choice, within the
+      // budget; when no complete routine fits, the cheapest one (owner's decision)
+      const fitted = fitEssentials(routineSteps, productCatalog, { safety, excludedIds: excludedProductIds, budgetMax: maxBudget, profile });
+      if (fitted.changed.length) console.log(`[SkinCoach] Routine check: essentials adjusted by code: ${fitted.changed.join(" | ")}`);
+      routineSteps = fitted.steps;
 
       // Final safety gate, on exactly what will be shown
       routineSteps = routineSteps.filter((s) => {
@@ -929,7 +991,7 @@ FORMAT JSON ATTENDU :
       if (Number.isFinite(maxBudget) && total > maxBudget + BUDGET_TOLERANCE) {
         notices.push({
           kind: "budget",
-          text: `Votre routine essentielle (nettoyant, hydratant et protection solaire) revient à ${fmt(total)} FCFA, au-dessus de votre budget (jusqu'à ${fmt(maxBudget)} FCFA). Nous avons préféré garder ces trois soins plutôt que d'en retirer un : vous restez libre de commencer par ceux de votre choix.`,
+          text: `Une routine complète (nettoyant, hydratant et protection solaire) revient au minimum à ${fmt(total)} FCFA dans notre sélection, au-dessus de votre budget (jusqu'à ${fmt(maxBudget)} FCFA). Nous vous proposons la combinaison la plus économique plutôt que de retirer un de ces trois soins : vous restez libre de commencer par ceux de votre choix.`,
         });
       }
       for (const fn of check.unavailable) {

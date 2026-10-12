@@ -33,6 +33,44 @@ export const SKIN_CONCERN_OPTIONS = [
   "Antioxydant & pollution",
 ] as const;
 
+// Role of the product in a face routine, and its texture: the Skin Coach builds a routine from the functions
+// (cleanser + moisturizer + sunscreen first) and matches the moisturizer's texture to the skin.
+// Same values in apps/storefront/lib/skin-routine.ts.
+export const ROUTINE_FUNCTION_OPTIONS = [
+  { value: "nettoyant", label: "Nettoyant" },
+  { value: "demaquillant", label: "Démaquillant / huile lavante" },
+  { value: "tonique", label: "Tonique / toner" },
+  { value: "essence", label: "Essence" },
+  { value: "serum", label: "Sérum / ampoule" },
+  { value: "traitement", label: "Soin ciblé (boutons, taches…)" },
+  { value: "hydratant", label: "Hydratant (crème, gel-crème, émulsion)" },
+  { value: "solaire", label: "Protection solaire" },
+  { value: "exfoliant", label: "Exfoliant / peeling" },
+  { value: "masque", label: "Masque" },
+  { value: "contour_yeux", label: "Contour des yeux" },
+  { value: "levres", label: "Lèvres" },
+  { value: "corps", label: "Corps / cheveux" },
+  { value: "accessoire", label: "Accessoire / complément" },
+] as const;
+
+export const TEXTURE_OPTIONS = [
+  { value: "gel", label: "Gel" },
+  { value: "gel_creme", label: "Gel-crème" },
+  { value: "emulsion", label: "Émulsion / lotion fluide" },
+  { value: "creme_legere", label: "Crème légère" },
+  { value: "creme_riche", label: "Crème riche" },
+  { value: "baume", label: "Baume" },
+  { value: "huile", label: "Huile" },
+  { value: "mousse", label: "Mousse" },
+  { value: "liquide", label: "Liquide (eau, toner, essence)" },
+  { value: "serum", label: "Sérum" },
+  { value: "stick", label: "Stick" },
+  { value: "autre", label: "Autre" },
+] as const;
+
+export const ROUTINE_FUNCTION_VALUES: string[] = ROUTINE_FUNCTION_OPTIONS.map((o) => o.value);
+export const TEXTURE_VALUES: string[] = TEXTURE_OPTIONS.map((o) => o.value);
+
 // Icons the product page knows how to draw for a usage step (ProductDetailClient iconMap)
 export const STEP_ICONS = ["droplets", "wind", "star", "sun", "moon"] as const;
 export const STEP_ICON_LABELS: Record<(typeof STEP_ICONS)[number], string> = {
@@ -66,6 +104,8 @@ export type AiProductSheet = {
   inci_markdown: string;
   skin_types: string[];
   skin_concerns: string[];
+  routine_function: string; // one of ROUTINE_FUNCTION_VALUES, "" if unknown
+  texture: string; // one of TEXTURE_VALUES, "" if unknown
   search_tagline: string;
   commercial_description: string;
   layering_steps: LayeringStep[];

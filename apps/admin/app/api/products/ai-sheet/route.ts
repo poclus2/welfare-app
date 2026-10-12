@@ -7,6 +7,8 @@ import {
   SKIN_TYPE_OPTIONS,
   STEP_ICONS,
   looksLikeInciList,
+  ROUTINE_FUNCTION_VALUES,
+  TEXTURE_VALUES,
   slugify,
 } from "@/lib/product-sheet";
 
@@ -53,6 +55,8 @@ RÈGLES
 - category_ids : 1 à 3 ids pris UNIQUEMENT dans la liste des catégories ci-dessous (sous-catégorie la plus précise + sa catégorie parente).
 - skin_types : 1 à 4 valeurs parmi ${JSON.stringify(SKIN_TYPE_OPTIONS)}.
 - skin_concerns : 1 à 5 valeurs parmi ${JSON.stringify(SKIN_CONCERN_OPTIONS)}.
+- routine_function : rôle du produit dans une routine visage, UNE valeur parmi ${JSON.stringify(ROUTINE_FUNCTION_VALUES)}. Un toner ou une essence n'est jamais "hydratant" ; "hydratant" = crème, gel-crème ou émulsion sans rinçage.
+- texture : UNE valeur parmi ${JSON.stringify(TEXTURE_VALUES)}, d'après la photo ou le type de produit. "" si tu ne peux pas la déduire.
 - search_tagline : accroche de 3 à 5 mots (ex: "Toner Équilibrant & Hydratant").
 - commercial_description : 3 à 4 phrases marketing, chaleureuses, sans promesse médicale.
 - description : markdown "# <titre>\\n\\n## Actifs Principaux\\n\\n* **Actif** : rôle...\\n\\n## Analyse de la formulation\\n\\n<2 paragraphes>". 4 à 7 actifs.
@@ -69,7 +73,7 @@ CATÉGORIES EXISTANTES (id : parent > nom)
 ${cats}
 
 FORMAT
-{"title":"","subtitle":"","collection_id":null,"brand_detected":"","category_ids":[],"raw_inci":"","inci_markdown":"","skin_types":[],"skin_concerns":[],"search_tagline":"","commercial_description":"","description":"","layering_steps":[{"step":1,"label":"","timing":"","description":"","tip":"","icon":"droplets","highlight":false}],"inci_confidence":"high","warnings":[]}`;
+{"title":"","subtitle":"","collection_id":null,"brand_detected":"","category_ids":[],"raw_inci":"","inci_markdown":"","skin_types":[],"skin_concerns":[],"routine_function":"","texture":"","search_tagline":"","commercial_description":"","description":"","layering_steps":[{"step":1,"label":"","timing":"","description":"","tip":"","icon":"droplets","highlight":false}],"inci_confidence":"high","warnings":[]}`;
 }
 
 function extractJson(text: string) {
@@ -88,7 +92,7 @@ const SHEET_SCHEMA = {
   additionalProperties: false,
   required: [
     "title", "subtitle", "collection_id", "brand_detected", "category_ids", "raw_inci", "inci_markdown",
-    "skin_types", "skin_concerns", "search_tagline", "commercial_description", "description",
+    "skin_types", "skin_concerns", "routine_function", "texture", "search_tagline", "commercial_description", "description",
     "layering_steps", "inci_confidence", "warnings",
   ],
   properties: {
@@ -101,6 +105,8 @@ const SHEET_SCHEMA = {
     inci_markdown: str_,
     skin_types: { type: "array", items: str_ },
     skin_concerns: { type: "array", items: str_ },
+    routine_function: str_,
+    texture: str_,
     search_tagline: str_,
     commercial_description: str_,
     description: str_,
@@ -200,6 +206,8 @@ function sanitize(raw: any, ctx: Context): AiProductSheet {
     inci_markdown: str(raw?.inci_markdown, 4000),
     skin_types: pick(raw?.skin_types, SKIN_TYPE_OPTIONS, 4),
     skin_concerns: pick(raw?.skin_concerns, SKIN_CONCERN_OPTIONS, 5),
+    routine_function: ROUTINE_FUNCTION_VALUES.includes(raw?.routine_function) ? raw.routine_function : "",
+    texture: TEXTURE_VALUES.includes(raw?.texture) ? raw.texture : "",
     search_tagline: str(raw?.search_tagline, 80),
     commercial_description: str(raw?.commercial_description, 1500),
     layering_steps: steps,
