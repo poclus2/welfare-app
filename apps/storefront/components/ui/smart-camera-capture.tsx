@@ -327,7 +327,10 @@ export default function SmartCameraCapture({ onComplete, onCancel, onConsent }: 
                   className="mt-0.5 w-5 h-5 shrink-0 accent-[#3D2B2D]"
                 />
                 <span className="text-xs leading-relaxed" style={{ color: "rgba(61,43,45,0.75)" }}>
-                  J'accepte que mes 3 photos et mes réponses soient analysées par l'intelligence artificielle de The Welfare, via nos prestataires d'IA situés hors du Cameroun, pour établir mon diagnostic de peau. Mes photos sont supprimées sous 2 heures si je ne crée pas de compte, et au bout de 6 mois si je l'enregistre dans mon compte.
+                  J'accepte que mes 3 photos et mes réponses soient analysées par l'intelligence artificielle de The Welfare, via nos prestataires d'IA situés hors du Cameroun, pour établir mon diagnostic de peau. Mes photos sont supprimées sous 2 heures si je ne crée pas de compte, et au bout de 6 mois si je l'enregistre dans mon compte.{" "}
+                  <a href="/privacy" target="_blank" rel="noopener" className="underline" onClick={(e) => e.stopPropagation()}>
+                    En savoir plus
+                  </a>
                 </span>
               </label>
 

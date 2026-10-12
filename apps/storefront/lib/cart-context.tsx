@@ -37,7 +37,8 @@ interface ApplyPromoResult {
 interface CartContextValue extends CartState {
   openCart: () => void;
   closeCart: () => void;
-  addItem: (variantId: string, quantity: number, thumbnail?: string, title?: string, price?: number) => Promise<void>;
+  // metadata is stored on the line item and kept on the order (e.g. { source: "skin_coach", scan_id })
+  addItem: (variantId: string, quantity: number, thumbnail?: string, title?: string, price?: number, metadata?: Record<string, unknown>) => Promise<void>;
   removeItem: (lineId: string) => Promise<void>;
   updateQuantity: (lineId: string, qty: number) => Promise<void>;
   clearCart: () => void;
@@ -127,7 +128,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, isOpen: false }));
   }, []);
 
-  const addItem = useCallback(async (variantId: string, quantity: number, thumbnail?: string, title?: string, price?: number) => {
+  const addItem = useCallback(async (variantId: string, quantity: number, thumbnail?: string, title?: string, price?: number, metadata?: Record<string, unknown>) => {
     try {
       setState(s => ({ ...s, isLoading: true }));
       
@@ -145,11 +146,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       // Add line item. If the saved cart was already turned into an order, start a new cart once.
       try {
-        await sdk.store.cart.createLineItem(currentCartId, { variant_id: variantId, quantity });
+        await sdk.store.cart.createLineItem(currentCartId, { variant_id: variantId, quantity, ...(metadata ? { metadata } : {}) });
       } catch (e: any) {
         if (!/already completed/i.test(e?.message || "")) throw e;
         currentCartId = await createCart();
-        await sdk.store.cart.createLineItem(currentCartId, { variant_id: variantId, quantity });
+        await sdk.store.cart.createLineItem(currentCartId, { variant_id: variantId, quantity, ...(metadata ? { metadata } : {}) });
       }
 
       await refreshCart(currentCartId);

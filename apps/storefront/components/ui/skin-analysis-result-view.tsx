@@ -2,7 +2,9 @@
 
 import { motion, Variants } from "framer-motion";
 import { SkinAnalysisResult, RoutineStep } from "@/app/actions/analyze-skin";
-import {  Drop, Eye, Lightning, Sun, ShoppingBag, ArrowCounterClockwise, CaretRight, TrendUp, Package, Plus, CheckCircle, Printer } from "@phosphor-icons/react";
+import {  Drop, Eye, Lightning, Sun, ShoppingBag, ArrowCounterClockwise, CaretRight, TrendUp, Package, Plus, CheckCircle, Printer, LockKey, FirstAidKit, Info } from "@phosphor-icons/react";
+import Link from "next/link";
+import posthog from "posthog-js";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useCart } from "@/lib/cart-context";
@@ -11,6 +13,8 @@ import { IconIA } from "@/components/ui/icons/IconIA";
 interface Props {
   result: SkinAnalysisResult;
   onRetake: () => void;
+  // not logged in: the diagnostic is shown, the routine and products stay hidden until she creates an account
+  locked?: boolean;
 }
 
 function computeOverallScore(metrics?: SkinAnalysisResult["metrics"]): number {
@@ -345,7 +349,7 @@ function RoutineStepCard({
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-export default function SkinAnalysisResultView({ result, onRetake }: Props) {
+export default function SkinAnalysisResultView({ result, onRetake, locked = false }: Props) {
   const router = useRouter();
   const cart = useCart();
   const [addedToCart, setAddedToCart] = useState<Set<string>>(new Set());
@@ -374,10 +378,23 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
     { label: "Barrière d'Hydratation", value: metrics.hydration_barrier_percentage, type: "good" as const, icon: <TrendUp className="w-3.5 h-3.5" style={iconStyle} /> },
   ] : [];
 
+  // Kept on the order line, so sales coming from the Skin Coach can be counted
+  const lineMetadata = { source: "skin_coach", ...(result.scan_id ? { scan_id: result.scan_id } : {}) };
+
+  useEffect(() => {
+    posthog.capture("skin_coach_result_viewed", {
+      locked,
+      scan_id: result.scan_id,
+      steps: result.kbeauty_routine.length,
+      linked_products: result.kbeauty_routine.filter((s) => s.medusa_product_id).length,
+    });
+  }, [locked, result]);
+
   const handleAddToCart = async (variantId: string) => {
     if (addedToCart.has(variantId)) return;
     setAddedToCart((prev) => new Set([...prev, variantId]));
-    await cart.addItem(variantId, 1);
+    posthog.capture("skin_coach_add_to_cart", { variant_id: variantId, scan_id: result.scan_id });
+    await cart.addItem(variantId, 1, undefined, undefined, undefined, lineMetadata);
   };
 
   const [isExportingPDF, setIsExportingPDF] = useState(false);
@@ -407,10 +424,11 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
     }
 
     if (variantIds.length > 0) {
+      posthog.capture("skin_coach_add_routine", { products: variantIds.length, scan_id: result.scan_id });
       // Instead of manual addAllToCart, use cart.addItem one by one for reliability
       // and so it stays synced with context, opening cart at the end
       for (const vId of variantIds) {
-        await cart.addItem(vId, 1);
+        await cart.addItem(vId, 1, undefined, undefined, undefined, lineMetadata);
       }
       setAddedToCart(prev => new Set([...prev, ...variantIds]));
       setAllAdded(true);
@@ -591,6 +609,35 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
             </div>
           </motion.div>
 
+          {/* ─── NOTICES (decided in code: doctor's opinion, treatment, budget, missing step) ─── */}
+          {result.notices && result.notices.length > 0 && (
+            <motion.div variants={itemVariants} className="space-y-3">
+              {result.notices.map((notice, idx) => {
+                const strong = notice.kind === "referral";
+                const tone = notice.kind === "caution" || notice.kind === "referral";
+                return (
+                  <div key={idx} className="rounded-2xl p-4 flex gap-3"
+                    style={{
+                      background: strong ? "#FFF4F2" : tone ? "#FFFBF0" : "white",
+                      border: `1px solid ${strong ? "rgba(176,96,104,0.45)" : tone ? "rgba(217,164,65,0.4)" : "rgba(200,134,138,0.2)"}`,
+                    }}>
+                    <div className="shrink-0 mt-0.5">
+                      {strong ? <FirstAidKit className="w-5 h-5" style={{ color: "#B06068" }} /> : <Info className="w-5 h-5" style={{ color: tone ? "#B7862B" : "#C8868A" }} />}
+                    </div>
+                    <div>
+                      {strong && (
+                        <p className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: "#B06068" }}>
+                          Avis dermatologique recommandé
+                        </p>
+                      )}
+                      <p className="text-[13px] leading-relaxed" style={{ color: "rgba(61,43,45,0.8)" }}>{notice.text}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </motion.div>
+          )}
+
           {/* ─── ROUTINE ─── */}
           <motion.div variants={itemVariants}>
             <div className="flex items-center justify-between gap-2 mb-3">
@@ -605,17 +652,42 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
                 </span>
               )}
             </div>
-            <div className="space-y-3">
-              {result.kbeauty_routine.map((step, idx) => (
-                <RoutineStepCard
-                  key={idx}
-                  step={step}
-                  idx={idx}
-                  onAddToCart={handleAddToCart}
-                  addedToCart={addedToCart}
-                />
-              ))}
-            </div>
+            {locked ? (
+              // Free preview: the steps are named, the products and explanations stay for account holders
+              <div className="rounded-3xl p-5 space-y-3"
+                style={{ background: "white", border: "1px solid rgba(200,134,138,0.15)", boxShadow: "0 4px 16px rgba(200,134,138,0.08)" }}>
+                {result.kbeauty_routine.map((step, idx) => (
+                  <div key={idx} className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold"
+                      style={{ background: "rgba(200,134,138,0.1)", color: "#B06068" }}>
+                      {idx + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate" style={{ color: "#3D2B2D" }}>{step.step_name}</p>
+                      <div className="mt-1.5 h-2.5 rounded-full w-2/3" style={{ background: "rgba(200,134,138,0.12)" }} />
+                    </div>
+                    <LockKey className="w-4 h-4 shrink-0" style={{ color: "rgba(176,96,104,0.5)" }} />
+                  </div>
+                ))}
+                <p className="text-[13px] leading-relaxed pt-2" style={{ color: "rgba(61,43,45,0.7)", borderTop: "1px solid rgba(200,134,138,0.1)" }}>
+                  Votre routine de {result.kbeauty_routine.length} étape{result.kbeauty_routine.length > 1 ? "s" : ""} est prête.
+                  Créez votre compte gratuit pour découvrir les produits choisis pour vous, leurs conseils d&apos;utilisation,
+                  et retrouver ce diagnostic à tout moment.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {result.kbeauty_routine.map((step, idx) => (
+                  <RoutineStepCard
+                    key={idx}
+                    step={step}
+                    idx={idx}
+                    onAddToCart={handleAddToCart}
+                    addedToCart={addedToCart}
+                  />
+                ))}
+              </div>
+            )}
           </motion.div>
 
           {/* ─── MEDICAL DISCLAIMER ─── */}
@@ -637,6 +709,26 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
         className="fixed bottom-0 left-0 right-0 z-50 px-5 pb-8 pt-4 print:hidden"
         style={{ background: "linear-gradient(to top, #FDF8F7 60%, transparent)" }}
       >
+        {locked ? (
+          <div className="flex flex-col gap-2 mb-3">
+            <Link
+              href="/account/register?redirect=/skin-coach/result"
+              onClick={() => posthog.capture("skin_coach_signup_clicked", { scan_id: result.scan_id })}
+              className="w-full py-4 px-6 rounded-2xl font-bold text-[15px] flex justify-center items-center gap-2.5 transition-all active:scale-[0.98] shadow-lg"
+              style={{ background: "linear-gradient(135deg, #C8868A, #E5B6B9)", color: "white", boxShadow: "0 8px 30px rgba(200,134,138,0.35)" }}
+            >
+              <LockKey className="w-5 h-5" /> Découvrir ma routine
+            </Link>
+            <Link
+              href="/account/login?redirect=/skin-coach/result"
+              onClick={() => posthog.capture("skin_coach_login_clicked", { scan_id: result.scan_id })}
+              className="w-full py-3 text-center text-[14px] font-semibold rounded-2xl bg-white border border-[#EDE0E0]"
+              style={{ color: "#3D2B2D" }}
+            >
+              J&apos;ai déjà un compte
+            </Link>
+          </div>
+        ) : (
         <div className="flex gap-2 mb-3">
           {hasLinkedProducts ? (
             <button
@@ -685,6 +777,7 @@ export default function SkinAnalysisResultView({ result, onRetake }: Props) {
             )}
           </button>
         </div>
+        )}
 
         <button
           onClick={onRetake}

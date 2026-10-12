@@ -83,3 +83,14 @@ export function slugify(s: string) {
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
 }
+
+// An INCI list is a comma-separated list of ingredient names. The AI sheet sometimes returns an excuse
+// instead ("INCI non visible sur l'image…", "The image provides … but not the INCI list"): that is not one.
+// Same rule as the storefront's Skin Coach (apps/storefront/lib/skin-safety.ts), which filters allergens on it.
+const NOT_INCI_RE = /\b(image|photo|visibles?|lisibles?|illisibles?|impossible|cannot|unable|sorry|not provided|not available|not visible|n'est pas|ne sont pas|non disponibles?|aucune liste|pas fournie|r[ée]solution|floue?|exemple|example|non applicable)\b/i;
+
+export function looksLikeInciList(s: string): boolean {
+  const text = s.replace(/\[illisible\]/gi, "").trim(); // the prompt marks an unreadable passage this way
+  if (!text || NOT_INCI_RE.test(text)) return false;
+  return text.split(/[,;]/).filter((x) => x.trim()).length >= 4;
+}

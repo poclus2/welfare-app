@@ -6,6 +6,7 @@ import {
   SKIN_CONCERN_OPTIONS,
   SKIN_TYPE_OPTIONS,
   STEP_ICONS,
+  looksLikeInciList,
   slugify,
 } from "@/lib/product-sheet";
 
@@ -178,6 +179,14 @@ function sanitize(raw: any, ctx: Context): AiProductSheet {
   const brand = str(raw?.brand_detected, 80);
   if (brand && !collectionId) warnings.push(`Marque « ${brand} » lue sur la photo mais absente de la liste des marques : à créer ou choisir.`);
 
+  // The model sometimes writes an excuse ("INCI non visible sur l'image…") instead of leaving raw_inci empty.
+  // The Skin Coach reads raw_inci to exclude allergens, so only an ingredient list may be stored there.
+  let rawInci = str(raw?.raw_inci, 8000);
+  if (rawInci && !looksLikeInciList(rawInci)) {
+    warnings.push(`Liste INCI non lisible sur les photos : champ INCI laissé vide (texte reçu : « ${rawInci.slice(0, 120)} »).`);
+    rawInci = "";
+  }
+
   const title = str(raw?.title, 200);
   return {
     title,
@@ -187,7 +196,7 @@ function sanitize(raw: any, ctx: Context): AiProductSheet {
     collection_id: collectionId,
     brand_detected: brand,
     category_ids: pick(raw?.category_ids, categoryIds, 4),
-    raw_inci: str(raw?.raw_inci, 8000),
+    raw_inci: rawInci,
     inci_markdown: str(raw?.inci_markdown, 4000),
     skin_types: pick(raw?.skin_types, SKIN_TYPE_OPTIONS, 4),
     skin_concerns: pick(raw?.skin_concerns, SKIN_CONCERN_OPTIONS, 5),

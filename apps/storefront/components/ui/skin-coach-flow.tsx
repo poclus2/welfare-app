@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {  Scan, CaretRight, Camera, ArrowCounterClockwise, PaperPlaneTilt, Lightning, Images, X } from "@phosphor-icons/react";
 import Webcam from "react-webcam";
-import { analyzeSkin, SkinAnalysisResult } from "@/app/actions/analyze-skin";
+import { analyzeFace, analyzeSkin, SkinAnalysisResult } from "@/app/actions/analyze-skin";
+import posthog from "posthog-js";
 import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
 import { useRouter } from "next/navigation";
 import SmartCameraCapture, { CaptureResult } from "./smart-camera-capture";
@@ -20,6 +21,9 @@ type Message = {
   image?: string;
   images?: string[];
   options?: Option[];
+  // analysis failure: what she can do next, and the code to give to the support team
+  action?: "retry" | "retake";
+  errorCode?: string;
 };
 
 // Photos of the products she already uses (camera or gallery), sent to the prescription model only
@@ -94,8 +98,21 @@ const DECISION_TREE: QuestionNode[] = [
     text: "Une précision importante pour bien vous conseiller : avez-vous des boutons actifs ou inflammés en ce moment ?",
     type: "choice",
     options: [
-      { label: "Oui, j'ai des boutons actifs ou inflammés", nextQuestionId: "q_post_wash" },
-      { label: "Non, ma peau est plutôt calme", nextQuestionId: "q_post_wash" }
+      { label: "Oui, j'ai des boutons actifs ou inflammés", nextQuestionId: "q_lightening" },
+      { label: "Non, ma peau est plutôt calme", nextQuestionId: "q_lightening" }
+    ]
+  },
+  {
+    // Asked on the spots / glow paths. Current use: no depigmenting active is added on top, and she is advised
+    // to talk to a professional (lib/skin-safety.ts reads "actuellement"). An unusual pigmentation seen on the
+    // photos leads to a dermatologist referral.
+    id: "q_lightening",
+    text: "Utilisez-vous, ou avez-vous déjà utilisé, des produits éclaircissants ou « blanchissants » (crèmes, laits ou savons) ?",
+    type: "choice",
+    options: [
+      { label: "Oui, actuellement", nextQuestionId: "q_post_wash" },
+      { label: "Oui, par le passé", nextQuestionId: "q_post_wash" },
+      { label: "Non, jamais", nextQuestionId: "q_post_wash" }
     ]
   },
   {
@@ -135,8 +152,19 @@ const DECISION_TREE: QuestionNode[] = [
     text: "Êtes-vous actuellement enceinte ou en train d'allaiter ?",
     type: "choice",
     options: [
-      { label: "Oui, enceinte ou allaitante", nextQuestionId: "q_has_allergies" },
-      { label: "Non, ou je ne suis pas concernée", nextQuestionId: "q_has_allergies" }
+      { label: "Oui, enceinte ou allaitante", nextQuestionId: "q_derm_treatment" },
+      { label: "Non, ou je ne suis pas concernée", nextQuestionId: "q_derm_treatment" }
+    ]
+  },
+  {
+    // Under treatment: no irritating active is added on top, and she is told to check with her doctor
+    // (lib/skin-safety.ts reads "Oui...")
+    id: "q_derm_treatment",
+    text: "Suivez-vous actuellement un traitement prescrit par un médecin pour votre peau (crème, gel ou comprimés contre l'acné, par exemple) ?",
+    type: "choice",
+    options: [
+      { label: "Oui, j'ai un traitement en cours", nextQuestionId: "q_has_allergies" },
+      { label: "Non", nextQuestionId: "q_has_allergies" }
     ]
   },
   {
@@ -219,7 +247,7 @@ const AIAvatar = () => (
 );
 
 // ─── Progress steps ──────────────────────────────────────────────────────────
-const TOTAL_STEPS = 10;
+const TOTAL_STEPS = 12;
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
@@ -255,6 +283,25 @@ export default function SkinCoachFlow() {
   const setResult = useSkinCoachStore((state) => state.setResult);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // The flow sits under the announcement bar and navbar: at a full 100dvh its bottom (the answer input)
+  // fell below the screen on phones. Size it to the space left under the site header instead.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [headerOffset, setHeaderOffset] = useState(0);
+  useEffect(() => {
+    const measure = () => {
+      if (rootRef.current) setHeaderOffset(rootRef.current.getBoundingClientRect().top + window.scrollY);
+    };
+    measure();
+    // the announcement bar gets its text after a fetch, which changes the header height
+    const observer = new ResizeObserver(measure);
+    observer.observe(document.body);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
+
   useEffect(() => {
     if (chatEndRef.current) {
       setTimeout(() => {
@@ -288,12 +335,29 @@ export default function SkinCoachFlow() {
     }
   }, [hasCaptured, messages.length]);
 
+  // The photo analysis starts as soon as the photos are taken and runs while she answers the questions;
+  // analyzeSkin reuses it at the end (or runs it again if it failed).
+  const earlyVisualRef = useRef<Promise<Awaited<ReturnType<typeof analyzeFace>> | null> | null>(null);
+  // Answers kept when she has to retake the photos at the end (glasses): the analysis restarts by itself
+  const resumeAfterCaptureRef = useRef<UserResponse[] | null>(null);
+
   const handleCaptureComplete = (result: CaptureResult) => {
     setCaptures(result);
     setHasCaptured(true);
+    posthog.capture("skin_coach_photos_captured");
+    earlyVisualRef.current = analyzeFace(result, photoConsent).catch(() => null);
+    const pendingAnswers = resumeAfterCaptureRef.current;
+    if (pendingAnswers) {
+      resumeAfterCaptureRef.current = null;
+      setAnalysisProgress(0);
+      setIsGenerating(true);
+      executeAnalysis(pendingAnswers, result);
+    }
   };
 
   const handleRetake = () => {
+    earlyVisualRef.current = null;
+    resumeAfterCaptureRef.current = null;
     setCaptures(null);
     setHasCaptured(false);
     setMessages([]);
@@ -306,25 +370,61 @@ export default function SkinCoachFlow() {
     setPhotoError(null);
   };
 
-  const executeAnalysis = async (finalResponses: UserResponse[]) => {
-    if (!captures) return;
+  // New photos, same answers (e.g. glasses detected): she doesn't answer the questionnaire again
+  const retakePhotosKeepingAnswers = () => {
+    posthog.capture("skin_coach_retake_photos");
+    resumeAfterCaptureRef.current = userResponses;
+    earlyVisualRef.current = null;
+    setCaptures(null);
+    setHasCaptured(false);
+  };
+
+  const showFailure = (failure: { code: string; error: string; retryable: boolean }) => {
+    posthog.capture("skin_coach_analysis_failed", { code: failure.code });
+    setMessages(prev => [...prev, {
+      id: `msg-ai-err-${Date.now()}`,
+      sender: "ai",
+      text: `${t("Oups, l'analyse n'a pas pu aboutir.")} ${failure.error}`,
+      errorCode: failure.code,
+      action: failure.retryable ? "retry" : "retake",
+    }]);
+    setIsGenerating(false);
+  };
+
+  const executeAnalysis = async (finalResponses: UserResponse[], photos: CaptureResult | null = captures) => {
+    if (!photos) return;
+    posthog.capture("skin_coach_questionnaire_completed");
     try {
-      const result = await analyzeSkin(captures, finalResponses, photoConsent);
-      if (result.success && result.data) {
+      const early = earlyVisualRef.current ? await earlyVisualRef.current : null;
+      // glasses already seen by the early analysis: no need to ask the server again
+      if (early && !early.success && early.code === "GLASSES") return showFailure(early);
+      const result = await analyzeSkin(photos, finalResponses, photoConsent, early?.success ? early.visual : undefined);
+      if (result.success) {
+        posthog.capture("skin_coach_analysis_succeeded", { scan_id: result.data.scan_id, early_visual: !!early?.success });
         setResult(result.data);
         setAnalysisProgress(100);
         setTimeout(() => {
           router.push("/skin-coach/result");
         }, 600);
       } else {
-        setMessages(prev => [...prev, { id: `msg-ai-err-${Date.now()}`, sender: "ai", text: `${t("Oups, une erreur est survenue lors de l'analyse :")} ${result.error}` }]);
-        setIsGenerating(false);
+        showFailure(result);
       }
     } catch (error) {
       console.error(error);
-      setMessages(prev => [...prev, { id: `msg-ai-err-${Date.now()}`, sender: "ai", text: t("Erreur de connexion au serveur d'analyse.") }]);
-      setIsGenerating(false);
+      showFailure({
+        code: "NETWORK",
+        error: t("Connexion au serveur d'analyse impossible. Vérifiez votre connexion internet : vos photos et vos réponses sont conservées."),
+        retryable: true,
+      });
     }
+  };
+
+  // Same photos, same answers: only the analysis is run again (the early photo analysis is reused when it worked)
+  const retryAnalysis = () => {
+    posthog.capture("skin_coach_analysis_retry");
+    setAnalysisProgress(0);
+    setIsGenerating(true);
+    executeAnalysis(userResponses);
   };
 
   const handleOptionSelect = (option: Option) => {
@@ -430,7 +530,11 @@ export default function SkinCoachFlow() {
   const currentNode = DECISION_TREE.find((n) => n.id === currentQuestionId);
 
   return (
-    <div className="relative w-full h-[100dvh] overflow-hidden flex flex-col font-sans" style={{ background: "#FDF8F7" }}>
+    <div
+      ref={rootRef}
+      className="relative w-full h-[100dvh] overflow-hidden flex flex-col font-sans"
+      style={{ background: "#FDF8F7", height: `calc(100dvh - ${headerOffset}px)` }}
+    >
 
       {/* ─── 1. BACKGROUND ─── */}
       <div className={`absolute z-0 ${hasCaptured ? "inset-x-0 top-0 h-[52vh]" : "inset-0"} w-full bg-slate-900 transition-all duration-700 ease-in-out`}>
@@ -546,8 +650,39 @@ export default function SkinCoachFlow() {
                       ) : (
                         msg.text ? t(msg.text) : null
                       )}
+                      {msg.errorCode && (
+                        <span className="block mt-2 text-[11px]" style={{ color: "rgba(61,43,45,0.45)" }}>
+                          {t("Code")} : {msg.errorCode}
+                        </span>
+                      )}
                     </div>
                   </div>
+
+                  {/* Analysis failure: retry with the same photos and answers, or retake only the photos */}
+                  {msg.action && isLastMsg && !isGenerating && (
+                    <div className="flex flex-col gap-2 mt-3 ml-[46px] w-[calc(100%-46px)] pr-4">
+                      {msg.action === "retry" ? (
+                        <button
+                          onClick={retryAnalysis}
+                          className="w-full py-3.5 px-4 rounded-2xl text-[13px] font-bold text-white flex items-center justify-center gap-2"
+                          style={{ background: "#2A2424" }}
+                        >
+                          <ArrowCounterClockwise className="w-4 h-4" /> {t("Réessayer l'analyse")}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={retakePhotosKeepingAnswers}
+                          className="w-full py-3.5 px-4 rounded-2xl text-[13px] font-bold text-white flex items-center justify-center gap-2"
+                          style={{ background: "#2A2424" }}
+                        >
+                          <Camera className="w-4 h-4" /> {t("Reprendre les photos")}
+                        </button>
+                      )}
+                      <p className="text-[11px] text-center" style={{ color: "rgba(61,43,45,0.45)" }}>
+                        {t("Vos réponses au questionnaire sont conservées.")}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Render Options inline if it's an AI message, it's the last message, and it has options */}
                   {msg.sender === "ai" && msg.options && isLastMsg && !isTyping && !isGenerating && (

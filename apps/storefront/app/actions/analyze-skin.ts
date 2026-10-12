@@ -1,6 +1,23 @@
 "use server";
 
-import { exclusionReason, needsInciCheck, readSafetyProfile } from "@/lib/skin-safety";
+import { createHash, createHmac, timingSafeEqual } from "crypto";
+import { decideMedical, exclusionReason, needsInciCheck, readSafetyProfile } from "@/lib/skin-safety";
+import {
+  addMissingEssentials,
+  BUDGET_TOLERANCE,
+  budgetMax,
+  checkRoutine,
+  ESSENTIAL_FUNCTIONS,
+  fmt,
+  FUNCTION_LABEL,
+  productFunction,
+  routineProblems,
+  routineTotal,
+  type RoutineCheck,
+  type RoutineStep as CheckedStep,
+  withArticle,
+} from "@/lib/skin-routine";
+import { callOpenRouter, parseJsonAnswer, type AiErrorCode } from "@/lib/openrouter";
 
 export type UserResponse = {
   questionId: string;
@@ -20,7 +37,11 @@ export type RoutineStep = {
   explanation?: string;
 };
 
+// Messages decided in code (never written by the model), shown above the routine
+export type SkinNotice = { kind: "referral" | "caution" | "budget" | "missing"; text: string };
+
 export type SkinAnalysisResult = {
+  notices?: SkinNotice[];
   final_skin_type: string;
   estimated_skin_age: number;
   melanin_phototype?: string;
@@ -97,6 +118,7 @@ type EnrichedProduct = {
   price?: number;
   skin_concerns: string[]; // product.metadata.skin_concerns, most relevant first
   inci: string; // product.metadata.raw_inci, checked against allergies / pregnancy
+  fallback?: boolean; // added to complete a manual-selection step left without any product
 };
 
 async function fetchStoreProductsByIds(
@@ -351,41 +373,20 @@ function isSpotTreatment(p: EnrichedProduct): boolean {
 }
 
 // =========================================================================
-// MAIN ACTION
+// APPEL 1 : Le Diagnostic Visuel Brut (QWEN VL)
+// Run as soon as the photos are taken (analyzeFace), while she answers the questionnaire, then reused by
+// analyzeSkin. The result travels through the browser, so it is signed with the server secret and bound to
+// the photos: a tampered or foreign result is ignored and the analysis is simply redone.
 // =========================================================================
 
-export async function analyzeSkin(
-  images: { front: string; left: string; right: string },
-  userResponses: UserResponse[],
-  photoConsent: boolean
-): Promise<{ success: boolean; data?: SkinAnalysisResult; error?: string }> {
-  try {
-    // The face photos are analysed and stored only with the consent given on the scan intro screen
-    if (photoConsent !== true) {
-      return { success: false, error: "Votre accord pour l'analyse de vos photos est nécessaire." };
-    }
-
-    if (!process.env.OPENROUTER_API_KEY) {
-      console.error("Clé API OpenRouter manquante.");
-      return { success: false, error: "Configuration serveur incomplète (Clé API manquante)." };
-    }
-
-    if (!images.front || !images.left || !images.right) {
-      return { success: false, error: "Les 3 angles d'images (Face, Gauche, Droite) sont requis." };
-    }
-
-    // =========================================================================
-    // APPEL 0 : Lecture de la configuration IA Admin
-    // =========================================================================
-    const aiConfig = await fetchAIConfig();
-    console.log(`[SkinCoach] Mode IA: ${aiConfig.mode} | Stock seuil: ${aiConfig.min_stock_threshold}`);
-
-    // =========================================================================
-    // APPEL 1 : Le Diagnostic Visuel Brut (QWEN VL)
-    // =========================================================================
-    const qwenSystemPrompt = `Tu es un algorithme dermatologique clinique de haute précision. Analyse ces 3 vues (face, profil gauche, profil droit) du visage.
+const QWEN_SYSTEM_PROMPT = `Tu es un algorithme dermatologique clinique de haute précision. Analyse ces 3 vues (face, profil gauche, profil droit) du visage.
 MISSION : Traque en profondeur les micro-détails cutanés. Cherche les micro-comédons, l'acné kystique, l'hyperpigmentation post-inflammatoire (PIH), le niveau de sébum (réflectance), la desquamation, et la dilatation des pores. Tu dois également estimer avec la plus grande précision l'âge cutané ('estimated_skin_age') en analysant les rides, ridules et la perte d'élasticité.
 OBLIGATION : Tu dois générer un champ 'visual_reasoning' où tu décris cliniquement ce que tu vois sur chaque zone (Front, Joues, Menton) avant de donner tes notes.
+SIGNAUX D'ALERTE ('medical_flags') : tu ne poses aucun diagnostic médical, tu signales seulement ce qui est nettement visible.
+- severe_acne : nombreux boutons profonds ou douloureux, nodules, kystes, ou cicatrices marquées.
+- unusual_pigmentation : taches gris-bleu ou brun-noir inhabituelles, en plaques (pommettes, tempes, front, cou), d'aspect granité ou très contrasté, pouvant faire penser à une réaction à des produits éclaircissants. Les simples marques post-inflammatoires ne comptent pas.
+- other_lesion : plaie, lésion suintante ou croûteuse, grain de beauté irrégulier.
+Sur les peaux foncées, les lésions inflammatoires paraissent brunes ou violacées plutôt que rouges : ne les ignore pas. Si les photos ne permettent pas de conclure (flou, lumière), mets false et explique-le dans 'notes'.
 FORMAT JSON ATTENDU :
 {
   "visual_reasoning": "...",
@@ -399,63 +400,178 @@ FORMAT JSON ATTENDU :
     "hydration_barrier_percentage": 0-100,
     "pore_visibility_percentage": 0-100,
     "eye_contour_fatigue_percentage": 0-100
+  },
+  "medical_flags": {
+    "severe_acne": false,
+    "unusual_pigmentation": false,
+    "other_lesion": false,
+    "notes": "..."
   }
 }`;
 
-    const qwenResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://thewelfare.com",
-        "X-Title": "The Welfare Skin Coach",
-      },
-      body: JSON.stringify({
-        model: "qwen/qwen3-vl-235b-a22b-instruct",
-        max_tokens: 4000,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: qwenSystemPrompt },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: "Vue de face :" },
-              { type: "image_url", image_url: { url: images.front } },
-              { type: "text", text: "Vue profil gauche :" },
-              { type: "image_url", image_url: { url: images.left } },
-              { type: "text", text: "Vue profil droit :" },
-              { type: "image_url", image_url: { url: images.right } },
-            ],
-          },
-        ],
-      }),
-    });
+type FaceImages = { front: string; left: string; right: string };
 
-    if (!qwenResponse.ok) {
-      console.error(`[Appel 1 Qwen] Erreur:`, await qwenResponse.text());
-      return { success: false, error: "Échec de l'analyse visuelle par l'IA." };
+export type SignedVisualAnalysis = { result: any; signature: string };
+
+// What the customer reads when a step fails; the code is shown with it and logged.
+function aiErrorMessage(code: AiErrorCode, step: "visual" | "routine"): string {
+  const what = step === "visual" ? "l'analyse de vos photos" : "la création de votre routine";
+  if (code === "AI_CREDITS" || code === "AI_BUSY") {
+    return "Notre service d'analyse est momentanément saturé. Vos photos et vos réponses sont conservées : réessayez dans quelques instants.";
+  }
+  if (code === "AI_TIMEOUT") return `${what.charAt(0).toUpperCase()}${what.slice(1)} a pris trop de temps. Vos photos et vos réponses sont conservées : réessayez.`;
+  return `Une erreur technique est survenue pendant ${what}. Vos photos et vos réponses sont conservées : réessayez.`;
+}
+
+type Failure = { ok: false; code: string; error: string; retryable: boolean };
+
+async function runVisualAnalysis(images: FaceImages): Promise<{ ok: true; result: any } | Failure> {
+  const ai = await callOpenRouter(
+    "visual",
+    {
+      model: "qwen/qwen3-vl-235b-a22b-instruct",
+      max_tokens: 4000,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: QWEN_SYSTEM_PROMPT },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "Vue de face :" },
+            { type: "image_url", image_url: { url: images.front } },
+            { type: "text", text: "Vue profil gauche :" },
+            { type: "image_url", image_url: { url: images.left } },
+            { type: "text", text: "Vue profil droit :" },
+            { type: "image_url", image_url: { url: images.right } },
+          ],
+        },
+      ],
+    },
+    { timeoutMs: 90_000 }
+  );
+  if (!ai.ok) return { ok: false, code: `VISUAL_${ai.code}`, error: aiErrorMessage(ai.code, "visual"), retryable: true };
+
+  const result = parseJsonAnswer(ai.content);
+  if (!result || typeof result !== "object") {
+    console.error("[Appel 1 Qwen] Parsing error:", ai.content.slice(0, 500));
+    return { ok: false, code: "VISUAL_AI_FORMAT", error: aiErrorMessage("AI_FORMAT", "visual"), retryable: true };
+  }
+  if (result.has_glasses) {
+    return {
+      ok: false,
+      code: "GLASSES",
+      error: "Veuillez retirer vos lunettes pour que l'IA puisse analyser précisément votre peau, puis reprenez les photos.",
+      retryable: false,
+    };
+  }
+  return { ok: true, result };
+}
+
+function signVisual(images: FaceImages, result: unknown): string | null {
+  const secret = process.env.SKIN_SCAN_TOKEN;
+  if (!secret) return null;
+  const photos = createHash("sha256").update(images.front).update("|").update(images.left).update("|").update(images.right).digest("hex");
+  return createHmac("sha256", secret).update(photos).update(JSON.stringify(result)).digest("hex");
+}
+
+function visualIsAuthentic(images: FaceImages, visual: SignedVisualAnalysis): boolean {
+  const expected = signVisual(images, visual?.result);
+  if (!expected || typeof visual?.signature !== "string" || visual.signature.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(expected), Buffer.from(visual.signature));
+}
+
+function checkInputs(images: FaceImages, photoConsent: boolean): Failure | null {
+  // The face photos are analysed and stored only with the consent given on the scan intro screen
+  if (photoConsent !== true) {
+    return { ok: false, code: "CONSENT_MISSING", error: "Votre accord pour l'analyse de vos photos est nécessaire.", retryable: false };
+  }
+  if (!process.env.OPENROUTER_API_KEY) {
+    console.error("Clé API OpenRouter manquante.");
+    return { ok: false, code: "CONFIG_MISSING", error: "Le service d'analyse n'est pas disponible pour le moment.", retryable: false };
+  }
+  if (!images?.front || !images?.left || !images?.right) {
+    return { ok: false, code: "PHOTOS_MISSING", error: "Les 3 photos (face, gauche, droite) sont nécessaires : reprenez les photos.", retryable: false };
+  }
+  return null;
+}
+
+type ActionFailure = { success: false; error: string; code: string; retryable: boolean };
+function failure(f: Failure): ActionFailure {
+  console.error(`[SkinCoach] Scan failed: ${f.code}`);
+  return { success: false, error: f.error, code: f.code, retryable: f.retryable };
+}
+
+// Started by the flow right after the photos are taken
+export async function analyzeFace(
+  images: FaceImages,
+  photoConsent: boolean
+): Promise<{ success: true; visual: SignedVisualAnalysis } | ActionFailure> {
+  try {
+    const invalid = checkInputs(images, photoConsent);
+    if (invalid) return failure(invalid);
+    const visual = await runVisualAnalysis(images);
+    if (!visual.ok) return failure(visual);
+    const signature = signVisual(images, visual.result);
+    // without the secret the early result can't be trusted: analyzeSkin will run the analysis itself
+    if (!signature) return { success: false, error: "", code: "EARLY_UNSIGNED", retryable: true };
+    return { success: true, visual: { result: visual.result, signature } };
+  } catch (error: any) {
+    console.error("[SkinCoach] Erreur dans analyzeFace:", error);
+    return failure({ ok: false, code: "VISUAL_UNKNOWN", error: aiErrorMessage("AI_ERROR", "visual"), retryable: true });
+  }
+}
+
+// =========================================================================
+// MAIN ACTION
+// =========================================================================
+
+export async function analyzeSkin(
+  images: FaceImages,
+  userResponses: UserResponse[],
+  photoConsent: boolean,
+  earlyVisual?: SignedVisualAnalysis
+): Promise<{ success: true; data: SkinAnalysisResult } | ActionFailure> {
+  try {
+    const invalid = checkInputs(images, photoConsent);
+    if (invalid) return failure(invalid);
+
+    // =========================================================================
+    // APPEL 0 : Lecture de la configuration IA Admin
+    // =========================================================================
+    const aiConfig = await fetchAIConfig();
+    console.log(`[SkinCoach] Mode IA: ${aiConfig.mode} | Stock seuil: ${aiConfig.min_stock_threshold}`);
+
+    // APPEL 1 : reuse the analysis started during the questionnaire, or run it now
+    let qwenResult: any;
+    if (earlyVisual && visualIsAuthentic(images, earlyVisual)) {
+      qwenResult = earlyVisual.result;
+      console.log("[SkinCoach] Visual analysis reused from the questionnaire phase");
+    } else {
+      if (earlyVisual) console.warn("[SkinCoach] Early visual analysis rejected (signature mismatch): running it again");
+      const visual = await runVisualAnalysis(images);
+      if (!visual.ok) return failure(visual);
+      qwenResult = visual.result;
     }
 
-    const qwenData = await qwenResponse.json();
-    const qwenRawContent = qwenData.choices?.[0]?.message?.content;
-    const cleanedQwenContent =
-      qwenRawContent?.replace(/```json/gi, "")?.replace(/```/g, "")?.trim() || "{}";
-
-    let qwenResult;
-    try {
-      qwenResult = JSON.parse(cleanedQwenContent);
-    } catch (e) {
-      console.error("[Appel 1 Qwen] Parsing error:", qwenRawContent);
-      return { success: false, error: "Erreur de formatage de l'analyse visuelle." };
+    // =========================================================================
+    // SÉCURITÉ : orientation médicale, allergies, grossesse, traitements (décidé en code)
+    // =========================================================================
+    const answers = {
+      allergies: answerFor(userResponses, "q_allergies_list"),
+      pregnancy: answerFor(userResponses, "q_pregnancy"),
+      dermTreatment: answerFor(userResponses, "q_derm_treatment"),
+      lightening: answerFor(userResponses, "q_lightening"),
+    };
+    const medical = decideMedical(qwenResult.medical_flags, qwenResult.metrics?.acne_severity_percentage, answers);
+    if (medical.referral || medical.cautions.length) {
+      console.log(
+        `[SkinCoach] Medical: referral ${medical.referral} [${medical.reasons.join(" | ")}], ${medical.cautions.length} caution(s), flags ${JSON.stringify(qwenResult.medical_flags || {})}`
+      );
     }
-
-    if (qwenResult.has_glasses) {
-      return {
-        success: false,
-        error:
-          "Veuillez retirer vos lunettes pour que l'IA puisse analyser précisément votre peau et recommencez.",
-      };
-    }
+    const safety = readSafetyProfile(answers, medical);
+    const maxSteps = medical.referral ? ESSENTIAL_FUNCTIONS.length : aiConfig.max_routine_steps;
+    const budgetAnswer = userResponses.find((r) => typeof r.answer === "string" && r.answer.includes("FCFA"));
+    const maxBudget = budgetMax(typeof budgetAnswer?.answer === "string" ? budgetAnswer.answer : "");
 
     // =========================================================================
     // APPEL 1.5 : RAG — Catalogue filtré selon la config Admin
@@ -466,39 +582,53 @@ FORMAT JSON ATTENDU :
     );
 
     const observations: string[] = qwenResult.clinical_observations || [];
-    const rawCatalog = await fetchProductCatalogForSkin(
-      qwenResult.visual_reasoning || "",
-      // acne first: search for acne products and don't let spot keywords steer the search
-      acne.acneFirst ? ["acné", ...observations.filter((o) => !SPOT_RE.test(o))] : observations,
-      aiConfig
-    );
+    const searchSkinType = qwenResult.visual_reasoning || "";
+    // acne first: search for acne products and don't let spot keywords steer the search
+    const searchConcerns = acne.acneFirst ? ["acné", ...observations.filter((o) => !SPOT_RE.test(o))] : observations;
+    const rawCatalog = await fetchProductCatalogForSkin(searchSkinType, searchConcerns, aiConfig);
 
-    // acne first: spot treatments are kept out of what the model can choose from
+    // Products she must not be offered are removed before the model sees the catalog:
+    // - acne first: spot treatments;
+    // - allergies, pregnancy, treatment, lightening products, doctor's opinion: from the INCI list and the
+    //   product name (lib/skin-safety.ts). The final routine is checked again before it is shown.
     const excludedProductIds = new Set<string>();
-    const acneCatalog = acne.acneFirst
-      ? rawCatalog.filter((p) => {
-          if (isSpotTreatment(p)) {
-            excludedProductIds.add(p.id);
-            return false;
-          }
-          return true;
-        })
-      : rawCatalog;
+    const safetyExclusions = new Map<string, number>();
+    const filterCatalog = (products: EnrichedProduct[]) =>
+      products.filter((p) => {
+        if (acne.acneFirst && isSpotTreatment(p)) {
+          excludedProductIds.add(p.id);
+          return false;
+        }
+        const reason = exclusionReason(p, safety);
+        if (reason) safetyExclusions.set(reason, (safetyExclusions.get(reason) || 0) + 1);
+        return !reason;
+      });
+
+    let productCatalog = filterCatalog(rawCatalog);
+
+    // Manual selection: a step the team filled but where none of its products is left (out of stock, allergy,
+    // pregnancy, acne first) is completed with the best in-stock products of that category (owner's decision).
+    // The team's selection stays preferred (see the prompt).
+    if (aiConfig.mode === "manual_selection" && aiConfig.manual_products_by_step) {
+      const emptySteps = Object.entries(aiConfig.manual_products_by_step)
+        .filter(([step, ids]) => ids.length > 0 && !productCatalog.some((p) => p.category === step))
+        .map(([step]) => step);
+      if (emptySteps.length) {
+        const topStock = await fetchProductCatalogForSkin(searchSkinType, searchConcerns, { ...aiConfig, mode: "top_stock" });
+        const extra = filterCatalog(
+          topStock.filter((p) => emptySteps.includes(p.category) && !productCatalog.some((q) => q.id === p.id))
+        ).map((p) => ({ ...p, fallback: true }));
+        productCatalog = [...productCatalog, ...extra];
+        console.log(`[SkinCoach] Manual selection: no product left for [${emptySteps.join(", ")}], ${extra.length} in-stock product(s) added`);
+      }
+    }
+
     if (excludedProductIds.size) {
       console.log(`[SkinCoach] Acne-first: ${excludedProductIds.size} spot-treatment products excluded from the catalog`);
     }
-
-    // Allergies and pregnancy: unsafe products are removed here, from their INCI list (lib/skin-safety.ts)
-    const safety = readSafetyProfile(answerFor(userResponses, "q_allergies_list"), answerFor(userResponses, "q_pregnancy"));
-    const safetyExclusions = new Map<string, number>();
-    const productCatalog = acneCatalog.filter((p) => {
-      const reason = exclusionReason(p, safety);
-      if (reason) safetyExclusions.set(reason, (safetyExclusions.get(reason) || 0) + 1);
-      return !reason;
-    });
     if (needsInciCheck(safety) || safety.otherAllergy) {
       console.log(
-        `[SkinCoach] Safety: allergies [${safety.allergies.map((a) => a.name).join(", ")}]${safety.otherAllergy ? ` + other "${safety.otherAllergy}"` : ""}, pregnant: ${safety.pregnant} — ${acneCatalog.length - productCatalog.length}/${acneCatalog.length} products excluded ${JSON.stringify(Object.fromEntries(safetyExclusions))}`
+        `[SkinCoach] Safety: allergies [${safety.allergies.map((a) => a.name).join(", ")}]${safety.otherAllergy ? ` + other "${safety.otherAllergy}"` : ""}, pregnant: ${safety.pregnant}, gentle only: ${safety.gentleOnly}, no depigmenting: ${safety.noDepigmenting} — ${productCatalog.length} products left, excluded ${JSON.stringify(Object.fromEntries(safetyExclusions))}`
       );
     }
 
@@ -509,7 +639,7 @@ FORMAT JSON ATTENDU :
       ? productCatalog
           .map(
             (p) =>
-              `[${p.category}] ${p.title} (medusa_product_id: "${p.id}", stock: ${p.stock_total}, PRIX: ${p.price || 15000} FCFA)\n  COMPOSITION ET FICHE IA: ${(p.description || "Aucune description").replace(/\n/g, "  ")}\n` +
+              `[${p.category} · fonction : ${FUNCTION_LABEL[productFunction(p)]}]${p.fallback ? " (complément automatique, hors sélection de l'équipe)" : ""} ${p.title} (medusa_product_id: "${p.id}", stock: ${p.stock_total}, PRIX: ${p.price || 15000} FCFA)\n  COMPOSITION ET FICHE IA: ${(p.description || "Aucune description").replace(/\n/g, "  ")}\n` +
               // a free-text allergy can only be checked by the model, so it gets the full ingredient list
               (safety.otherAllergy ? `  INCI COMPLET: ${p.inci || "inconnu"}\n` : "")
           )
@@ -537,22 +667,28 @@ FORMAT JSON ATTENDU :
         ? "Top Stock (automatique)"
         : "Sélection éditoriale manuelle";
 
+    const budgetLine = Number.isFinite(maxBudget)
+      ? `la somme des prix des produits doit rester au maximum à ${fmt(maxBudget)} FCFA`
+      : "budget confortable : ce n'est pas une raison pour multiplier les produits";
+
     const catalogConstraint = hasCatalog
       ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CATALOGUE THE WELFARE DISPONIBLE (Mode: ${modeLabel})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Les produits suivants sont TOUS disponibles en stock. Tu DOIS choisir tes recommandations UNIQUEMENT dans cette liste. Ne propose AUCUN produit hors de cette liste.
+Les produits suivants sont TOUS disponibles en stock et compatibles avec ses restrictions. Tu DOIS choisir tes recommandations UNIQUEMENT dans cette liste. Ne propose AUCUN produit hors de cette liste.
 
 ${miniCatalogText}
 
-RÈGLE DE PRIORISATION (The Welfare Strategy) & BUDGET :
-- BUDGET (RÈGLE STRICTE) : Vérifie le budget souhaité par la cliente dans le questionnaire. La somme totale des prix des produits recommandés NE DOIT SOUS AUCUN PRÉTEXTE dépasser ce budget.
-  - Si le budget est limité (ex: 25k-35k FCFA), tu DOIS impérativement supprimer des étapes (par exemple, retirer le toner ou le sérum) pour ne garder que l'essentiel (ex: Nettoyant + Hydratant/Solaire) afin de rester strictement sous le budget. Le respect du budget est ABSOLU et prioritaire sur le fait d'avoir une routine longue.
-- En cas d'hésitation entre deux produits cutanément équivalents et qui respectent le budget, donne TOUJOURS la priorité au produit avec le stock le plus élevé (indiqué entre parenthèses après "stock:").
-- Si le mode est "Sélection éditoriale manuelle", ces produits ont été choisis par notre équipe : leur recommandation est FORTEMENT encouragée si pertinente au budget.
-- Pour chaque étape, copie EXACTEMENT le medusa_product_id du produit choisi.
-- Si aucun produit de la liste ne convient ou ne rentre dans le budget pour une étape, N'AJOUTE PAS cette étape (skinimalisme).`
-      : `Note: Le catalogue produit n'est pas disponible pour le moment. Génère une routine K-Beauty générique et minimaliste (3 à 5 étapes maximum). Laisse medusa_product_id à null pour chaque étape.`;
+CONSTRUCTION DE LA ROUTINE, DANS CET ORDRE :
+1. Sécurité : les produits incompatibles avec ses allergies, sa situation ou son traitement ont déjà été retirés ; ne cherche jamais à contourner une exclusion.
+2. Besoins de la peau (observés sur les photos ET déclarés) et objectif de la cliente.
+3. FONCTIONS ESSENTIELLES, obligatoires dans toute routine quotidienne : un nettoyant doux, un hydratant sans rinçage (crème, gel-crème ou émulsion, dont la texture convient à son type de peau et à ses différentes zones) et une protection solaire. Un toner, une essence ou un sérum ne remplacent JAMAIS l'hydratant.
+4. Soins complémentaires (toner, essence, sérum, traitement) seulement s'ils apportent un bénéfice justifié pour elle, et sans cumuler les actifs irritants (tiens compte de la routine qu'elle utilise déjà). Un budget élevé ne signifie pas plus de produits.
+5. Budget : ${budgetLine}. Pour le respecter, retire d'abord les soins complémentaires, puis choisis des références moins chères pour les fonctions essentielles. Ne retire JAMAIS le nettoyant, l'hydratant ou la protection solaire : si même les références les moins chères dépassent le budget, garde-les quand même (un message l'expliquera à la cliente).
+- En cas d'hésitation entre deux produits équivalents qui respectent le budget, préfère celui qui a le stock le plus élevé.
+- Si le mode est "Sélection éditoriale manuelle", ces produits ont été choisis par notre équipe : leur recommandation est FORTEMENT encouragée. Les produits marqués "complément automatique" ne sont là que parce qu'aucun produit de la sélection n'est disponible pour leur étape : utilise-les seulement pour cette étape.
+- Pour chaque étape, copie EXACTEMENT le medusa_product_id du produit choisi.`
+      : `Note: Le catalogue produit n'est pas disponible pour le moment. Génère une routine K-Beauty générique et minimaliste (nettoyant, hydratant, protection solaire). Laisse medusa_product_id à null pour chaque étape.`;
 
     const acneReasons = [
       acne.goalIsAcne ? "son objectif numéro 1 est de combattre l'acné" : "",
@@ -586,12 +722,27 @@ ${acne.redirected ? `- Dans 'empathetic_message', explique avec douceur, en une 
       safety.pregnant
         ? `- Elle est enceinte ou allaite : les rétinoïdes, l'hydroquinone et l'acide salicylique sans rinçage ont déjà été retirés. Propose une routine douce et, dans 'empathetic_message', invite-la avec bienveillance à faire valider sa routine par son médecin ou sa sage-femme.`
         : "",
+      safety.gentleOnly && !medical.referral
+        ? `- Elle suit un traitement pour la peau : les actifs irritants (rétinoïdes, acides exfoliants, peroxyde de benzoyle) ont été retirés. Propose une routine douce qui accompagne son traitement sans le concurrencer.`
+        : "",
+      safety.noDepigmenting
+        ? `- Aucun actif dépigmentant ne doit être ajouté (produits éclaircissants utilisés actuellement ou pigmentation inhabituelle) : ils ont été retirés du catalogue.`
+        : "",
     ].filter(Boolean);
     const safetyBlock = safetyLines.length
       ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⚠️ SÉCURITÉ DE LA CLIENTE (prioritaire sur tout le reste)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${safetyLines.join("\n")}`
+      : "";
+
+    const medicalBlock = medical.referral
+      ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🩺 AVIS DERMATOLOGIQUE RECOMMANDÉ (décidé par notre contrôle, non négociable)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Constat : ${medical.reasons.join(" ; ")}.
+- Propose UNIQUEMENT les 3 fonctions essentielles (nettoyant, hydratant, protection solaire), avec les produits les plus doux du catalogue.
+- Dans 'empathetic_message', explique avec bienveillance que ces signes justifient l'avis d'un dermatologue et qu'une routine cosmétique ne remplace pas une consultation. Ne pose aucun diagnostic, ne nomme aucune maladie, ne promets aucun résultat.`
       : "";
 
     const claudeSystemPrompt = `Tu es le 'Skin Coach VIP' de la marque K-Beauty premium 'The Welfare', basée en Afrique (Cameroun). Tu es l'expert bienveillant qui va concevoir la routine de soin idéale pour chaque cliente.
@@ -610,6 +761,8 @@ ${catalogConstraint}
 
 ${safetyBlock}
 
+${medicalBlock}
+
 ${acnePriorityBlock}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -619,7 +772,7 @@ TA MISSION (4 points obligatoires)
 1. MESSAGE EMPATHIQUE ('empathetic_message') :
    Rédige un message extrêmement humain, chaleureux et bienveillant, en vouvoyant la cliente.
    Ce message DOIT faire le lien entre ce que voit objectivement l'IA (métriques visuelles) et ce que ressent subjectivement la cliente (ses déclarations dans le questionnaire).
-   Il doit valider ses inquiétudes et la rassurer avec bienveillance.
+   Il doit valider ses inquiétudes et la rassurer avec bienveillance, sans promesse excessive.
 
 2. TYPE DE PEAU FINAL ('final_skin_type') :
    Détermine le type de peau avec nuance (ex: "Peau Mixte à tendance déshydratée").
@@ -636,14 +789,12 @@ TA MISSION (4 points obligatoires)
 RÈGLES D'EXPERTISE K-BEAUTY — THE WELFARE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🌿 SKINIMALISME STRICT & BUDGET (${aiConfig.max_routine_steps} étapes MAXIMUM) :
-   RÈGLE ABSOLUE : Tu ne DOIS SOUS AUCUN PRÉTEXTE dépasser le budget de la cliente, même si cela implique de ne recommander que 2 produits.
-   Le tableau "routine_steps" doit contenir MAXIMUM ${aiConfig.max_routine_steps} éléments.
-   Ne surcharge JAMAIS la routine. Le respect strict du budget passe avant tout.
-   Si le budget ne permet que 2 ou 3 produits (ex: 25k-35k FCFA), propose uniquement 2 produits. Qualité et respect du budget > Quantité.
+🌿 SKINIMALISME (${maxSteps} étapes MAXIMUM) :
+   Le tableau "routine_steps" doit contenir MAXIMUM ${maxSteps} éléments.
+   Les 3 fonctions essentielles d'abord ; un soin complémentaire seulement s'il apporte un bénéfice justifié.
 
-🚨 CAS CLINIQUES SÉVÈRES (Acné grave, pathologies) :
-   Si le diagnostic révèle une pathologie cutanée poussée (acné kystique sévère, rosacée, dermatite, etc.), propose une routine EXTRÊMEMENT minimaliste (apaisement et barrière uniquement) et recommande IMPÉRATIVEMENT dans ton 'empathetic_message' de consulter un spécialiste ou un dermatologue. Ne joue pas au médecin.
+🚨 SIGNES PRÉOCCUPANTS :
+   Si tu observes d'autres signes préoccupants (rosacée, dermatite, irritation importante…), reste sur les fonctions essentielles et conseille dans 'empathetic_message' l'avis d'un dermatologue, sans poser de diagnostic. Ne joue pas au médecin.
 
 🚫 ANTI-REDONDANCE :
    Évite les doublons fonctionnels. Si un toner hydrate déjà bien, n'ajoute pas d'essence par-dessus.
@@ -654,11 +805,11 @@ RÈGLES D'EXPERTISE K-BEAUTY — THE WELFARE
    ✅ BON : "Je vous recommande un sérum traitant. Selon votre tolérance, il peut contenir de la niacinamide ou de la vitamine C pour unifier le teint."
 
 🔗 COHÉRENCE & JUSTIFICATION :
-   Dans 'explanation_for_client', justifie TOUJOURS pourquoi CE produit précis a été sélectionné pour ELLE aujourd'hui.
+   Dans 'explanation_for_client', justifie TOUJOURS pourquoi CE produit précis a été sélectionné pour ELLE aujourd'hui, y compris sa texture.
    Fais le lien entre ses préoccupations spécifiques (acné, pores, éclat...) et les bénéfices du produit choisi.
 
 🌍 CONTEXTE AFRICAIN :
-   Tiens compte du climat chaud et humide d'Afrique centrale. Privilégie les textures légères en journée.
+   Tiens compte du climat chaud et humide d'Afrique centrale. Privilégie les textures légères en journée, sans laisser de zones sèches inconfortables.
    Si le phototype est foncé (Fitzpatrick IV-VI), insiste sur la protection solaire et la prévention des taches.
 
 IMPORTANT : Tu dois répondre UNIQUEMENT avec un objet JSON valide, sans aucun texte avant ou après.
@@ -671,7 +822,7 @@ FORMAT JSON ATTENDU :
   "routine_steps": [
     {
       "step_number": 1,
-      "step_name": "Double Nettoyage - Huile",
+      "step_name": "Nettoyant doux",
       "explanation_for_client": "L'explication nuancée, justifiant le choix du produit...",
       "medusa_product_id": "prod_01H8X...",
       "product_name": "Nom du produit"
@@ -679,223 +830,191 @@ FORMAT JSON ATTENDU :
   ]
 }`;
 
-    const claudeResponse = await fetch(
-      "https://openrouter.ai/api/v1/chat/completions",
+    const claudeMessages: Record<string, unknown>[] = [
+      { role: "system", content: claudeSystemPrompt },
       {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://thewelfare.com",
-          "X-Title": "The Welfare Skin Coach",
-        },
-        body: JSON.stringify({
-          model: "anthropic/claude-opus-4.8",
-          max_tokens: 4000,
-          response_format: { type: "json_object" },
-          messages: [
-            { role: "system", content: claudeSystemPrompt },
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: "Génère la routine VIP finale en te basant sur le diagnostic et les images des produits s'il y en a.",
-                },
-                ...userResponses
-                  .filter(
-                    (r) => typeof r.answer !== "string" && r.answer.type === "image"
-                  )
-                  .map((r) => ({
-                    type: "image_url",
-                    image_url: {
-                      url: (r.answer as { type: "image"; base64: string }).base64,
-                    },
-                  })),
-              ],
-            },
-          ],
-        }),
-      }
-    );
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "Génère la routine VIP finale en te basant sur le diagnostic et les images des produits s'il y en a.",
+          },
+          ...userResponses
+            .filter((r) => typeof r.answer !== "string" && r.answer.type === "image")
+            .map((r) => ({
+              type: "image_url",
+              image_url: { url: (r.answer as { type: "image"; base64: string }).base64 },
+            })),
+        ],
+      },
+    ];
+    const claudeRequest = (messages: Record<string, unknown>[]) => ({
+      model: "anthropic/claude-opus-4.8",
+      max_tokens: 4000,
+      response_format: { type: "json_object" },
+      messages,
+    });
 
-    if (!claudeResponse.ok) {
-      console.error(`[Appel 2 Claude] Erreur:`, await claudeResponse.text());
-      return { success: false, error: "Échec de la prescription par le Skin Coach." };
+    const ai = await callOpenRouter("routine", claudeRequest(claudeMessages), { timeoutMs: 150_000 });
+    if (!ai.ok) return failure({ ok: false, code: `ROUTINE_${ai.code}`, error: aiErrorMessage(ai.code, "routine"), retryable: true });
+    let parsed = parseJsonAnswer(ai.content);
+    if (!parsed || typeof parsed !== "object") {
+      console.error("[Appel 2 Claude] Parsing error:", ai.content.slice(0, 500));
+      return failure({ ok: false, code: "ROUTINE_AI_FORMAT", error: aiErrorMessage("AI_FORMAT", "routine"), retryable: true });
     }
 
-    const claudeData = await claudeResponse.json();
-    const claudeRawContent = claudeData.choices?.[0]?.message?.content;
-    const cleanedClaudeContent =
-      claudeRawContent?.replace(/```json/gi, "")?.replace(/```/g, "")?.trim() || "{}";
-
-    let finalResult: SkinAnalysisResult;
-    try {
-      const parsed = JSON.parse(cleanedClaudeContent);
-
-      // Normalize: support both routine_steps (new) and kbeauty_routine (legacy)
-      let routineSteps = parsed.routine_steps || parsed.kbeauty_routine || [];
-
-      // Only products from the catalog given to the model may be recommended (in manual mode, the
-      // admin's per-step selection): the prompt asks for it, this enforces it.
-      if (hasCatalog) {
-        const allowedIds = new Set(productCatalog.map((p) => p.id));
-        const offCatalog = routineSteps.filter((s: any) => !allowedIds.has(s.medusa_product_id));
-        if (offCatalog.length) {
-          console.warn(
-            `[SkinCoach] ${offCatalog.length} step(s) dropped: product not in the catalog (${offCatalog.map((s: any) => s.medusa_product_id || s.product_name).join(", ")})`
-          );
-          routineSteps = routineSteps.filter((s: any) => allowedIds.has(s.medusa_product_id));
-          routineSteps.forEach((s: any, i: number) => { s.step_number = i + 1; });
-        }
+    // =========================================================================
+    // CONTRÔLE FINAL (en code, indépendant du texte du modèle) — lib/skin-routine.ts
+    // =========================================================================
+    const notices: SkinNotice[] = [];
+    let routineSteps: CheckedStep[];
+    if (hasCatalog) {
+      const checkOpts = { safety, excludedIds: excludedProductIds, maxSteps, budgetMax: maxBudget, essentialsOnly: medical.referral };
+      const logCheck = (label: string, c: RoutineCheck) =>
+        console.log(
+          `[SkinCoach] Routine check (${label}): ${c.steps.length} step(s), total ${c.total} FCFA, budget ${Number.isFinite(c.budgetMax) ? c.budgetMax : "none"}, missing [${c.missing.join(", ")}], unavailable [${c.unavailable.join(", ")}]${c.dropped.length ? `, dropped: ${c.dropped.join(" | ")}` : ""}`
+        );
+      let check = checkRoutine(parsed.routine_steps || parsed.kbeauty_routine || [], productCatalog, checkOpts);
+      logCheck("model", check);
+      if (check.dropped.some((d) => d.includes("BLOQUÉ"))) {
+        console.error("[SkinCoach] Routine check: the model chose a product the safety filter should have removed");
       }
 
-      // Acne first: whatever the model returned, a spot treatment never ends up in the routine
-      if (acne.acneFirst && excludedProductIds.size > 0) {
-        routineSteps = routineSteps.filter((s: any) => !excludedProductIds.has(s.medusa_product_id));
-        routineSteps.forEach((s: any, i: number) => { s.step_number = i + 1; });
-      }
-
-      // Sécurité absolue : forcer la limite du tableau
-      if (routineSteps.length > aiConfig.max_routine_steps) {
-        routineSteps = routineSteps.slice(0, aiConfig.max_routine_steps);
-      }
-
-      // ─── FILTRAGE BUDGET STRICT EN TYPESCRIPT ───
-      try {
-        let maxBudget = Infinity;
-        const budgetQuestion = userResponses.find(r => r.answer && typeof r.answer === 'string' && r.answer.includes("FCFA"));
-        if (budgetQuestion) {
-          const ans = String(budgetQuestion.answer);
-          if (ans.includes("25k")) maxBudget = 35000;
-          else if (ans.includes("35k")) maxBudget = 45000;
-          else if (ans.includes("50k")) maxBudget = Infinity;
-        }
-
-        if (maxBudget < Infinity && routineSteps.length > 0) {
-          const prices = new Map<string, number>();
-          (hasCatalog ? productCatalog : []).forEach(p => {
-            const price = p.price || 15000;
-            prices.set(p.id, price);
-          });
-
-          const getImportance = (name: string) => {
-            const n = name.toLowerCase();
-            if (n.includes("solaire") || n.includes("spf")) return 1;
-            if (n.includes("nettoyant") || n.includes("cleanser") || n.includes("démaquillant")) return 2;
-            if (n.includes("hydratant") || n.includes("crème") || n.includes("cream")) return 3;
-            if (n.includes("sérum") || n.includes("serum") || n.includes("traitement") || n.includes("ampoule")) return 4;
-            return 5;
-          };
-
-          const scored = routineSteps.map((step: any, idx: number) => ({
-            step,
-            idx,
-            imp: getImportance(step.step_name || ""),
-            price: step.medusa_product_id ? (prices.get(step.medusa_product_id) || 0) : 0
-          }));
-
-          scored.sort((a: any, b: any) => a.imp - b.imp);
-
-          let total = 0;
-          const kept = new Set<number>();
-          for (const item of scored) {
-            // Tolérance de 5000 FCFA
-            if (total + item.price <= maxBudget + 5000) {
-              kept.add(item.idx);
-              total += item.price;
-            }
-          }
-
-          if (kept.size === 0 && scored.length > 0) {
-            kept.add(scored[0].idx); // Au moins 1 produit
-          }
-
-          routineSteps = routineSteps.filter((_: any, i: number) => kept.has(i));
-          
-          // Re-numéroter les étapes proprement
-          routineSteps.forEach((s: any, i: number) => { s.step_number = i + 1; });
-        }
-      } catch (err) {
-        console.error("Erreur filtrage budget:", err);
-      }
-
-      finalResult = {
-        final_skin_type: parsed.skin_type_detected || parsed.final_skin_type,
-        estimated_skin_age: parsed.estimated_skin_age,
-        empathetic_message: parsed.skin_coach_intro || parsed.empathetic_message,
-        kbeauty_routine: routineSteps,
-        metrics: qwenResult.metrics,
-        melanin_phototype: qwenResult.melanin_phototype,
-      };
-
-      // She asked for spots and they are postponed: say so in plain words, deterministically
-      // (not left to the model), and tell her what to do next.
-      if (acne.spotsDeferred) {
-        finalResult.empathetic_message = `${finalResult.empathetic_message || ""}\n\n💡 Pour vos taches : nous commençons par apaiser votre acné, car traiter les taches sur une peau en poussée risque d'aggraver l'inflammation. Une fois votre peau calmée, refaites votre diagnostic pour traiter vos taches.`.trim();
-      }
-
-      // Silent save to Medusa backend
-      try {
-        const medusaBackendUrl =
-          process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000";
-        // The diagnostic (with the face photos) is saved by this server only: the route needs the shared
-        // server token. It is saved unattached; the logged-in customer claims it from the result page.
-        const saveRes = await fetch(`${medusaBackendUrl}/store/skin-scans`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-publishable-api-key":
-              process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "",
-            "x-skin-scan-token": process.env.SKIN_SCAN_TOKEN || "",
-          },
-          body: JSON.stringify({
-            final_skin_type: finalResult.final_skin_type,
-            estimated_skin_age: finalResult.estimated_skin_age,
-            melanin_phototype:
-              finalResult.melanin_phototype || qwenResult.melanin_phototype,
-            concerns: qwenResult.clinical_observations || [],
-            metrics: finalResult.metrics,
-            routine: finalResult.kbeauty_routine,
-            images: {
-              front: images.front,
-              left: images.left,
-              right: images.right,
+      // One correction round: the model is told exactly what is wrong and fixes its own routine
+      const problems = routineProblems(check);
+      if (problems.length) {
+        const fix = await callOpenRouter(
+          "routine-fix",
+          claudeRequest([
+            ...claudeMessages,
+            { role: "assistant", content: ai.content },
+            {
+              role: "user",
+              content: `Notre contrôle qualité a détecté ces problèmes dans ta routine :\n- ${problems.join("\n- ")}\nCorrige-les en gardant ce qui était valide, et renvoie le JSON complet au même format.`,
             },
-            qwen_raw_summary:
-              qwenResult.visual_reasoning ||
-              JSON.stringify(qwenResult.clinical_observations),
-            claude_raw_summary: finalResult.empathetic_message || "",
-          }),
-        });
-        if (saveRes.ok) {
-          const saved = await saveRes.json().catch(() => null);
-          if (saved?.scan?.id) finalResult.scan_id = saved.scan.id;
+          ]),
+          { timeoutMs: 150_000, attempts: 2 }
+        );
+        const fixed = fix.ok ? parseJsonAnswer(fix.content) : null;
+        if (fixed && typeof fixed === "object") {
+          const fixedCheck = checkRoutine(fixed.routine_steps || fixed.kbeauty_routine || [], productCatalog, checkOpts);
+          logCheck("after correction", fixedCheck);
+          if (fixedCheck.steps.length && routineProblems(fixedCheck).length <= problems.length) {
+            check = fixedCheck;
+            parsed = { ...parsed, ...fixed };
+          }
         } else {
-          console.error(`[SkinCoach] Diagnostic non enregistré (HTTP ${saveRes.status}) — SKIN_SCAN_TOKEN configuré des deux côtés ?`);
+          console.warn(`[SkinCoach] Routine check: correction round failed (${fix.ok ? "unreadable answer" : fix.code})`);
         }
-      } catch (logError) {
-        console.error("[SkinCoach] Erreur lors de la journalisation du scan :", logError);
       }
-    } catch (e) {
-      console.error("[Appel 2 Claude] Parsing error:", claudeRawContent);
-      return { success: false, error: "Erreur de formatage de la routine finale." };
+
+      // Last resort: an essential function still missing is added by code
+      routineSteps = check.steps;
+      if (check.missing.length) {
+        const completed = addMissingEssentials(check, productCatalog, { safety, excludedIds: excludedProductIds });
+        routineSteps = completed.steps;
+        if (completed.added.length) console.warn(`[SkinCoach] Routine check: essential step(s) added by code: ${completed.added.join(", ")}`);
+      }
+
+      // Final safety gate, on exactly what will be shown
+      routineSteps = routineSteps.filter((s) => {
+        const p = productCatalog.find((c) => c.id === s.medusa_product_id);
+        const reason = p ? exclusionReason(p, safety) : "hors catalogue";
+        if (reason) console.error(`[SkinCoach] Final gate blocked ${s.product_name}: ${reason}`);
+        return !reason;
+      });
+      routineSteps.forEach((s, i) => { s.step_number = i + 1; });
+
+      const total = routineTotal(routineSteps, productCatalog);
+      if (Number.isFinite(maxBudget) && total > maxBudget + BUDGET_TOLERANCE) {
+        notices.push({
+          kind: "budget",
+          text: `Votre routine essentielle (nettoyant, hydratant et protection solaire) revient à ${fmt(total)} FCFA, au-dessus de votre budget (jusqu'à ${fmt(maxBudget)} FCFA). Nous avons préféré garder ces trois soins plutôt que d'en retirer un : vous restez libre de commencer par ceux de votre choix.`,
+        });
+      }
+      for (const fn of check.unavailable) {
+        notices.push({
+          kind: "missing",
+          text: `Nous n'avons pas actuellement ${withArticle(fn, "de")} compatible avec vos réponses. Demandez conseil en boutique pour compléter votre routine.`,
+        });
+      }
+    } else {
+      routineSteps = (parsed.routine_steps || parsed.kbeauty_routine || []).slice(0, maxSteps);
+    }
+
+    if (medical.referral) {
+      notices.unshift({
+        kind: "referral",
+        text: `Nous vous conseillons de consulter un dermatologue : ${medical.reasons.join(" ; ")}. Une routine cosmétique ne remplace pas un avis médical. En attendant, nous vous proposons uniquement des soins essentiels et doux.`,
+      });
+    }
+    for (const caution of medical.cautions) {
+      notices.push({ kind: "caution", text: `${caution.charAt(0).toUpperCase()}${caution.slice(1)}.` });
+    }
+
+    const finalResult: SkinAnalysisResult = {
+      final_skin_type: parsed.skin_type_detected || parsed.final_skin_type,
+      estimated_skin_age: parsed.estimated_skin_age,
+      empathetic_message: parsed.skin_coach_intro || parsed.empathetic_message,
+      kbeauty_routine: routineSteps as SkinAnalysisResult["kbeauty_routine"],
+      metrics: qwenResult.metrics,
+      melanin_phototype: qwenResult.melanin_phototype,
+      ...(notices.length ? { notices } : {}),
+    };
+
+    // She asked for spots and they are postponed: say so in plain words, deterministically
+    // (not left to the model), and tell her what to do next.
+    if (acne.spotsDeferred) {
+      finalResult.empathetic_message = `${finalResult.empathetic_message || ""}\n\n💡 Pour vos taches : nous commençons par apaiser votre acné, car traiter les taches sur une peau en poussée risque d'aggraver l'inflammation. Une fois votre peau calmée, refaites votre diagnostic pour traiter vos taches.`.trim();
+    }
+
+    // Silent save to Medusa backend
+    try {
+      const medusaBackendUrl =
+        process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000";
+      // The diagnostic (with the face photos) is saved by this server only: the route needs the shared
+      // server token. It is saved unattached; the logged-in customer claims it from the result page.
+      const saveRes = await fetch(`${medusaBackendUrl}/store/skin-scans`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-publishable-api-key":
+            process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "",
+          "x-skin-scan-token": process.env.SKIN_SCAN_TOKEN || "",
+        },
+        body: JSON.stringify({
+          final_skin_type: finalResult.final_skin_type,
+          estimated_skin_age: finalResult.estimated_skin_age,
+          melanin_phototype:
+            finalResult.melanin_phototype || qwenResult.melanin_phototype,
+          concerns: qwenResult.clinical_observations || [],
+          metrics: finalResult.metrics,
+          routine: finalResult.kbeauty_routine,
+          images: {
+            front: images.front,
+            left: images.left,
+            right: images.right,
+          },
+          qwen_raw_summary:
+            qwenResult.visual_reasoning ||
+            JSON.stringify(qwenResult.clinical_observations),
+          // the notices (doctor's opinion, budget, missing step) are kept with the message for the admin
+          claude_raw_summary: [finalResult.empathetic_message || "", ...notices.map((n) => `[${n.kind}] ${n.text}`)].join("\n\n"),
+        }),
+      });
+      if (saveRes.ok) {
+        const saved = await saveRes.json().catch(() => null);
+        if (saved?.scan?.id) finalResult.scan_id = saved.scan.id;
+      } else {
+        console.error(`[SkinCoach] Diagnostic non enregistré (HTTP ${saveRes.status}) — SKIN_SCAN_TOKEN configuré des deux côtés ?`);
+      }
+    } catch (logError) {
+      console.error("[SkinCoach] Erreur lors de la journalisation du scan :", logError);
     }
 
     return { success: true, data: finalResult };
   } catch (error: any) {
     console.error("[SkinCoach] Erreur critique dans analyzeSkin:", error);
-
-    if (error.name === "AbortError" || error.message.includes("fetch")) {
-      return {
-        success: false,
-        error: "Le délai d'attente est dépassé. La requête est trop lourde.",
-      };
-    }
-
-    return {
-      success: false,
-      error: error.message || "Une erreur système inattendue est survenue.",
-    };
+    return failure({ ok: false, code: "UNKNOWN", error: "Une erreur technique est survenue. Vos photos et vos réponses sont conservées : réessayez.", retryable: true });
   }
 }
