@@ -109,10 +109,17 @@ const DEPIGMENTING = /hydroquinone|tranexamic|tranexamique|kojic|kojique|arbutin
 // partial list: neither can prove that an ingredient is absent. Same rule as apps/admin/lib/product-sheet.ts.
 const NOT_INCI_RE = /\b(image|photo|visibles?|lisibles?|illisibles?|impossible|cannot|unable|sorry|not provided|not available|not visible|n'est pas|ne sont pas|non disponibles?|aucune liste|pas fournie|resolution|floue?|incompl[eè]te?|partielle?|exemple|example|non applicable)\b/i;
 
+const INCI_BASE_RE = /\b(aqua|water|glycerin|butylene glycol|propanediol|dimethicone|caprylic\/capric triglyceride)\b/;
+
 export function isUsableInci(inci: string): boolean {
   const text = normalizeInci(inci || "").trim();
   if (!text || NOT_INCI_RE.test(text)) return false; // also catches "[illisible]" passages
-  return text.split(/[,;]/).filter((x) => x.trim()).length >= 4;
+  if (text.split(/[,;]/).filter((x) => x.trim()).length >= 4) return true;
+  // some lists were copied without separators ("Water Helianthus Annuus Seed Oil Butylene Glycol …"):
+  // a long text with no comma (except inside a name like "1,2-Hexanediol") that contains a usual INCI
+  // base is still a full list
+  const bare = text.replace(/(\d),(\d)/g, "$1$2");
+  return !/[,;]/.test(bare) && bare.split(/\s+/).length >= 12 && INCI_BASE_RE.test(bare);
 }
 
 // The product name is checked too ("…& BHA Cleanser"), after removing what it says the product is free of.

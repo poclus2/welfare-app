@@ -3,6 +3,7 @@
 
 import { Suspense, useEffect, useState, useRef } from "react";
 import { sdk } from "@/lib/medusa";
+import { claimPendingScans } from "@/lib/pending-scans";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -193,6 +194,7 @@ export default function AccountPage() {
         return;
       }
       setCustomer(customer);
+      await claimPendingScans(); // a diagnostic run before logging in joins the list below
 
       // orders and diagnostics load side by side; one failing must not hide the other
       const [ordersRes, scansRes] = await Promise.all([

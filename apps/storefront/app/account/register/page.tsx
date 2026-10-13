@@ -2,6 +2,7 @@
 
 import { useState, Suspense } from "react";
 import { sdk } from "@/lib/medusa";
+import { claimPendingScans } from "@/lib/pending-scans";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Star, ShoppingBag, Gift, Eye, EyeSlash, WarningCircle } from "@phosphor-icons/react";
@@ -101,6 +102,7 @@ function RegisterForm() {
         phone,
         password,
       });
+      await claimPendingScans(); // the diagnostic she just ran goes to her new account
 
       router.push(redirectUrl);
       router.refresh();

@@ -132,5 +132,10 @@ const NOT_INCI_RE = /\b(image|photo|visibles?|lisibles?|illisibles?|impossible|c
 export function looksLikeInciList(s: string): boolean {
   const text = s.replace(/\[illisible\]/gi, "").trim(); // the prompt marks an unreadable passage this way
   if (!text || NOT_INCI_RE.test(text)) return false;
-  return text.split(/[,;]/).filter((x) => x.trim()).length >= 4;
+  if (text.split(/[,;]/).filter((x) => x.trim()).length >= 4) return true;
+  // a list copied without separators ("Water Helianthus Annuus Seed Oil Butylene Glycol …") is still a list
+  const bare = text.replace(/(\d),(\d)/g, "$1$2"); // "1,2-Hexanediol" is one name
+  return !/[,;]/.test(bare) && bare.split(/\s+/).length >= 12 && INCI_BASE_RE.test(bare);
 }
+
+const INCI_BASE_RE = /\b(aqua|water|glycerin|butylene glycol|propanediol|dimethicone|caprylic\/capric triglyceride)\b/i;

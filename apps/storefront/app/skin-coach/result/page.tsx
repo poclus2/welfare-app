@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { CircleNotch } from "@phosphor-icons/react";
 import { sdk } from "@/lib/medusa";
+import { claimPendingScans, rememberPendingScan } from "@/lib/pending-scans";
 
 export default function SkinCoachResultPage() {
   const result = useSkinCoachStore((state) => state.result);
@@ -52,21 +53,13 @@ export default function SkinCoachResultPage() {
   // 3. Rattacher le diagnostic à l'historique de la cliente connectée.
   // Le diagnostic est déjà enregistré côté serveur par l'analyse (photos et résumés réels, sans compte
   // rattaché) : on le revendique simplement pour cette cliente, au lieu d'en créer un doublon.
+  // Les scans faits sans être connectée sont aussi rattachés à la connexion et sur la page compte
+  // (lib/pending-scans.ts).
   useEffect(() => {
-    const claimScan = async () => {
-      const scanId = (result as any)?.scan_id;
-      if (!result || !customerId || !scanId || hasSavedRef.current || (result as any).id) return; // (id = déjà dans l'historique)
-      hasSavedRef.current = true;
-      try {
-        await sdk.client.fetch(`/store/skin-scans/${scanId}/claim`, { method: "POST" });
-      } catch (err) {
-        console.error("Failed to attach the skin scan to the customer", err);
-      }
-    };
-
-    if (isAuthenticated && result && customerId) {
-      claimScan();
-    }
+    if (!isAuthenticated || !result || !customerId || hasSavedRef.current) return;
+    hasSavedRef.current = true;
+    if (!(result as any).id) rememberPendingScan(result.scan_id); // (id = déjà dans l'historique)
+    claimPendingScans();
   }, [isAuthenticated, result, customerId]);
 
   const handleRetake = () => {

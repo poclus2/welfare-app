@@ -8,6 +8,7 @@ import { analyzeFace, analyzeSkin, SkinAnalysisResult } from "@/app/actions/anal
 import posthog from "posthog-js";
 import { acneFollowUp, FOLLOWUP_ACNE, FOLLOWUP_SPOTS } from "@/lib/skin-profile";
 import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
+import { rememberPendingScan } from "@/lib/pending-scans";
 import { useRouter } from "next/navigation";
 import SmartCameraCapture, { CaptureResult } from "./smart-camera-capture";
 import { IconIA } from "@/components/ui/icons/IconIA";
@@ -411,6 +412,7 @@ export default function SkinCoachFlow() {
       const result = await analyzeSkin(photos, finalResponses, photoConsent, early?.success ? early.visual : undefined);
       if (result.success) {
         posthog.capture("skin_coach_analysis_succeeded", { scan_id: result.data.scan_id, early_visual: !!early?.success });
+        rememberPendingScan(result.data.scan_id); // attached to the account as soon as she is logged in
         setResult(result.data);
         setAnalysisProgress(100);
         setTimeout(() => {

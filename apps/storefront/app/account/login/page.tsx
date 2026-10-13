@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { sdk } from "@/lib/medusa";
+import { claimPendingScans } from "@/lib/pending-scans";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Star, ShoppingBag, Gift, Eye, EyeSlash, WarningCircle, Info } from "@phosphor-icons/react";
@@ -48,6 +49,7 @@ export default function LoginPage() {
       }
       // any other failure: let the account page deal with it (it offers a retry)
     }
+    await claimPendingScans(); // a diagnostic run before logging in goes to her account
     router.push(redirectUrl);
     router.refresh();
   };
