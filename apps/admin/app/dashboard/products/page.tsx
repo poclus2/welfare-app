@@ -5,7 +5,7 @@ import { unstable_cache } from "next/cache";
 import Image from "next/image";
 import { Package, Plus, ChevronRight, ChevronLeft, Pencil } from "lucide-react";
 import { fetchAdmin } from "@/lib/medusa-admin";
-import { productStock } from "@/lib/stock";
+import { productStock, VARIANT_STOCK_FIELDS } from "@/lib/stock";
 import { ProductSearch } from "@/components/products/ProductSearch";
 import { ProductFilters } from "@/components/products/ProductFilters";
 import { PagerLink } from "@/components/products/PagerLink";
@@ -13,12 +13,16 @@ import { ShopPageManager } from "@/components/products/ShopPageManager";
 
 export const dynamic = "force-dynamic";
 
+// Only what the cards show (title, image, status, price, stock): a full product is ~10 KB, mostly
+// description and metadata, and a page of 24 weighed 250 KB.
+const LIST_FIELDS = `id,title,thumbnail,status,created_at,${VARIANT_STOCK_FIELDS},variants.prices.amount,variants.prices.currency_code`;
+
 // Two things made paging slow: the stock filters/sorts download up to 2000 products on EVERY page click,
 // and the KPI counts were 3 extra requests on every click. Both change rarely, so they are kept 30 s
 // (and dropped as soon as a product is saved, see revalidateTag("admin-products")).
 const getFullCatalogue = unstable_cache(
   async (token: string, q: string) => {
-    const query = new URLSearchParams({ offset: "0", limit: "2000", expand: "variants,collection,options", order: "-created_at" });
+    const query = new URLSearchParams({ offset: "0", limit: "2000", fields: LIST_FIELDS, order: "-created_at" });
     if (q) query.set("q", q);
     return fetchAdmin<{ products: any[]; count: number }>(`/products?${query.toString()}`, token);
   },
@@ -55,7 +59,16 @@ export default async function ProductsPage({
   const tab = typeof resolvedParams.tab === "string" ? resolvedParams.tab : "catalogue";
 
   if (tab === "shop") {
-    const allProducts = await fetchAdmin<{ products: any[] }>("/products?limit=2000&expand=variants,collection", token).catch(() => ({ products: [] }));
+    // The tab only needs the two selection flags: the browser used to receive the whole catalogue with
+    // every field (6 MB). The toggles re-read the full metadata on the server (setProductShopFlag).
+    const all = await fetchAdmin<{ products: any[] }>("/products?limit=2000&fields=id,title,thumbnail,metadata,collection.title", token).catch(() => ({ products: [] }));
+    const allProducts = all.products.map((p) => ({
+      id: p.id,
+      title: p.title,
+      thumbnail: p.thumbnail,
+      collection: p.collection ? { title: p.collection.title } : null,
+      metadata: { is_flash_sale: !!p.metadata?.is_flash_sale, is_bestseller: !!p.metadata?.is_bestseller },
+    }));
     return (
       <div className="p-5 lg:p-8 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -70,7 +83,7 @@ export default async function ProductsPage({
             </div>
           </div>
         </div>
-        <ShopPageManager products={allProducts.products} />
+        <ShopPageManager products={allProducts} />
       </div>
     );
   }
@@ -96,7 +109,7 @@ export default async function ProductsPage({
   const query = new URLSearchParams({
     offset: offset.toString(),
     limit: limit.toString(),
-    expand: "variants,collection,options",
+    fields: LIST_FIELDS,
     order,
   });
   if (q) query.set("q", q);

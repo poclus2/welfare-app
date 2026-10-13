@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { fetchAdmin } from "@/lib/medusa-admin";
+import { productStock, VARIANT_STOCK_FIELDS } from "@/lib/stock";
 import { redirect } from "next/navigation";
 import AnalyticsClient from "./AnalyticsClient";
 
@@ -13,7 +14,7 @@ export default async function AnalyticsPage() {
   // Fetch data
   const [ordersRes, productsRes, stockRes, skinScansRes, searchRes] = await Promise.all([
     fetchAdmin<{ orders: any[], count: number }>("/orders?limit=1000&expand=customer,items,payments,shipping_methods,discounts,shipping_address,billing_address", token).catch(() => ({ orders: [], count: 0 })),
-    fetchAdmin<{ products: any[] }>("/products?limit=1000&expand=variants,collection", token).catch(() => ({ products: [] })),
+    fetchAdmin<{ products: any[] }>("/products?limit=2000&fields=id," + VARIANT_STOCK_FIELDS, token).catch(() => ({ products: [] })),
     fetchAdmin<{ stock_locations: any[] }>("/stock-locations?expand=sales_channels", token).catch(() => ({ stock_locations: [] })),
     fetchAdmin<{ skin_scans: any[] }>("/skin-scans?limit=1000", token).catch(() => ({ skin_scans: [] })),
     fetchAdmin<{ search_logs: any[] }>("/search-analytics", token).catch(() => ({ search_logs: [] }))
@@ -69,7 +70,7 @@ export default async function AnalyticsPage() {
 
   const topProducts = Object.values(productStats).sort((a, b) => b.revenue - a.revenue).slice(0, 15).map(p => {
       const prod = products.find(x => x.id === p.id);
-      const stock = prod?.variants?.reduce((acc: number, v: any) => acc + (v.inventory_quantity || 0), 0) || 0;
+      const stock = prod ? productStock(prod) : 0; // per-store stock (Odoo), like the products page
       return { ...p, stock };
     });
 

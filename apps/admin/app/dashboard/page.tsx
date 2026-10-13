@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { fetchAdmin } from "@/lib/medusa-admin";
-import { productStock } from "@/lib/stock";
+import { productStock, VARIANT_STOCK_FIELDS } from "@/lib/stock";
 import DashboardClient from "./DashboardClient";
 import { redirect } from "next/navigation";
 
@@ -16,7 +16,8 @@ export default async function DashboardPage() {
   const [ordersRes, newCustomersRes, productsRes] = await Promise.all([
     fetchAdmin<{ orders: any[], count: number }>("/orders?limit=1000&order=-created_at&fields=*customer,*items,*shipping_methods,*payment_collections.payments", token).catch(() => ({ orders: [], count: 0 })),
     fetchAdmin<{ count: number }>(`/customers?limit=1&created_at[$gte]=${encodeURIComponent(firstOfMonth)}`, token).catch(() => ({ count: 0 })),
-    fetchAdmin<{ products: any[] }>("/products?limit=100&expand=variants,collection", token).catch(() => ({ products: [] })),
+    // only the stock is read (low-stock alerts): title + variant metadata, for the whole catalogue
+    fetchAdmin<{ products: any[] }>("/products?limit=2000&fields=id,title," + VARIANT_STOCK_FIELDS, token).catch(() => ({ products: [] })),
   ]);
 
   const allOrders = ordersRes.orders || [];

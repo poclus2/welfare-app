@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { updateProductMetadata } from "@/app/dashboard/products/actions";
+import { setProductShopFlag } from "@/app/dashboard/products/actions";
 import { Package, Zap, Star, Search } from "lucide-react";
 import Image from "next/image";
 
@@ -12,11 +12,7 @@ export function ShopPageManager({ products }: { products: any[] }) {
   const toggleFlashSale = async (product: any) => {
     setLoading(product.id);
     try {
-      const isFlash = product.metadata?.is_flash_sale;
-      await updateProductMetadata(product.id, {
-        ...product.metadata,
-        is_flash_sale: !isFlash
-      });
+      await setProductShopFlag(product.id, "is_flash_sale", !product.metadata?.is_flash_sale);
     } catch (e) {
       alert("Erreur de mise à jour");
     }
@@ -26,11 +22,7 @@ export function ShopPageManager({ products }: { products: any[] }) {
   const toggleBestseller = async (product: any) => {
     setLoading(product.id);
     try {
-      const isBest = product.metadata?.is_bestseller;
-      await updateProductMetadata(product.id, {
-        ...product.metadata,
-        is_bestseller: !isBest
-      });
+      await setProductShopFlag(product.id, "is_bestseller", !product.metadata?.is_bestseller);
     } catch (e) {
       alert("Erreur de mise à jour");
     }
