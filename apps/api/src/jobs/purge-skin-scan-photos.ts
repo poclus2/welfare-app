@@ -7,15 +7,20 @@ import { SKIN_SCAN_MODULE } from "../modules/skin_scan"
 // Only the photos go: the diagnostic itself (skin type, metrics, routine) stays.
 const UNCLAIMED_MS = 2 * 60 * 60 * 1000
 const CLAIMED_MS = 183 * 24 * 60 * 60 * 1000
+// Temporarily off (owner's request, 2026-10-13): unclaimed scans keep their photos while the
+// attachment of scans after sign-up/login is checked. The 6-month purge still runs.
+const PURGE_UNCLAIMED = false
 
 export default async function purgeSkinScanPhotosJob(container: MedusaContainer) {
   const service = container.resolve(SKIN_SCAN_MODULE) as any
   const now = Date.now()
 
-  const unclaimed = await service.listSkinScans(
-    { customer_id: null, images: { $ne: null }, created_at: { $lt: new Date(now - UNCLAIMED_MS) } },
-    { select: ["id"] }
-  )
+  const unclaimed = PURGE_UNCLAIMED
+    ? await service.listSkinScans(
+        { customer_id: null, images: { $ne: null }, created_at: { $lt: new Date(now - UNCLAIMED_MS) } },
+        { select: ["id"] }
+      )
+    : []
   const claimed = await service.listSkinScans(
     { customer_id: { $ne: null }, images: { $ne: null }, created_at: { $lt: new Date(now - CLAIMED_MS) } },
     { select: ["id"] }
