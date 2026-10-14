@@ -22,7 +22,7 @@ import {
   withArticle,
 } from "@/lib/skin-routine";
 import { callOpenRouter, parseJsonAnswer, type AiErrorCode } from "@/lib/openrouter";
-import { ACNE_SCAN_LOW, ACNE_SCAN_THRESHOLD, answerOf, FOLLOWUP_ACNE, FOLLOWUP_SPOTS, moisturizerTextures, readAcne, readSkinProfile, TEXTURE_LABEL } from "@/lib/skin-profile";
+import { ACNE_SCAN_LOW, ACNE_SCAN_THRESHOLD, answerOf, FOLLOWUP_QUESTIONS, moisturizerTextures, readAcne, readDarkSpots, readSkinProfile, TEXTURE_LABEL } from "@/lib/skin-profile";
 
 export type UserResponse = {
   questionId: string;
@@ -391,6 +391,7 @@ SIGNAUX D'ALERTE ('medical_flags') : tu ne poses aucun diagnostic médical, tu s
 - severe_acne : nombreux boutons profonds ou douloureux, nodules, kystes, ou cicatrices marquées.
 - unusual_pigmentation : taches gris-bleu ou brun-noir inhabituelles, en plaques (pommettes, tempes, front, cou), d'aspect granité ou très contrasté, pouvant faire penser à une réaction à des produits éclaircissants. Les simples marques post-inflammatoires ne comptent pas.
 - other_lesion : plaie, lésion suintante ou croûteuse, grain de beauté irrégulier.
+TACHES ('dark_spots_percentage') : étendue et contraste des taches et des zones plus foncées que le reste du visage (marques laissées par des boutons, taches pigmentaires, plaques). La couleur naturelle de la peau, les ombres, les reflets et les cernes ne comptent pas : sur une peau foncée, des variations de teinte uniformes sont normales. En cas de doute (lumière, flou), donne une note basse.
 Sur les peaux foncées, les lésions inflammatoires paraissent brunes ou violacées plutôt que rouges : ne les ignore pas. Si les photos ne permettent pas de conclure (flou, lumière), mets false et explique-le dans 'notes'.
 FORMAT JSON ATTENDU :
 {
@@ -404,7 +405,8 @@ FORMAT JSON ATTENDU :
     "acne_severity_percentage": 0-100,
     "hydration_barrier_percentage": 0-100,
     "pore_visibility_percentage": 0-100,
-    "eye_contour_fatigue_percentage": 0-100
+    "eye_contour_fatigue_percentage": 0-100,
+    "dark_spots_percentage": 0-100
   },
   "medical_flags": {
     "severe_acne": false,
@@ -587,11 +589,20 @@ export async function analyzeSkin(
         `[SkinCoach] Medical: referral ${medical.referral} [${medical.reasons.join(" | ")}], ${medical.cautions.length} caution(s), flags ${JSON.stringify(qwenResult.medical_flags || {})}`
       );
     }
+    // Spots the photos show and she didn't mention, and what she said about them (follow-up questions).
+    // Old spots that didn't follow pimples may be melasma, which strong lighteners make worse: no
+    // depigmenting active, and a dermatologist's opinion is advised (owner's decision, 2026-10-14).
+    const dark = readDarkSpots(userResponses, qwenResult.metrics);
+    if (dark.possibleMelasma) {
+      medical.noDepigmenting = true;
+      medical.cautions.push("vos taches sont présentes depuis plusieurs années et ne viennent pas de boutons : nous vous conseillons de demander l'avis d'un dermatologue pour en connaître l'origine. Certaines taches réagissent mal aux produits éclaircissants : nous n'en avons mis aucun dans votre routine");
+    }
     const safety = readSafetyProfile(answers, medical);
     // skin type from the questionnaire: chooses the moisturizer texture
     const profile = readSkinProfile(userResponses);
     log.visual = qwenResult;
     log.medical = medical;
+    log.dark_spots = dark;
     log.profile = profile;
     const maxSteps = medical.referral ? ESSENTIAL_FUNCTIONS.length : aiConfig.max_routine_steps;
     const budgetAnswer = userResponses.find((r) => typeof r.answer === "string" && r.answer.includes("FCFA"));
@@ -786,7 +797,10 @@ ${safetyLines.join("\n")}`
       [/[aâ]ge|ferme/i, /anti-?[aâ]ge|rides|fermet|[ée]lasticit/i],
       [/hydrat|glow|[ée]clat/i, /hydrat|[ée]clat|barri[èe]re/i],
     ];
-    const extraConcern = EXTRA_FOR_GOAL.find(([goal]) => goal.test(goalForExtra))?.[1];
+    const goalConcern = EXTRA_FOR_GOAL.find(([goal]) => goal.test(goalForExtra))?.[1];
+    // marks left by pimples, confirmed by her, can also justify the extra (not during an acne flare)
+    const marksConcern = dark.marks && !acne.acneFirst && !safety.noDepigmenting ? /tache|pigment|marque/i : null;
+    const extraConcern = goalConcern && marksConcern ? new RegExp(`${goalConcern.source}|${marksConcern.source}`, "i") : goalConcern || marksConcern;
     const extras =
       extraConcern && hasCatalog && !medical.referral
         ? productCatalog
@@ -813,19 +827,31 @@ ${cheapest ? `- Combinaison essentielle la moins chère disponible : ${fmt(cheap
       : pct >= ACNE_SCAN_THRESHOLD ? "imperfections actives visibles"
       : pct < ACNE_SCAN_LOW ? "pas de bouton actif visible"
       : "quelques imperfections légères";
-    const followUp = [FOLLOWUP_ACNE, FOLLOWUP_SPOTS]
+    const followUps = FOLLOWUP_QUESTIONS
       .map((q) => ({ q: q.text, a: answerOf(userResponses, q.id) }))
-      .find((x) => x.a);
+      .filter((x) => x.a);
+    // spots she didn't mention: her answers decide, the photo alone never does
+    const darkNote = !dark.seen ? ""
+      : dark.possibleMelasma ? "- Taches anciennes, pas liées à des boutons : leur origine doit être confirmée par un dermatologue (le message est ajouté automatiquement). Aucun éclaircissant (retirés du catalogue), routine douce, protection solaire indispensable. Ne nomme aucune maladie."
+      : dark.marks ? `- Taches = ${dark.origin === "mixed" ? "en partie des " : ""}marques laissées par des boutons, selon elle. ${acne.acneFirst ? "L'acné passe d'abord : pas de soin anti-taches maintenant, protection solaire indispensable." : "Soin doux contre les marques possible (niacinamide, acide azélaïque), protection solaire indispensable, pas d'exfoliant agressif."}`
+      : dark.origin === "other" ? "- Taches non liées à des boutons : approche douce, protection solaire indispensable, pas d'éclaircissant agressif."
+      : dark.origin === "unknown" || dark.since === "unknown" ? "- Elle ne sait pas d'où viennent ces taches : mentionne-les comme une observation possible (la lumière peut tromper), conseille la protection solaire, sans traitement ciblé."
+      : "- Zones plus foncées visibles sur les photos, non confirmées par elle : simple observation à présenter avec prudence, protection solaire conseillée, sans traitement ciblé.";
+    const acneNote = acne.past ? "- Elle n'a plus de boutons aujourd'hui : pas de traitement anti-acné."
+      : acne.rare ? "- Boutons rares : pas d'actif anti-acné fort, une routine équilibrée suffit."
+      : "";
     const activeAnswer = answerOf(userResponses, "q_active_acne");
     const synthesisBlock = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SYNTHÈSE : OBSERVÉ, DÉCLARÉ, INCERTAIN (établie par notre contrôle)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Observé sur les photos : imperfections ${pct ?? "?"}/100 (${acneSeen}), sébum ${m.sebum_level_percentage ?? "?"}/100, hydratation ${m.hydration_barrier_percentage ?? "?"}/100.
+- Observé sur les photos : imperfections ${pct ?? "?"}/100 (${acneSeen}), zones plus foncées ${dark.scanPct ?? "?"}/100, sébum ${m.sebum_level_percentage ?? "?"}/100, hydratation ${m.hydration_barrier_percentage ?? "?"}/100.
 - Déclaré par la cliente : objectif « ${acne.goal} »${activeAnswer ? ` ; boutons actifs : « ${activeAnswer} »` : ""} ; après le nettoyage : « ${answerOf(userResponses, "q_post_wash")} » ; à midi : « ${answerOf(userResponses, "q_midday_behavior")} » ; réaction aux nouveaux produits : « ${answerOf(userResponses, "q_sensitivity")} ».
-${followUp ? `- Précision demandée : « ${followUp.q} » → réponse : « ${followUp.a} ».` : ""}
+${followUps.map((x) => `- Précision demandée : « ${x.q} » → réponse : « ${x.a} ».`).join("\n")}
+${acneNote}
+${darkNote}
 ${acne.acneProne ? "- Peau sujette aux poussées : rien d'actif aujourd'hui. Routine qui prévient les imperfections, sans traiter une acné absente." : ""}
 ${acne.uncertain ? `- Incertain : ${acne.uncertain}. Présente-le comme une hypothèse, sans conclure.` : ""}
-CONSIGNE : dans 'empathetic_message', distingue clairement ce que montrent les photos, ce qu'elle a déclaré et ce qui reste incertain. Ne confirme jamais une acné active que les photos ne montrent pas sans sa confirmation, et tiens compte des imperfections visibles même si elle ne les a pas mentionnées.`;
+CONSIGNE : dans 'empathetic_message', distingue clairement ce que montrent les photos, ce qu'elle a déclaré et ce qui reste incertain. Ne confirme jamais une acné active que les photos ne montrent pas sans sa confirmation, et tiens compte des imperfections visibles même si elle ne les a pas mentionnées. Une photo peut tromper (lumière, ombres) : quand elle a répondu à une précision, sa réponse l'emporte, et le ton n'est jamais accusateur.`;
 
     const medicalBlock = medical.referral
       ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

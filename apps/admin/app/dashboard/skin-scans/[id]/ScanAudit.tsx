@@ -20,6 +20,8 @@ const QUESTION_LABEL: Record<string, string> = {
   q_budget: "Budget",
   q_followup_acne: "Précision (boutons)",
   q_followup_spots: "Précision (imperfections)",
+  q_followup_dark_since: "Taches : depuis quand",
+  q_followup_dark_origin: "Taches : après des boutons ?",
 };
 
 const NOTICE_LABEL: Record<string, string> = {
@@ -100,6 +102,7 @@ export function ScanAudit({ scan }: { scan: any }) {
           <Row label="Avis dermatologique" value={log.medical?.referral ? list(log.medical.reasons) : "non"} />
           <Row label="Précautions" value={list(log.medical?.cautions)} />
           <Row label="Acné" value={log.acne ? `acné d'abord : ${log.acne.acneFirst ? "oui" : "non"}${log.acne.acneProne ? " · peau à poussées" : ""}${log.acne.uncertain ? ` · incertain : ${log.acne.uncertain}` : ""}` : null} />
+          <Row label="Taches (photos)" value={log.dark_spots?.seen ? `${log.dark_spots.scanPct}/100${log.dark_spots.marks ? " · marques de boutons" : ""}${log.dark_spots.possibleMelasma ? " · anciennes, pas liées aux boutons : avis dermatologique conseillé" : ""}` : null} />
           <Row label="Allergies" value={list(log.safety?.allergies)} />
           <Row label="Autre allergie" value={log.safety?.other_allergy} />
           <Row label="Budget" value={log.budget_max ? `jusqu'à ${log.budget_max.toLocaleString("fr-FR")} FCFA` : "sans limite"} />

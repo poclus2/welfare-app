@@ -86,40 +86,69 @@ export function textureFit(
   return preferred.includes(product.texture) ? "preferred" : "ok";
 }
 
-// ─── Observed vs declared: acne ──────────────────────────────────────────────────────────────────────────────
+// ─── Observed vs declared: acne and dark spots ───────────────────────────────────────────────────────────────
 
 // acne_severity_percentage (0-100, photo analysis) at or above which acne counts as active,
 // and below which the photos show no real active acne
 export const ACNE_SCAN_THRESHOLD = 30;
 export const ACNE_SCAN_LOW = 15;
+// dark_spots_percentage (0-100) at or above which the photos show spots worth asking about.
+// First value, to adjust on real scans (dark skin: shadows and natural shade differences are not spots).
+export const DARK_SCAN_THRESHOLD = 35;
+// Follow-up questions asked at most at the end of the questionnaire (owner's decision, 2026-10-14)
+export const MAX_FOLLOWUPS = 2;
 
 export type FollowUpQuestion = { id: string; text: string; options: string[] };
 
+// Wording from the owner (2026-10-14): the questionnaire adapts to the photos without contradicting the
+// customer. A photo can be wrong (light, shadows): her answer wins.
+
+// She declared pimples (or acne is her goal), the photos show none
 export const FOLLOWUP_ACNE: FollowUpQuestion = {
   id: "q_followup_acne",
-  text: "Une précision : sur vos photos, nous ne voyons pas de boutons actifs aujourd'hui. Vos boutons apparaissent-ils plutôt par poussées ?",
+  text: "Vous avez indiqué avoir des boutons. Est-ce que vous en avez régulièrement ou seulement de temps en temps ?",
   options: [
-    "Oui, par poussées (cycle, stress…), mais pas en ce moment",
-    "J'en ai en ce moment, même s'ils sont peu visibles sur les photos",
-    "J'ai surtout des points noirs et des pores dilatés",
+    "J'en ai régulièrement",
+    "J'en ai de temps en temps",
+    "J'en ai rarement",
+    "J'en avais avant, mais plus maintenant",
   ],
 };
 
+// The photos show pimples she didn't mention
 export const FOLLOWUP_SPOTS: FollowUpQuestion = {
   id: "q_followup_spots",
-  text: "Une précision : nos photos montrent quelques imperfections. De quoi s'agit-il plutôt ?",
+  text: "Avez-vous parfois des boutons, même si ce n'est pas votre principale préoccupation ?",
+  options: ["Oui, souvent", "Oui, parfois", "Rarement", "Non"],
+};
+
+// The photos show darker areas and spots are not her goal
+export const FOLLOWUP_DARK_SINCE: FollowUpQuestion = {
+  id: "q_followup_dark_since",
+  text: "Nous avons remarqué quelques zones plus foncées sur vos photos. Savez-vous depuis quand elles sont apparues ?",
+  options: ["Depuis quelques jours ou semaines", "Depuis plusieurs mois", "Depuis plusieurs années", "Je ne sais pas"],
+};
+
+export const FOLLOWUP_DARK_ORIGIN: FollowUpQuestion = {
+  id: "q_followup_dark_origin",
+  text: "Est-ce que ces taches sont apparues après des boutons ?",
   options: [
-    "De boutons récents ou en cours",
-    "De marques laissées par d'anciens boutons",
+    "Oui, ce sont des marques laissées par des boutons",
+    "Non, elles sont apparues autrement",
+    "Certaines oui, d'autres non",
     "Je ne sais pas",
   ],
 };
 
-const isAcneGoal = (goal: string) => /acn[ée]|imperfection/i.test(goal);
+export const FOLLOWUP_QUESTIONS = [FOLLOWUP_ACNE, FOLLOWUP_SPOTS, FOLLOWUP_DARK_SINCE, FOLLOWUP_DARK_ORIGIN];
 
-// The follow-up to ask when the photos and the answers disagree about acne (at most one: they exclude each
-// other), or null. Asked at the end of the questionnaire, once the photo analysis is back.
-export function acneFollowUp(acneScore: unknown, responses: Answer[]): FollowUpQuestion | null {
+const isAcneGoal = (goal: string) => /acn[ée]|imperfection/i.test(goal);
+const isSpotGoal = (goal: string) => /tache|pigment/i.test(goal);
+
+type ScanMetrics = { acne_severity_percentage?: unknown; dark_spots_percentage?: unknown } | null | undefined;
+
+// The acne question to ask when the photos and the answers disagree (they exclude each other), or null
+function acneFollowUp(acneScore: unknown, responses: Answer[]): FollowUpQuestion | null {
   const pct = Number(acneScore);
   if (!Number.isFinite(pct)) return null;
   const declaredActive = /^oui/i.test(answerOf(responses, "q_active_acne").trim());
@@ -129,12 +158,28 @@ export function acneFollowUp(acneScore: unknown, responses: Answer[]): FollowUpQ
   return null;
 }
 
+// The follow-up questions for this scan, in order, at most MAX_FOLLOWUPS. Asked at the end of the
+// questionnaire, once the photo analysis is back. When acne and dark spots both need asking, the acne
+// question comes first (it decides the acne-first rule) and only "after pimples?" is kept for the spots.
+export function followUpQuestions(metrics: ScanMetrics, responses: Answer[]): FollowUpQuestion[] {
+  const acne = acneFollowUp(metrics?.acne_severity_percentage, responses);
+  const dark = Number(metrics?.dark_spots_percentage);
+  const darkUnmentioned = Number.isFinite(dark) && dark >= DARK_SCAN_THRESHOLD && !isSpotGoal(answerOf(responses, "q_main_goal"));
+  const questions = [
+    ...(acne ? [acne] : []),
+    ...(darkUnmentioned ? (acne ? [FOLLOWUP_DARK_ORIGIN] : [FOLLOWUP_DARK_SINCE, FOLLOWUP_DARK_ORIGIN]) : []),
+  ];
+  return questions.slice(0, MAX_FOLLOWUPS);
+}
+
 export type AcneReading = {
   goal: string;
   goalIsAcne: boolean;
   declaredActive: boolean; // after the follow-up, if any
   detectedActive: boolean; // after the follow-up, if any
   acneProne: boolean; // breakouts come and go, nothing active today
+  rare: boolean; // pimples are rare: no strong anti-acne active
+  past: boolean; // she had pimples before, not any more
   uncertain: string | null; // disagreement left unresolved (no follow-up answer)
   scanAcnePct: number | null;
 };
@@ -147,18 +192,61 @@ export function readAcne(responses: Answer[], scanAcnePct: unknown): AcneReading
   let declaredActive = /^oui/i.test(answerOf(responses, "q_active_acne").trim());
   let detectedActive = known && pct >= ACNE_SCAN_THRESHOLD;
   let acneProne = false;
+  let rare = false;
+  let past = false;
 
-  const flare = answerOf(responses, "q_followup_acne");
-  if (/^oui, par pouss[ée]es|points noirs/i.test(flare)) { declaredActive = false; acneProne = true; }
-  else if (/^j.en ai en ce moment/i.test(flare)) declaredActive = true;
-  const spots = answerOf(responses, "q_followup_spots");
-  if (/marques/i.test(spots)) detectedActive = false;
-  if (/r[ée]cents/i.test(spots)) declaredActive = true;
+  // she declared pimples the photos don't show
+  const frequency = answerOf(responses, "q_followup_acne");
+  if (/r[ée]guli[èe]rement/i.test(frequency)) declaredActive = true;
+  else if (/de temps en temps/i.test(frequency)) { declaredActive = false; acneProne = true; }
+  else if (/rarement/i.test(frequency)) { declaredActive = false; rare = true; }
+  else if (/avant/i.test(frequency)) { declaredActive = false; past = true; }
+
+  // the photos show pimples she didn't mention: her answer wins over the photo
+  const seen = answerOf(responses, "q_followup_spots");
+  if (/souvent/i.test(seen)) declaredActive = true;
+  else if (/parfois/i.test(seen)) acneProne = true;
+  else if (/^(rarement|non)/i.test(seen.trim())) { detectedActive = false; rare = /^rarement/i.test(seen.trim()); }
 
   let uncertain: string | null = null;
-  if (!flare && !spots && known) {
+  if (!frequency && !seen && known) {
     if (declaredActive && pct < ACNE_SCAN_LOW) uncertain = "elle déclare des boutons actifs que les photos ne montrent pas";
     else if (!declaredActive && !goalIsAcne && pct >= ACNE_SCAN_THRESHOLD) uncertain = "les photos montrent des imperfections qu'elle n'a pas mentionnées";
   }
-  return { goal, goalIsAcne, declaredActive, detectedActive, acneProne, uncertain, scanAcnePct: known ? pct : null };
+  return { goal, goalIsAcne, declaredActive, detectedActive, acneProne, rare, past, uncertain, scanAcnePct: known ? pct : null };
+}
+
+export type DarkSpotReading = {
+  scanPct: number | null;
+  seen: boolean; // the photos show spots and spots are not her goal
+  since: "recent" | "months" | "years" | "unknown" | null; // null = not asked
+  origin: "acne_marks" | "other" | "mixed" | "unknown" | null; // null = not asked
+  marks: boolean; // at least some are marks left by pimples
+  possibleMelasma: boolean; // for years, not after pimples: gentle care and a dermatologist's opinion
+};
+
+export function readDarkSpots(responses: Answer[], metrics: ScanMetrics): DarkSpotReading {
+  const pct = Number(metrics?.dark_spots_percentage);
+  const known = Number.isFinite(pct);
+  const seen = known && pct >= DARK_SCAN_THRESHOLD && !isSpotGoal(answerOf(responses, "q_main_goal"));
+  const sinceAnswer = answerOf(responses, "q_followup_dark_since");
+  const since = !sinceAnswer ? null
+    : /semaines|jours/i.test(sinceAnswer) ? "recent"
+    : /mois/i.test(sinceAnswer) ? "months"
+    : /ann[ée]es/i.test(sinceAnswer) ? "years"
+    : "unknown";
+  const originAnswer = answerOf(responses, "q_followup_dark_origin");
+  const origin = !originAnswer ? null
+    : /^oui/i.test(originAnswer.trim()) ? "acne_marks"
+    : /^non/i.test(originAnswer.trim()) ? "other"
+    : /certaines/i.test(originAnswer) ? "mixed"
+    : "unknown";
+  return {
+    scanPct: known ? pct : null,
+    seen,
+    since,
+    origin,
+    marks: origin === "acne_marks" || origin === "mixed",
+    possibleMelasma: since === "years" && origin === "other",
+  };
 }

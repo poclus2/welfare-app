@@ -343,6 +343,14 @@ export default async function SkinScanDetailsPage({ params }: { params: Promise<
                     color="bg-gradient-to-r from-slate-400 to-gray-400"
                   />
                 )}
+                {/* measured since 2026-10-14 */}
+                {metrics.dark_spots_percentage !== undefined && (
+                  <MetricBar
+                    label="Taches / zones plus foncées"
+                    value={metrics.dark_spots_percentage}
+                    color="bg-gradient-to-r from-amber-500 to-orange-400"
+                  />
+                )}
               </div>
             </div>
           )}

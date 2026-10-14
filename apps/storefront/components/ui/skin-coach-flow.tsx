@@ -6,7 +6,7 @@ import {  Scan, CaretRight, Camera, ArrowCounterClockwise, PaperPlaneTilt, Light
 import Webcam from "react-webcam";
 import { analyzeFace, analyzeSkin, SkinAnalysisResult } from "@/app/actions/analyze-skin";
 import posthog from "posthog-js";
-import { acneFollowUp, FOLLOWUP_ACNE, FOLLOWUP_SPOTS } from "@/lib/skin-profile";
+import { FOLLOWUP_QUESTIONS, followUpQuestions } from "@/lib/skin-profile";
 import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
 import { rememberPendingScan } from "@/lib/pending-scans";
 import { useRouter } from "next/navigation";
@@ -239,9 +239,11 @@ const DECISION_TREE: QuestionNode[] = [
   }
 ];
 
-// Follow-up questions asked at the end when the photos and the answers disagree (lib/skin-profile.ts)
+// Follow-up questions asked at the end when the photos and the answers disagree, or the photos show
+// something she didn't mention (lib/skin-profile.ts). Each one leads to FOLLOWUP_DONE: the next queued
+// question, or the analysis.
 const FOLLOWUP_DONE = "q_finish_after_followup";
-const FOLLOWUP_NODES: QuestionNode[] = [FOLLOWUP_ACNE, FOLLOWUP_SPOTS].map((q) => ({
+const FOLLOWUP_NODES: QuestionNode[] = FOLLOWUP_QUESTIONS.map((q) => ({
   id: q.id,
   text: q.text,
   type: "choice",
@@ -351,6 +353,8 @@ export default function SkinCoachFlow() {
   const earlyVisualRef = useRef<Promise<Awaited<ReturnType<typeof analyzeFace>> | null> | null>(null);
   // Answers kept when she has to retake the photos at the end (glasses): the analysis restarts by itself
   const resumeAfterCaptureRef = useRef<UserResponse[] | null>(null);
+  // follow-up questions still to ask at the end of the questionnaire
+  const followUpQueueRef = useRef<QuestionNode[]>([]);
 
   const handleCaptureComplete = (result: CaptureResult) => {
     setCaptures(result);
@@ -368,6 +372,7 @@ export default function SkinCoachFlow() {
 
   const handleRetake = () => {
     earlyVisualRef.current = null;
+    followUpQueueRef.current = [];
     resumeAfterCaptureRef.current = null;
     setCaptures(null);
     setHasCaptured(false);
@@ -518,17 +523,16 @@ export default function SkinCoachFlow() {
     });
 
     setTimeout(async () => {
-      // End of the questionnaire: when the photos and the answers disagree about acne, one follow-up question
-      // is asked first (lib/skin-profile.ts), then the analysis starts
-      if (nextQuestionId === "q_finish") {
-        const followUp = await pendingFollowUp(newResponses);
-        if (followUp) {
-          posthog.capture("skin_coach_followup_asked", { question: followUp.id });
-          setMessages((prev) => [...prev, { id: `msg-ai-${Date.now()}`, sender: "ai", text: followUp.text, options: followUp.options }]);
-          setCurrentQuestionId(followUp.id);
-          setIsTyping(false);
-          return;
-        }
+      // End of the questionnaire: the follow-up questions (at most 2, lib/skin-profile.ts) are asked first,
+      // then the analysis starts
+      if (nextQuestionId === "q_finish") followUpQueueRef.current = await pendingFollowUps(newResponses);
+      if ((nextQuestionId === "q_finish" || nextQuestionId === FOLLOWUP_DONE) && followUpQueueRef.current.length) {
+        const followUp = followUpQueueRef.current.shift()!;
+        posthog.capture("skin_coach_followup_asked", { question: followUp.id });
+        setMessages((prev) => [...prev, { id: `msg-ai-${Date.now()}`, sender: "ai", text: followUp.text, options: followUp.options }]);
+        setCurrentQuestionId(followUp.id);
+        setIsTyping(false);
+        return;
       }
       if (nextQuestionId === "q_finish" || nextQuestionId === FOLLOWUP_DONE) {
         setProgressPercent(100);
@@ -552,12 +556,13 @@ export default function SkinCoachFlow() {
   };
 
   // The photo analysis started after the capture: waited for (at most 45 s) to compare it with the answers
-  const pendingFollowUp = async (responses: UserResponse[]): Promise<QuestionNode | null> => {
-    if (!earlyVisualRef.current) return null;
+  const pendingFollowUps = async (responses: UserResponse[]): Promise<QuestionNode[]> => {
+    if (!earlyVisualRef.current) return [];
     const early = await Promise.race([earlyVisualRef.current, new Promise<null>((r) => setTimeout(() => r(null), 45_000))]);
-    if (!early?.success) return null;
-    const question = acneFollowUp(early.visual.result?.metrics?.acne_severity_percentage, responses);
-    return question ? FOLLOWUP_NODES.find((n) => n.id === question.id) || null : null;
+    if (!early?.success) return [];
+    return followUpQuestions(early.visual.result?.metrics, responses)
+      .map((q) => FOLLOWUP_NODES.find((n) => n.id === q.id))
+      .filter((n): n is QuestionNode => !!n);
   };
 
   const currentNode = DECISION_TREE.find((n) => n.id === currentQuestionId) || FOLLOWUP_NODES.find((n) => n.id === currentQuestionId);
