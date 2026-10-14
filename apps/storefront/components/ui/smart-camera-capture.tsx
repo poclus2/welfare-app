@@ -4,8 +4,10 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import Webcam from "react-webcam";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
-import { Camera, ArrowLeft, ArrowRight, Sun, Eyeglasses, X } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowRight, Sun, Eyeglasses, X, Check } from "@phosphor-icons/react";
 import { IconIA } from "@/components/ui/icons/IconIA";
+import { faceMapFromLandmarks, type FaceMap } from "@/lib/face-map";
+import { DISPLAY_FONT, SK } from "@/components/ui/skin-coach/theme";
 
 export type CaptureResult = {
   front: string;
@@ -14,7 +16,8 @@ export type CaptureResult = {
 };
 
 interface Props {
-  onComplete: (images: CaptureResult) => void;
+  // frontMap: where the face is on the front photo, for the analysis filter of the result page (never sent)
+  onComplete: (images: CaptureResult, frontMap: FaceMap | null) => void;
   onCancel: () => void;
   onConsent: () => void; // the customer agreed to the analysis and storage of her photos
 }
@@ -26,6 +29,9 @@ export default function SmartCameraCapture({ onComplete, onCancel, onConsent }: 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const lastLuminanceCheckRef = useRef<number>(0);
   const isTooDarkRef = useRef<boolean>(false);
+  // landmarks of the last analysed frame, and the face map taken with the front photo
+  const lastLandmarksRef = useRef<{ x: number; y: number }[] | null>(null);
+  const frontMapRef = useRef<FaceMap | null>(null);
 
   // States
   const [showIntroModal, setShowIntroModal] = useState(true);
@@ -79,6 +85,9 @@ export default function SmartCameraCapture({ onComplete, onCancel, onConsent }: 
       const imageSrc = webcamRef.current.getScreenshot();
       if (imageSrc) {
         setCaptures((prev) => ({ ...prev, [key]: imageSrc }));
+        if (key === "front" && lastLandmarksRef.current) {
+          frontMapRef.current = faceMapFromLandmarks(lastLandmarksRef.current, true);
+        }
       }
     }
   }, []);
@@ -157,6 +166,7 @@ export default function SmartCameraCapture({ onComplete, onCancel, onConsent }: 
     // Calculate face width ratio (bounding box relative to screen)
     const landmarks = results.faceLandmarks[0];
     if (!landmarks) return;
+    lastLandmarksRef.current = landmarks;
     const xs = landmarks.map(l => l.x);
     const minX = Math.min(...xs);
     const maxX = Math.max(...xs);
@@ -241,15 +251,18 @@ export default function SmartCameraCapture({ onComplete, onCancel, onConsent }: 
   // Finish flow
   useEffect(() => {
     if (step === "DONE" && captures.front && captures.left && captures.right) {
-      onComplete(captures as CaptureResult);
+      onComplete(captures as CaptureResult, frontMapRef.current);
     }
   }, [step, captures, onComplete]);
 
+  const stepIndex = step === "FRONT" ? 0 : step === "LEFT" ? 1 : step === "RIGHT" ? 2 : 3;
+  const ovalColor = isTooDark ? "#EF4444" : isPerfect ? SK.accent : "rgba(255,255,255,0.45)";
+
   return (
-    <div className="absolute inset-0 w-full h-full bg-slate-900 overflow-hidden flex flex-col font-sans">
-      
+    <div className="absolute inset-0 w-full h-full overflow-hidden flex flex-col font-sans" style={{ background: "radial-gradient(120% 80% at 50% 30%, #4A3836 0%, #2A2424 70%)" }}>
+
       {/* =========================================================
-          INTRO MODAL — Full screen popup with preparation checklist
+          INTRO MODAL — preparation checklist and consent
       ========================================================= */}
       <AnimatePresence>
         {showIntroModal && (
@@ -258,64 +271,51 @@ export default function SmartCameraCapture({ onComplete, onCancel, onConsent }: 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.3 }}
-            className="absolute inset-0 z-50 flex justify-center overflow-y-auto bg-black/80 backdrop-blur-sm p-4 sm:p-6"
+            className="absolute inset-0 z-50 flex justify-center overflow-y-auto p-4 sm:p-6"
+            style={{ background: "rgba(42,36,36,0.72)" }}
           >
             <motion.div
-              initial={{ scale: 0.9, y: 20, opacity: 0 }}
+              initial={{ scale: 0.94, y: 20, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 280, damping: 22, delay: 0.05 }}
-              className="bg-white border border-[rgba(200,134,138,0.2)] rounded-3xl p-6 sm:p-8 my-auto max-w-md w-full shadow-[0_8px_30px_rgba(200,134,138,0.15)] relative overflow-hidden"
+              transition={{ type: "spring", stiffness: 280, damping: 24, delay: 0.05 }}
+              className="rounded-[30px] p-6 sm:p-8 my-auto max-w-md w-full relative"
+              style={{ background: SK.surface }}
             >
-              {/* Decorative gradient */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#C8868A] via-[#E8B4B8] to-[#C8868A] rounded-t-3xl" />
-              
-              {/* Close button */}
               <button
                 onClick={onCancel}
-                className="absolute top-5 right-5 text-[rgba(61,43,45,0.4)] hover:text-[#3D2B2D] transition-colors"
+                aria-label="Fermer"
+                className="absolute top-4 right-4 w-11 h-11 rounded-full flex items-center justify-center"
+                style={{ border: `1px solid ${SK.line}`, color: SK.ink }}
               >
                 <X className="w-5 h-5" />
               </button>
 
-              {/* Icon */}
-              <div className="flex items-center justify-center w-16 h-16 bg-[rgba(200,134,138,0.1)] border border-[rgba(200,134,138,0.2)] rounded-2xl mb-6 mx-auto">
-                <IconIA className="w-12 h-12 text-[#C97C85]" />
+              <div className="w-14 h-14 rounded-full flex items-center justify-center mb-5" style={{ background: SK.accent }}>
+                <IconIA className="w-7 h-7 text-white" />
               </div>
 
-              {/* Title */}
-              <h2 className="text-2xl font-bold text-center mb-2" style={{ color: "#3D2B2D" }}>
-                Avant de commencer
+              <p className="text-[13px] font-semibold uppercase tracking-[0.08em] mb-2" style={{ color: SK.muted }}>Skin Coach</p>
+              <h2 className="mb-2" style={{ fontFamily: DISPLAY_FONT, fontSize: 34, lineHeight: 1.05, fontWeight: 300, color: SK.ink }}>
+                Avant de <span style={{ fontWeight: 700, color: SK.accent }}>commencer</span>
               </h2>
-              <p className="text-sm text-center mb-8" style={{ color: "rgba(61,43,45,0.6)" }}>
-                Pour une analyse précise de votre peau, merci de respecter ces quelques consignes :
+              <p className="text-[15px] leading-relaxed mb-6" style={{ color: SK.muted }}>
+                Pour une analyse précise de votre peau, deux consignes :
               </p>
 
-              {/* Checklist */}
-              <div className="space-y-4 mb-8">
-                <div className="flex items-start gap-4 rounded-2xl p-4 border border-[rgba(200,134,138,0.15)]" style={{ backgroundColor: "#FAF7F2" }}>
-                  <div className="flex items-center justify-center w-10 h-10 bg-amber-100 rounded-xl shrink-0 mt-0.5">
-                    <Sun className="w-5 h-5 text-amber-500" />
+              <div className="space-y-3 mb-6">
+                {[
+                  { icon: <Sun className="w-5 h-5" style={{ color: SK.accent }} />, title: "Bonne luminosité", text: "Placez-vous près d'une fenêtre ou sous une lumière directe. Évitez les pièces sombres ou le contre-jour." },
+                  { icon: <Eyeglasses className="w-5 h-5" style={{ color: SK.accent }} />, title: "Retirez vos lunettes", text: "Les lunettes masquent une partie du visage et faussent l'analyse." },
+                ].map((item) => (
+                  <div key={item.title} className="flex items-start gap-4 rounded-[22px] p-4" style={{ background: SK.ground, border: `1px solid ${SK.lineSoft}` }}>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: SK.tint }}>{item.icon}</div>
+                    <div>
+                      <p className="font-bold text-[15px]" style={{ color: SK.ink }}>{item.title}</p>
+                      <p className="text-[13px] leading-relaxed mt-1" style={{ color: SK.muted }}>{item.text}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold text-sm" style={{ color: "#3D2B2D" }}>Bonne luminosité</p>
-                    <p className="text-xs mt-1" style={{ color: "rgba(61,43,45,0.6)" }}>
-                      Placez-vous près d'une fenêtre ou sous une lumière directe. Évitez les pièces sombres ou le contre-jour.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4 rounded-2xl p-4 border border-[rgba(200,134,138,0.15)]" style={{ backgroundColor: "#FAF7F2" }}>
-                  <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-xl shrink-0 mt-0.5">
-                    <Eyeglasses className="w-5 h-5 text-blue-500" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm" style={{ color: "#3D2B2D" }}>Retirez vos lunettes</p>
-                    <p className="text-xs mt-1" style={{ color: "rgba(61,43,45,0.6)" }}>
-                      Les lunettes masquent une partie du visage et faussent l'analyse cutanée par notre IA.
-                    </p>
-                  </div>
-                </div>
+                ))}
               </div>
 
               {/* Consent: required before any photo is taken (analyze-skin.ts refuses without it) */}
@@ -324,19 +324,18 @@ export default function SmartCameraCapture({ onComplete, onCancel, onConsent }: 
                   type="checkbox"
                   checked={consentChecked}
                   onChange={(e) => setConsentChecked(e.target.checked)}
-                  className="mt-0.5 w-5 h-5 shrink-0 accent-[#3D2B2D]"
+                  className="mt-0.5 w-5 h-5 shrink-0"
+                  style={{ accentColor: SK.accent }}
                 />
-                <span className="text-xs leading-relaxed" style={{ color: "rgba(61,43,45,0.75)" }}>
+                <span className="text-[13px] leading-relaxed" style={{ color: SK.muted }}>
                   J'accepte que mes 3 photos et mes réponses soient analysées par l'intelligence artificielle de The Welfare, via nos prestataires d'IA situés hors du Cameroun, pour établir mon diagnostic de peau. Mes photos sont supprimées sous 2 heures si je ne crée pas de compte, et au bout de 6 mois si je l'enregistre dans mon compte.{" "}
-                  <a href="/privacy" target="_blank" rel="noopener" className="underline" onClick={(e) => e.stopPropagation()}>
+                  <a href="/privacy" target="_blank" rel="noopener" className="underline font-semibold" style={{ color: SK.ink }} onClick={(e) => e.stopPropagation()}>
                     En savoir plus
                   </a>
                 </span>
               </label>
 
-              {/* CTA Button */}
               <motion.button
-                whileHover={consentChecked ? { scale: 1.02 } : undefined}
                 whileTap={consentChecked ? { scale: 0.98 } : undefined}
                 disabled={!consentChecked}
                 onClick={() => {
@@ -344,14 +343,14 @@ export default function SmartCameraCapture({ onComplete, onCancel, onConsent }: 
                   onConsent();
                   setShowIntroModal(false);
                 }}
-                className="w-full py-4 font-bold text-lg rounded-2xl shadow-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ backgroundColor: "#3D2B2D", color: "#FAF7F2", boxShadow: "0 10px 25px rgba(61,43,45,0.2)" }}
+                className="w-full h-[60px] font-bold text-[16px] rounded-full transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ background: SK.accent, color: "#FFFFFF" }}
               >
                 Commencer le scan
               </motion.button>
 
-              <p className="text-xs text-center mt-4" style={{ color: "rgba(61,43,45,0.4)" }}>
-                3 photos seront prises automatiquement par notre IA
+              <p className="text-[13px] text-center mt-4" style={{ color: SK.muted }}>
+                3 photos seront prises automatiquement
               </p>
             </motion.div>
           </motion.div>
@@ -360,28 +359,43 @@ export default function SmartCameraCapture({ onComplete, onCancel, onConsent }: 
 
       {isModelLoading && !showIntroModal ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-6 px-6">
-          <div className="relative">
-            <div className="w-24 h-24 border-4 border-slate-700 rounded-full animate-spin border-t-emerald-400" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Camera className="w-8 h-8 text-emerald-400" />
-            </div>
-          </div>
+          <div className="w-20 h-20 rounded-full animate-spin" style={{ border: "4px solid rgba(255,255,255,0.15)", borderTopColor: SK.accent }} />
           <div className="text-center">
-            <h3 className="text-white text-xl font-bold mb-2">Calibration de l'IA faciale</h3>
-            <p className="text-slate-400 text-sm">Chargement des modèles haute précision...</p>
+            <h3 className="text-white mb-2" style={{ fontFamily: DISPLAY_FONT, fontSize: 26, fontWeight: 300 }}>
+              Préparation <span style={{ fontWeight: 700 }}>de la caméra</span>
+            </h3>
+            <p className="text-[14px]" style={{ color: "rgba(255,255,255,0.75)" }}>Chargement de la détection du visage…</p>
           </div>
         </div>
       ) : !showIntroModal ? (
         <>
           {/* Header */}
-          <div className="absolute top-0 left-0 w-full p-6 z-20 flex justify-between items-center bg-gradient-to-b from-black/60 to-transparent">
-            <button onClick={onCancel} className="text-white/80 hover:text-white">
-              Annuler
-            </button>
+          <div className="absolute top-0 left-0 w-full px-4 pt-4 pb-6 z-20 flex flex-col gap-3" style={{ background: "linear-gradient(180deg, rgba(42,36,36,0.7), transparent)" }}>
+            <div className="flex items-center justify-between">
+              <button onClick={onCancel} className="h-11 px-4 rounded-full text-white text-[14px] font-semibold" style={{ background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.22)" }}>
+                Annuler
+              </button>
+              <span className="text-white text-[15px] font-semibold" style={{ fontFamily: DISPLAY_FONT }}>{Math.min(stepIndex + 1, 3)}/3</span>
+            </div>
             <div className="flex gap-2">
-              <div className={`w-2 h-2 rounded-full ${step === 'FRONT' ? 'bg-emerald-400' : captures.front ? 'bg-emerald-400' : 'bg-white/30'}`} />
-              <div className={`w-2 h-2 rounded-full ${step === 'LEFT' ? 'bg-emerald-400' : captures.left ? 'bg-emerald-400' : 'bg-white/30'}`} />
-              <div className={`w-2 h-2 rounded-full ${step === 'RIGHT' ? 'bg-emerald-400' : captures.right ? 'bg-emerald-400' : 'bg-white/30'}`} />
+              {["Face", "Profil gauche", "Profil droit"].map((label, i) => {
+                const active = i === stepIndex;
+                const done = i < stepIndex;
+                return (
+                  <div
+                    key={label}
+                    className="flex-1 h-10 rounded-full flex items-center justify-center gap-1.5 text-[13px] font-semibold"
+                    style={{
+                      background: active ? SK.accent : done ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.14)",
+                      color: active ? "#FFFFFF" : done ? SK.ink : "rgba(255,255,255,0.85)",
+                      border: active || done ? "none" : "1px solid rgba(255,255,255,0.22)",
+                    }}
+                  >
+                    {done && <Check className="w-3.5 h-3.5" weight="bold" />}
+                    {label}
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -396,72 +410,74 @@ export default function SmartCameraCapture({ onComplete, onCancel, onConsent }: 
               mirrored={true}
               className="absolute inset-0 w-full h-full object-cover object-center"
             />
-            
-            {/* Dark overlay with transparent cutout */}
-            <div className="absolute inset-0 bg-black/50 pointer-events-none" />
-            
-            <div className="relative w-64 h-80 rounded-[4rem] z-10 overflow-hidden shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
-              {/* Ovale Transparent (The cutout) */}
-              <div className="w-full h-full bg-transparent" />
-              
-              {/* Animated borders based on state */}
-              <motion.div 
-                animate={{ borderColor: isTooDark ? "rgba(239,68,68,1)" : isPerfect ? "rgba(52,211,153,1)" : "rgba(255,255,255,0.4)" }}
-                className="absolute inset-0 border-4 rounded-[4rem] transition-colors duration-500"
+
+            <div className="relative w-64 h-80 rounded-[50%] z-10" style={{ boxShadow: "0 0 0 9999px rgba(42,36,36,0.55)" }}>
+              {/* glow when the face is well placed */}
+              <motion.div
+                className="absolute -inset-3 rounded-[50%] pointer-events-none"
+                style={{ background: SK.accent, filter: "blur(22px)" }}
+                animate={{ opacity: isPerfect ? [0.35, 0.7, 0.35] : 0 }}
+                transition={{ duration: 1.6, repeat: Infinity }}
               />
-              
-              {/* Scanner Line */}
+              <motion.div
+                animate={{ borderColor: ovalColor }}
+                className="absolute inset-0 rounded-[50%] transition-colors duration-500"
+                style={{ borderWidth: 3, borderStyle: "solid" }}
+              />
               {!isPerfect && (
-                <motion.div
-                  animate={{ y: ["0%", "400%", "0%"] }}
-                  transition={{ repeat: Infinity, duration: 4.5, ease: "linear" }}
-                  className="absolute top-0 left-0 right-0 h-1 bg-white/50 shadow-[0_0_15px_rgba(255,255,255,0.5)]"
-                />
+                <div className="absolute inset-0 rounded-[50%] overflow-hidden">
+                  <motion.div
+                    animate={{ top: ["10%", "88%", "10%"] }}
+                    transition={{ repeat: Infinity, duration: 4.5, ease: "easeInOut" }}
+                    className="absolute rounded-full"
+                    style={{ left: "10%", right: "10%", height: 2, background: SK.accent, boxShadow: "0 0 16px 4px rgba(224,24,124,.45)" }}
+                  />
+                </div>
               )}
             </div>
 
             {/* Arrows for LEFT / RIGHT */}
             {step === "LEFT" && (
-              <motion.div 
+              <motion.div
                 animate={{ x: [-10, 10, -10] }}
                 transition={{ repeat: Infinity, duration: 2 }}
-                className="absolute left-8 top-1/2 -translate-y-1/2 bg-white/20 p-4 rounded-full backdrop-blur-md"
+                className="absolute left-6 top-1/2 -translate-y-1/2 p-4 rounded-full z-20"
+                style={{ background: "rgba(255,255,255,0.18)" }}
               >
                 <ArrowLeft className="w-8 h-8 text-white" />
               </motion.div>
             )}
-
             {step === "RIGHT" && (
-              <motion.div 
+              <motion.div
                 animate={{ x: [10, -10, 10] }}
                 transition={{ repeat: Infinity, duration: 2 }}
-                className="absolute right-8 top-1/2 -translate-y-1/2 bg-white/20 p-4 rounded-full backdrop-blur-md"
+                className="absolute right-6 top-1/2 -translate-y-1/2 p-4 rounded-full z-20"
+                style={{ background: "rgba(255,255,255,0.18)" }}
               >
                 <ArrowRight className="w-8 h-8 text-white" />
               </motion.div>
             )}
           </div>
 
-          {/* Footer Text */}
-          <div className="absolute bottom-28 left-0 w-full px-6 flex flex-col items-center z-20 gap-3">
-            <motion.div 
+          {/* Instruction */}
+          <div className="absolute left-4 right-4 bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-20">
+            <motion.div
               key={feedback}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`px-6 py-4 rounded-2xl text-center backdrop-blur-md border shadow-xl ${
-                isTooDark
-                  ? 'bg-red-500/20 border-red-400/50 text-red-100'
-                  : isPerfect 
-                    ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-100' 
-                    : 'bg-black/40 border-white/20 text-white'
-              }`}
+              className="px-5 py-4 rounded-[22px] text-white"
+              style={{
+                background: isTooDark ? "rgba(239,68,68,0.3)" : isPerfect ? "rgba(224,24,124,0.35)" : "rgba(255,255,255,0.12)",
+                border: `1px solid ${isTooDark ? "rgba(248,113,113,0.6)" : isPerfect ? "rgba(224,24,124,0.7)" : "rgba(255,255,255,0.2)"}`,
+              }}
             >
-              <p className="font-semibold text-lg">{feedback}</p>
+              <p style={{ fontFamily: DISPLAY_FONT, fontSize: 21, lineHeight: 1.2, fontWeight: 600 }}>{feedback}</p>
+              <p className="mt-1 text-[13px]" style={{ color: "rgba(255,255,255,0.82)" }}>Prise automatique dès que le visage est stable</p>
             </motion.div>
           </div>
         </>
       ) : null}
-      
+
       {/* Hidden canvas for luminance calculation */}
       <canvas ref={canvasRef} width={50} height={50} className="hidden" />
     </div>

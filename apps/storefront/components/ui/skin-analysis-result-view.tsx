@@ -1,14 +1,17 @@
 "use client";
 
-import { motion, Variants } from "framer-motion";
-import { SkinAnalysisResult, RoutineStep } from "@/app/actions/analyze-skin";
-import {  Drop, Eye, Lightning, Sun, ShoppingBag, ArrowCounterClockwise, CaretRight, TrendUp, Package, Plus, CheckCircle, Printer, LockKey, FirstAidKit, Info } from "@phosphor-icons/react";
+import { motion } from "framer-motion";
+import { SkinAnalysisResult } from "@/app/actions/analyze-skin";
+import { ShoppingBag, ArrowCounterClockwise, CaretRight, Package, Plus, CheckCircle, Printer, LockKey, FirstAidKit, Info } from "@phosphor-icons/react";
 import Link from "next/link";
 import posthog from "posthog-js";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useCart } from "@/lib/cart-context";
-import { IconIA } from "@/components/ui/icons/IconIA";
+import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
+import { LevelRing } from "@/components/ui/skin-coach/level-ring";
+import { FaceScanFrame, type FaceMarker } from "@/components/ui/skin-coach/face-scan-frame";
+import { DISPLAY_FONT, SK } from "@/components/ui/skin-coach/theme";
 
 interface Props {
   result: SkinAnalysisResult;
@@ -19,334 +22,116 @@ interface Props {
 
 // The photo analysis gives estimates, not measurements (client feedback, 2026-10-12): each indicator is shown
 // as a level, without a number, and there is no overall score nor skin age.
-type Level = { label: string; tone: 0 | 1 | 2 }; // 0 = fine, 2 = to take care of
+type Tone = 0 | 1 | 2; // 0 = little of it, 2 = a lot of it
 
-function levelOf(value: number, type: "good" | "bad"): Level {
-  if (type === "good") return value >= 66 ? { label: "Bonne", tone: 0 } : value >= 33 ? { label: "Moyenne", tone: 1 } : { label: "Faible", tone: 2 };
-  return value < 33 ? { label: "Faible", tone: 0 } : value < 66 ? { label: "Modéré", tone: 1 } : { label: "Marqué", tone: 2 };
+function toneOf(value: number): Tone {
+  return value < 33 ? 0 : value < 66 ? 1 : 2;
 }
 
-const TONE_COLOR = ["#10b981", "#f59e0b", "#f87171"];
+type MetricDef = { key: string; label: string; hint: string; value: number | undefined; good?: boolean };
 
-interface MetricCardProps {
-  label: string;
-  value: number;
-  type: "good" | "bad";
-  icon: React.ReactNode;
-  delay: number;
+// level shown in the ring: for "bad" indicators the ring fills with the amount, for hydration with how good it is
+function ringOf(m: MetricDef): { thirds: 1 | 2 | 3; label: string } {
+  const tone = toneOf(Number(m.value));
+  if (m.good) return [{ thirds: 1, label: "À renforcer" }, { thirds: 2, label: "Moyenne" }, { thirds: 3, label: "Bonne" }][tone] as { thirds: 1 | 2 | 3; label: string };
+  return [{ thirds: 1, label: "Faible" }, { thirds: 2, label: "Modéré" }, { thirds: 3, label: "Marqué" }][tone] as { thirds: 1 | 2 | 3; label: string };
 }
 
-const MetricCard = ({ label, value, type, icon, delay }: MetricCardProps) => {
-  const level = levelOf(value, type);
-  const filled = type === "good" ? 3 - level.tone : level.tone + 1; // segments lit: how much of it there is
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.5, ease: "easeOut" }}
-      className="rounded-2xl p-4 flex flex-col gap-3"
-      style={{ background: "white", border: "1px solid rgba(200,134,138,0.15)", boxShadow: "0 2px 10px rgba(200,134,138,0.08)" }}
-    >
-      <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-          style={{ background: "rgba(200,134,138,0.1)", border: "1px solid rgba(200,134,138,0.18)" }}>
-          {icon}
-        </div>
-        <span className="text-xs font-semibold leading-tight" style={{ color: "rgba(61,43,45,0.6)" }}>{label}</span>
-      </div>
-      <div>
-        <span className="text-lg font-black" style={{ color: TONE_COLOR[level.tone] }}>{level.label}</span>
-        <div className="flex gap-1 mt-1.5">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="flex-1 h-1.5 rounded-full"
-              style={{ background: i < filled ? TONE_COLOR[level.tone] : "rgba(200,134,138,0.12)" }} />
-          ))}
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
-// ─── Product Card (fetches real Medusa data) ─────────────────────────────────
-
-interface ProductInfo {
-  title: string;
-  brand?: string;
-  thumbnail?: string;
-  price?: string;
-  handle?: string;
-  variantId?: string;
+// "Peau Mixte à tendance déshydratée" → light "Peau mixte", bold "à tendance déshydratée"
+function splitSkinType(type: string): [string, string] {
+  const words = (type || "").trim().split(/\s+/);
+  if (words.length <= 2) return ["", type];
+  return [words.slice(0, 2).join(" "), words.slice(2).join(" ")];
 }
 
-function useProductInfo(productId?: string): ProductInfo | null {
-  const [product, setProduct] = useState<ProductInfo | null>(null);
+const fmtPrice = (amount: number, currency: string) =>
+  `${Math.round(amount).toLocaleString("fr-FR")} ${currency.toUpperCase() === "XAF" ? "FCFA" : currency.toUpperCase()}`;
 
+// ─── Products of the routine, fetched once ───────────────────────────────────
+
+type ProductInfo = { title: string; brand?: string; thumbnail?: string; handle?: string; variantId?: string; amount?: number; currency: string };
+
+function useRoutineProducts(ids: string[]): Record<string, ProductInfo | null> {
+  const [products, setProducts] = useState<Record<string, ProductInfo | null>>({});
+  const key = ids.join(",");
   useEffect(() => {
-    if (!productId) return;
-    const url = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "https://api.thewelfare.store";
-    const key = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "";
-
-    fetch(`${url}/store/products/${productId}?fields=*variants,*variants.prices`, {
-      headers: { "x-publishable-api-key": key },
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
-      .then((data) => {
-        const p = data?.product;
-        if (!p) return;
-        const variant = p.variants?.[0];
-        
-        // calculated_price requires a region — fall back to raw prices array
-        const calculatedAmount = variant?.calculated_price?.calculated_amount;
-        const rawPrice = variant?.prices?.[0];
-        const amount = calculatedAmount ?? rawPrice?.amount;
-        const currency = (variant?.calculated_price?.currency_code || rawPrice?.currency_code || "XAF").toUpperCase();
-        
-        // Thumbnail: prefer product.thumbnail, fallback to first image
-        const thumbnail = p.thumbnail || p.images?.[0]?.url;
-        
-        setProduct({
-          title: p.title,
-          brand: p.collection?.title,
-          thumbnail,
-          handle: p.handle,
-          variantId: variant?.id,
-          // Convert from cents if > 10000 (Medusa stores some currencies in subunits)
-          price: amount != null ? `${Number(amount).toLocaleString("fr-FR")} ${currency}` : undefined,
-        });
-      })
-      .catch((e) => {
-        console.warn(`[ProductCard] Failed to fetch product ${productId}:`, e);
-      });
-  }, [productId]);
-
-  return product;
+    const url = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "https://api.thewelfarecm.com";
+    const pk = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "";
+    let cancelled = false;
+    Promise.all(
+      ids.map((id) =>
+        fetch(`${url}/store/products/${id}`, { headers: { "x-publishable-api-key": pk } })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data): [string, ProductInfo | null] => {
+            const p = data?.product;
+            if (!p) return [id, null];
+            const variant = p.variants?.[0];
+            const amount = variant?.calculated_price?.calculated_amount ?? variant?.prices?.[0]?.amount;
+            return [id, {
+              title: p.title,
+              brand: p.collection?.title,
+              thumbnail: p.thumbnail || p.images?.[0]?.url,
+              handle: p.handle,
+              variantId: variant?.id,
+              amount: amount != null ? Number(amount) : undefined,
+              currency: variant?.calculated_price?.currency_code || variant?.prices?.[0]?.currency_code || "XAF",
+            }];
+          })
+          .catch((): [string, ProductInfo | null] => [id, null])
+      )
+    ).then((entries) => {
+      if (!cancelled) setProducts(Object.fromEntries(entries));
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return products;
 }
 
-// ─── Routine Step Card ───────────────────────────────────────────────────────
-
-const stepColors = [
-  { bg: "rgba(99,102,241,0.07)", border: "rgba(99,102,241,0.18)", num: "#6366f1" },
-  { bg: "rgba(20,184,166,0.07)", border: "rgba(20,184,166,0.18)", num: "#14b8a6" },
-  { bg: "rgba(245,158,11,0.07)", border: "rgba(245,158,11,0.18)", num: "#f59e0b" },
-  { bg: "rgba(239,68,68,0.07)", border: "rgba(239,68,68,0.18)", num: "#ef4444" },
-  { bg: "rgba(139,92,246,0.07)", border: "rgba(139,92,246,0.18)", num: "#8b5cf6" },
-];
-
-function RoutineStepCard({
-  step,
-  idx,
-  onAddToCart,
-  addedToCart,
-}: {
-  step: RoutineStep;
-  idx: number;
-  onAddToCart: (variantId: string) => void;
-  addedToCart: Set<string>;
-}) {
-  const router = useRouter();
-  const colors = stepColors[idx % stepColors.length] ?? stepColors[0]!;
-  const [productInfo, setProductInfo] = useState<ProductInfo | null>(null);
-  const [loadingProduct, setLoadingProduct] = useState(false);
-  const isAdded = productInfo?.variantId ? addedToCart.has(productInfo.variantId) : false;
-
-  const stepName = step.step_name || step.category || "";
-  const explanation = step.explanation_for_client || step.explanation || "";
-
-  // Fetch product info directly inside the card for better control
-  useEffect(() => {
-    if (!step.medusa_product_id) return;
-    
-    console.log("[SkinCoach] Fetching product:", step.medusa_product_id);
-    setLoadingProduct(true);
-    
-    const url = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "https://api.thewelfare.store";
-    const key = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "";
-
-    fetch(`${url}/store/products/${step.medusa_product_id}`, {
-      headers: { "x-publishable-api-key": key },
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status} for ${step.medusa_product_id}`);
-        return r.json();
-      })
-      .then((data) => {
-        const p = data?.product;
-        if (!p) {
-          console.warn("[SkinCoach] No product in response for:", step.medusa_product_id);
-          return;
-        }
-        const variant = p.variants?.[0];
-        const calculatedAmount = variant?.calculated_price?.calculated_amount;
-        const rawPrice = variant?.prices?.[0];
-        const amount = calculatedAmount ?? rawPrice?.amount;
-        const currency = (variant?.calculated_price?.currency_code || rawPrice?.currency_code || "XAF").toUpperCase();
-        const thumbnail = p.thumbnail || p.images?.[0]?.url;
-        
-        console.log("[SkinCoach] Product loaded:", p.title, "thumbnail:", thumbnail, "price:", amount, currency);
-        
-        setProductInfo({
-          title: p.title,
-          brand: p.collection?.title,
-          thumbnail,
-          handle: p.handle,
-          variantId: variant?.id,
-          price: amount != null ? `${Number(amount).toLocaleString("fr-FR")} ${currency}` : undefined,
-        });
-      })
-      .catch((e) => {
-        console.warn("[SkinCoach] Product fetch error:", e.message);
-      })
-      .finally(() => {
-        setLoadingProduct(false);
-      });
-  }, [step.medusa_product_id]);
-
-  // Immediate display name from Claude (while product loads or if fetch fails)
-  const displayName = productInfo?.title || step.product_name || "Produit recommandé";
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -16 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: 0.1 + idx * 0.08, type: "spring", bounce: 0.2 }}
-      className="rounded-2xl overflow-hidden mb-4"
-      style={{ border: `1px solid ${colors.border}`, boxShadow: "0 4px 12px rgba(0,0,0,0.04)" }}
-    >
-      <div className="p-4 flex gap-4 items-start" style={{ background: colors.bg }}>
-        <div className="text-2xl font-black shrink-0 w-8 text-center leading-none pt-0.5"
-          style={{ color: colors.num, fontFeatureSettings: '"tnum"' }}>
-          {String(step.step_number).padStart(2, "0")}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[14px] font-bold mb-1 leading-snug" style={{ color: "#3D2B2D" }}>{stepName}</p>
-          <p className="text-[13px] leading-relaxed" style={{ color: "rgba(61,43,45,0.65)" }}>{explanation}</p>
-        </div>
-      </div>
-
-      {/* Product block — always shown if medusa_product_id present, with loading state */}
-      {step.medusa_product_id && (
-        <div className="bg-white p-4 flex gap-4">
-          {/* Thumbnail */}
-          <div className="w-20 h-20 rounded-2xl overflow-hidden shrink-0 flex items-center justify-center relative"
-            style={{ border: "1px solid rgba(200,134,138,0.15)", boxShadow: "0 2px 8px rgba(0,0,0,0.02)", background: "rgba(253,248,247,1)" }}>
-            {loadingProduct ? (
-              <div className="w-full h-full animate-pulse" style={{ background: "rgba(200,134,138,0.1)" }} />
-            ) : productInfo?.thumbnail ? (
-              <img src={productInfo.thumbnail} alt={displayName} className="w-full h-full object-cover" />
-            ) : (
-              <Package className="w-6 h-6" style={{ color: "rgba(61,43,45,0.2)" }} />
-            )}
-          </div>
-
-          {/* Info */}
-          <div className="flex-1 min-w-0 flex flex-col justify-center">
-            {/* Brand */}
-            {loadingProduct ? (
-              <div className="h-3 w-16 rounded-full mb-1 animate-pulse" style={{ background: "rgba(200,134,138,0.15)" }} />
-            ) : productInfo?.brand ? (
-              <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: "rgba(176,96,104,0.7)" }}>
-                {productInfo.brand}
-              </p>
-            ) : null}
-
-            {/* Title — show Claude's product_name immediately */}
-            <p className="text-[13px] font-bold leading-snug line-clamp-2 mb-1.5" style={{ color: "#3D2B2D" }}>
-              {displayName}
-            </p>
-
-            {/* Price */}
-            {loadingProduct ? (
-              <div className="h-4 w-24 rounded-full animate-pulse" style={{ background: "rgba(200,134,138,0.12)" }} />
-            ) : productInfo?.price ? (
-              <p className="text-[14px] font-black" style={{ color: "#C8868A" }}>{productInfo.price}</p>
-            ) : null}
-
-            {/* Action buttons */}
-            <div className="flex gap-2 mt-2.5">
-              {productInfo?.variantId ? (
-                <button
-                  onClick={() => onAddToCart(productInfo.variantId!)}
-                  className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-xl text-[11px] font-bold transition-all"
-                  style={{
-                    background: isAdded ? "#10b981" : "rgba(200,134,138,0.08)",
-                    color: isAdded ? "white" : "#C8868A",
-                  }}
-                >
-                  {isAdded ? (
-                    <><CheckCircle className="w-3.5 h-3.5" /> Ajouté</>
-                  ) : (
-                    <><Plus className="w-3.5 h-3.5" /> Ajouter</>
-                  )}
-                </button>
-              ) : !loadingProduct ? (
-                <button
-                  onClick={() => router.push("/shop")}
-                  className="flex-1 flex items-center justify-center gap-1.5 h-8 rounded-xl text-[11px] font-bold transition-all"
-                  style={{ background: "rgba(200,134,138,0.06)", color: "rgba(61,43,45,0.5)" }}
-                >
-                  Voir la boutique <CaretRight className="w-3 h-3" />
-                </button>
-              ) : null}
-              {productInfo?.handle && (
-                <button
-                  onClick={() => router.push(`/shop/${productInfo.handle}`)}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: "rgba(61,43,45,0.04)", color: "rgba(61,43,45,0.6)" }}
-                >
-                  <CaretRight className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {!step.medusa_product_id && (
-        <div className="bg-white px-4 pb-3">
-          <button
-            className="inline-flex items-center gap-1 text-[12px] font-bold mt-1 transition-opacity hover:opacity-70"
-            onClick={() => router.push("/shop")}
-            style={{ color: colors.num }}
-          >
-            Voir la sélection <CaretRight className="w-3 h-3" />
-          </button>
-        </div>
-      )}
-    </motion.div>
-  );
-}
+const sectionTitle = (light: string, bold: string) => (
+  <h2 style={{ fontFamily: DISPLAY_FONT, fontSize: 30, lineHeight: 1.05, fontWeight: 300, color: SK.ink, margin: 0 }}>
+    {light} <span style={{ fontWeight: 700, color: SK.accent }}>{bold}</span>
+  </h2>
+);
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function SkinAnalysisResultView({ result, onRetake, locked = false }: Props) {
   const router = useRouter();
   const cart = useCart();
+  const facePhoto = useSkinCoachStore((s) => s.facePhoto);
+  const faceMap = useSkinCoachStore((s) => s.faceMap);
   const [addedToCart, setAddedToCart] = useState<Set<string>>(new Set());
   const [addingAll, setAddingAll] = useState(false);
   const [allAdded, setAllAdded] = useState(false);
+  const [selectedStep, setSelectedStep] = useState(0);
 
-
-  const containerVariants: Variants = {
-    hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.1 } }
-  };
-  const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0, transition: { type: "spring", bounce: 0.25 } }
-  };
+  const routine = result.kbeauty_routine;
+  const productIds = locked ? [] : routine.map((s) => s.medusa_product_id).filter((id): id is string => !!id);
+  const products = useRoutineProducts(productIds);
 
   const metrics = result.metrics;
-  const iconStyle = { color: "#C8868A" };
-  const metricDefs = metrics ? [
-    { label: "Acné & Imperfections", value: metrics.acne_severity_percentage, type: "bad" as const, icon: <Lightning className="w-3.5 h-3.5" style={iconStyle} /> },
-    { label: "Niveau de Sébum", value: metrics.sebum_level_percentage, type: "bad" as const, icon: <Drop className="w-3.5 h-3.5" style={iconStyle} /> },
-    { label: "Dilatation des Pores", value: metrics.pore_visibility_percentage, type: "bad" as const, icon: <Sun className="w-3.5 h-3.5" style={iconStyle} /> },
-    { label: "Contour des Yeux", value: metrics.eye_contour_fatigue_percentage, type: "bad" as const, icon: <Eye className="w-3.5 h-3.5" style={iconStyle} /> },
-    { label: "Barrière d'Hydratation", value: metrics.hydration_barrier_percentage, type: "good" as const, icon: <TrendUp className="w-3.5 h-3.5" style={iconStyle} /> },
-  ] : [];
+  const metricDefs: MetricDef[] = metrics
+    ? [
+        { key: "sebum", label: "Sébum", hint: "Brillance de la peau", value: metrics.sebum_level_percentage },
+        { key: "hydration", label: "Hydratation", hint: "Confort et barrière", value: metrics.hydration_barrier_percentage, good: true },
+        { key: "acne", label: "Imperfections", hint: "Boutons et points noirs", value: metrics.acne_severity_percentage },
+        { key: "pores", label: "Pores", hint: "Visibilité des pores", value: metrics.pore_visibility_percentage },
+        { key: "eyes", label: "Contour des yeux", hint: "Cernes et fatigue", value: metrics.eye_contour_fatigue_percentage },
+      ].filter((m) => Number.isFinite(Number(m.value)))
+    : [];
+
+  // zones drawn on her photo, with the same levels as the rings below
+  const faceMarkers: FaceMarker[] = metrics
+    ? [
+        { zone: "forehead" as const, title: "Zone T", text: ["Peu de brillance", "Brillance modérée", "Brillance marquée"][toneOf(metrics.sebum_level_percentage)]! },
+        { zone: "nose" as const, title: "Nez", text: ["Pores discrets", "Pores visibles", "Pores très visibles"][toneOf(metrics.pore_visibility_percentage)]! },
+        { zone: "cheekA" as const, title: "Joues", text: ["Hydratation à renforcer", "Hydratation moyenne", "Bonne hydratation"][toneOf(metrics.hydration_barrier_percentage)]! },
+      ]
+    : [];
+
+  const [skinLight, skinBold] = splitSkinType(result.final_skin_type);
+  const concerns = Array.from(new Set(routine.map((s) => s.target_concern).filter(Boolean))) as string[];
 
   // Kept on the order line, so sales coming from the Skin Coach can be counted
   const lineMetadata = { source: "skin_coach", ...(result.scan_id ? { scan_id: result.scan_id } : {}) };
@@ -355,9 +140,11 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
     posthog.capture("skin_coach_result_viewed", {
       locked,
       scan_id: result.scan_id,
-      steps: result.kbeauty_routine.length,
-      linked_products: result.kbeauty_routine.filter((s) => s.medusa_product_id).length,
+      steps: routine.length,
+      linked_products: routine.filter((s) => s.medusa_product_id).length,
+      face_filter: !!(facePhoto && faceMap),
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locked, result]);
 
   const handleAddToCart = async (variantId: string) => {
@@ -367,179 +154,81 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
     await cart.addItem(variantId, 1, undefined, undefined, undefined, lineMetadata);
   };
 
-  const [isExportingPDF, setIsExportingPDF] = useState(false);
-
-  const exportReportToPDF = async () => {
-    window.print();
-  };
+  const routineProducts = routine
+    .map((s) => (s.medusa_product_id ? products[s.medusa_product_id] : null))
+    .filter((p): p is ProductInfo => !!p && !!p.variantId);
+  const total = routineProducts.reduce((sum, p) => sum + (p.amount || 0), 0);
+  const currency = routineProducts[0]?.currency || "XAF";
+  const hasLinkedProducts = routine.some((s) => s.medusa_product_id);
 
   const handleAddAllToCart = async () => {
     setAddingAll(true);
-    const url = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000";
-    const key = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "";
-
-    const variantIds: string[] = [];
-    for (const step of result.kbeauty_routine) {
-      if (!step.medusa_product_id) continue;
-      try {
-        const res = await fetch(`${url}/store/products/${step.medusa_product_id}`, {
-          headers: { "x-publishable-api-key": key },
-        });
-        const data = await res.json();
-        const variantId = data?.product?.variants?.[0]?.id;
-        if (variantId && !addedToCart.has(variantId)) {
-          variantIds.push(variantId);
-        }
-      } catch {}
-    }
-
+    const variantIds = routineProducts.map((p) => p.variantId!).filter((id) => !addedToCart.has(id));
     if (variantIds.length > 0) {
       posthog.capture("skin_coach_add_routine", { products: variantIds.length, scan_id: result.scan_id });
-      // Instead of manual addAllToCart, use cart.addItem one by one for reliability
-      // and so it stays synced with context, opening cart at the end
       for (const vId of variantIds) {
         await cart.addItem(vId, 1, undefined, undefined, undefined, lineMetadata);
       }
-      setAddedToCart(prev => new Set([...prev, ...variantIds]));
-      setAllAdded(true);
-    } else if (variantIds.length === 0) {
-       // Everything was already added
-       setAllAdded(true);
+      setAddedToCart((prev) => new Set([...prev, ...variantIds]));
     }
+    setAllAdded(true);
     setAddingAll(false);
   };
 
-  const hasLinkedProducts = result.kbeauty_routine.some((s) => s.medusa_product_id);
+  const step = routine[Math.min(selectedStep, routine.length - 1)];
+  const stepProduct = step?.medusa_product_id ? products[step.medusa_product_id] : null;
+  const stepLoading = !!step?.medusa_product_id && !(step.medusa_product_id in products);
+  const stepAdded = stepProduct?.variantId ? addedToCart.has(stepProduct.variantId) : false;
+
+  const fadeUp = (delay: number) => ({ initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.45, ease: "easeOut" as const } });
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.5 }}
-      className="min-h-[100dvh] relative w-full flex flex-col font-sans print:h-auto print:block"
-      style={{ background: "#FDF8F7" }}
-    >
-      {/* Background soft orbs */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-[-20%] left-[-10%] w-96 h-96 rounded-full opacity-30"
-          style={{ background: "#E5B6B9", filter: "blur(120px)" }} />
-        <div className="absolute bottom-[20%] right-[-15%] w-80 h-80 rounded-full opacity-20"
-          style={{ background: "#C8868A", filter: "blur(120px)" }} />
-      </div>
+    <div className="min-h-[100dvh] relative w-full flex flex-col font-sans print:h-auto print:block" style={{ background: SK.ground, color: SK.ink }}>
+      <div id="pdf-report-content" className="relative flex-1 pb-48 print:pb-10">
+        <div className="w-full max-w-md mx-auto px-5 pt-6 flex flex-col gap-7">
 
-      <div id="pdf-report-content" className="relative z-10 flex-1 pb-44 overflow-y-auto bg-[#FDF8F7] print:overflow-visible print:h-auto print:block print:pb-10">
-        {/* Background soft orbs (for PDF) */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-          <div className="absolute top-[-20%] left-[-10%] w-96 h-96 rounded-full opacity-30"
-            style={{ background: "#E5B6B9", filter: "blur(120px)" }} />
-          <div className="absolute bottom-[20%] right-[-15%] w-80 h-80 rounded-full opacity-20"
-            style={{ background: "#C8868A", filter: "blur(120px)" }} />
-        </div>
-        
-        {/* ─── HEADER ─── */}
-        <motion.div
-          variants={containerVariants} initial="hidden" animate="show"
-          className="px-5 pt-12 pb-6"
-        >
-          {/* Badge */}
-          <motion.div variants={itemVariants} className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-6 text-[11px] font-bold uppercase tracking-widest"
-            style={{ background: "rgba(200,134,138,0.1)", border: "1px solid rgba(200,134,138,0.25)", color: "#B06068" }}>
-            <IconIA className="w-3 h-3" />
-            Diagnostic IA Finalisé
-          </motion.div>
-
-          {/* ─── HERO CARD ─── */}
-          <motion.div variants={itemVariants} className="rounded-3xl overflow-hidden relative mb-5"
-            style={{ background: "linear-gradient(135deg, #FFF0F1 0%, #FDF8F7 100%)", border: "1px solid rgba(200,134,138,0.2)", boxShadow: "0 4px 24px rgba(200,134,138,0.12)" }}>
-
-            {/* Glowing corner accent */}
-            <div className="absolute top-0 right-0 w-40 h-40 rounded-full pointer-events-none"
-              style={{ background: "radial-gradient(circle, rgba(229,182,185,0.3) 0%, transparent 70%)", transform: "translate(30%, -30%)" }} />
-
-            <div className="p-7">
-              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "rgba(176,96,104,0.6)" }}>
-                Votre Profil Cutané
-              </p>
-              <h1 className="text-2xl font-extrabold leading-tight mb-1" style={{ color: "#3D2B2D", letterSpacing: "-0.02em" }}>
-                {result.final_skin_type}
-              </h1>
+          {/* ─── HERO ─── */}
+          <motion.div {...fadeUp(0)} className="flex flex-col gap-3.5">
+            <p className="text-[13px] font-semibold uppercase tracking-[0.08em]" style={{ color: SK.muted }}>Votre diagnostic</p>
+            <h1 style={{ fontFamily: DISPLAY_FONT, fontSize: 44, lineHeight: 1.02, fontWeight: 300, letterSpacing: "-0.02em", margin: 0 }}>
+              {skinLight && <>{skinLight}<br /></>}
+              <span style={{ fontWeight: 700, color: SK.accent }}>{skinBold}</span>
+            </h1>
+            <div className="flex flex-wrap gap-2">
               {result.melanin_phototype && (
-                <p className="text-sm mb-6" style={{ color: "rgba(61,43,45,0.4)" }}>
+                <span className="px-3.5 py-2 rounded-full text-[13px] font-semibold" style={{ background: SK.surface, border: `1px solid ${SK.line}` }}>
                   Phototype · {result.melanin_phototype}
-                </p>
+                </span>
               )}
-
-              <p className="text-[11px]" style={{ color: "rgba(61,43,45,0.4)" }}>
-                D&apos;après vos photos et vos réponses au questionnaire
-              </p>
-            </div>
-          </motion.div>
-        </motion.div>
-
-        {/* ─── METRICS GRID ─── */}
-        <motion.div
-          variants={containerVariants} initial="hidden" animate="show"
-          className="px-5 space-y-5"
-        >
-          <motion.div variants={itemVariants}>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-1 h-4 rounded-full" style={{ background: "#C8868A" }} />
-              <h2 className="text-sm font-bold" style={{ color: "#3D2B2D" }}>Ce que montrent vos photos</h2>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {metricDefs.map((m, i) => (
-                <MetricCard key={m.label} label={m.label} value={m.value} type={m.type} icon={m.icon} delay={i * 0.1} />
-              ))}
-            </div>
-            <p className="text-[11px] leading-relaxed mt-3" style={{ color: "rgba(61,43,45,0.45)" }}>
-              Estimations visuelles faites d&apos;après vos photos, à titre indicatif : ce ne sont pas des mesures, et elles peuvent varier
-              avec la lumière ou la qualité des photos. Votre routine tient aussi compte de vos réponses au questionnaire.
-            </p>
-          </motion.div>
-
-          {/* ─── EMPATHETIC MESSAGE ─── */}
-          <motion.div variants={itemVariants}
-            className="rounded-3xl p-6"
-            style={{ background: "white", border: "1px solid rgba(200,134,138,0.15)", boxShadow: "0 4px 16px rgba(200,134,138,0.08)" }}>
-            <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: "rgba(176,96,104,0.7)" }}>
-              Mot de votre Skin Coach
-            </p>
-            <div className="flex gap-3 mb-4">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "rgba(200,134,138,0.1)", border: "1px solid rgba(200,134,138,0.18)" }}>
-                <IconIA className="w-4 h-4" style={{ color: "#C8868A" }} />
-              </div>
-              <p className="text-sm leading-relaxed font-medium" style={{ color: "rgba(61,43,45,0.7)" }}>
-                &ldquo;{result.empathetic_message}&rdquo;
-              </p>
-            </div>
-
-            {/* Concern chips */}
-            <div className="flex flex-wrap gap-2 pt-4" style={{ borderTop: "1px solid rgba(200,134,138,0.1)" }}>
-              <p className="w-full text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: "rgba(61,43,45,0.3)" }}>
-                Points d&apos;attention
-              </p>
-              {Array.from(new Set(result.kbeauty_routine.map((s) => s.target_concern).filter(Boolean))).map((concern, idx) => (
-                <span key={idx} className="text-[12px] font-semibold px-3 py-1.5 rounded-full"
-                  style={{ background: "rgba(200,134,138,0.08)", border: "1px solid rgba(200,134,138,0.2)", color: "#B06068" }}>
-                  {concern}
+              {concerns.map((c) => (
+                <span key={c} className="px-3.5 py-2 rounded-full text-[13px] font-semibold" style={{ background: SK.surface, border: `1px solid ${SK.line}` }}>
+                  {c}
                 </span>
               ))}
             </div>
+            <p className="text-[13px]" style={{ color: SK.muted }}>D&apos;après vos photos et vos réponses au questionnaire</p>
           </motion.div>
+
+          {/* ─── HER PHOTO WITH THE ANALYSIS FILTER (only right after the scan: the photo is never stored) ─── */}
+          {facePhoto && faceMap && faceMarkers.length > 0 && (
+            <motion.div {...fadeUp(0.1)} className="flex flex-col gap-2.5 print:hidden">
+              <FaceScanFrame photo={facePhoto} map={faceMap} markers={faceMarkers} />
+              <p className="text-[12px] leading-relaxed text-center" style={{ color: SK.muted }}>
+                Zones indicatives : la lumière et les ombres peuvent tromper la photo.
+              </p>
+            </motion.div>
+          )}
 
           {/* ─── REVIEW BY A SKIN ADVISOR (pilot) ─── */}
           {result.review && (
-            <motion.div variants={itemVariants} className="rounded-2xl p-4 flex gap-3"
-              style={{ background: "#F2FBF6", border: "1px solid rgba(16,185,129,0.35)" }}>
-              <CheckCircle className="w-5 h-5 shrink-0 mt-0.5" style={{ color: "#10b981" }} />
+            <motion.div {...fadeUp(0.15)} className="rounded-[22px] p-4 flex gap-3" style={{ background: "#F2FBF6", border: "1px solid rgba(16,185,129,0.35)" }}>
+              <CheckCircle className="w-5 h-5 shrink-0 mt-0.5" style={{ color: "#0f9f6e" }} />
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: "#0f9f6e" }}>
+                <p className="text-[14px] font-bold mb-1" style={{ color: "#0B7A55" }}>
                   {result.review.status === "corrected" ? "Routine revue par une conseillère The Welfare" : "Routine validée par une conseillère The Welfare"}
                 </p>
                 {result.review.status === "corrected" && (result.review.corrections || []).map((c, idx) => (
-                  <p key={idx} className="text-[13px] leading-relaxed" style={{ color: "rgba(61,43,45,0.8)" }}>
+                  <p key={idx} className="text-[13px] leading-relaxed">
                     {c.from ? <>{c.from} → <strong>{c.to}</strong></> : <strong>{c.to}</strong>} : {c.reason}
                   </p>
                 ))}
@@ -547,185 +236,276 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
             </motion.div>
           )}
 
+          {/* ─── LEVELS ─── */}
+          {metricDefs.length > 0 && (
+            <motion.div {...fadeUp(0.2)} className="flex flex-col gap-4">
+              {sectionTitle("Ce que montrent", "vos photos")}
+              <div className="grid grid-cols-2 gap-3">
+                {metricDefs.map((m, i) => {
+                  const ring = ringOf(m);
+                  const wide = metricDefs.length % 2 === 1 && i === metricDefs.length - 1;
+                  return (
+                    <div
+                      key={m.key}
+                      role="img"
+                      aria-label={`${m.label} : ${ring.label}`}
+                      className={`rounded-[26px] pt-4 pb-[18px] px-3.5 flex flex-col items-center gap-2.5 ${wide ? "col-span-2" : ""}`}
+                      style={{ background: SK.surface, border: `1px solid ${SK.lineSoft}` }}
+                    >
+                      <div className="self-start text-[13px] font-semibold" style={{ color: SK.muted }}>{m.label}</div>
+                      <LevelRing thirds={ring.thirds} label={ring.label} delay={i * 0.1} />
+                      <div className="text-[12px] leading-snug text-center" style={{ color: SK.muted }}>{m.hint}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-[12px] leading-relaxed" style={{ color: SK.muted }}>
+                Estimations visuelles faites d&apos;après vos photos, à titre indicatif : ce ne sont pas des mesures, et elles peuvent varier
+                avec la lumière ou la qualité des photos. Votre routine tient aussi compte de vos réponses au questionnaire.
+              </p>
+            </motion.div>
+          )}
+
+          {/* ─── COACH MESSAGE ─── */}
+          {result.empathetic_message && (
+            <motion.div {...fadeUp(0.25)} className="rounded-[26px] p-5 flex flex-col gap-2.5" style={{ background: SK.tint }}>
+              <svg width="30" height="24" viewBox="0 0 30 24" aria-hidden="true">
+                <path d="M0 24V14C0 6 4 1.5 12 0l1.4 3.4C8.8 4.8 6.8 7.6 6.6 11H12v13H0zm17 0V14c0-8 4-12.5 12-14l1 3.4C25.8 4.8 23.8 7.6 23.6 11H29v13H17z" fill={SK.accent} />
+              </svg>
+              <p style={{ fontFamily: DISPLAY_FONT, fontSize: 20, lineHeight: 1.35, fontWeight: 400, margin: 0, whiteSpace: "pre-line" }}>
+                {result.empathetic_message}
+              </p>
+              <div className="text-[13px] font-semibold" style={{ color: SK.muted }}>Votre Skin Coach</div>
+            </motion.div>
+          )}
+
           {/* ─── NOTICES (decided in code: doctor's opinion, treatment, budget, missing step) ─── */}
           {result.notices && result.notices.length > 0 && (
-            <motion.div variants={itemVariants} className="space-y-3">
+            <div className="flex flex-col gap-3">
               {result.notices.map((notice, idx) => {
                 const strong = notice.kind === "referral";
-                const tone = notice.kind === "caution" || notice.kind === "referral";
                 return (
-                  <div key={idx} className="rounded-2xl p-4 flex gap-3"
-                    style={{
-                      background: strong ? "#FFF4F2" : tone ? "#FFFBF0" : "white",
-                      border: `1px solid ${strong ? "rgba(176,96,104,0.45)" : tone ? "rgba(217,164,65,0.4)" : "rgba(200,134,138,0.2)"}`,
-                    }}>
-                    <div className="shrink-0 mt-0.5">
-                      {strong ? <FirstAidKit className="w-5 h-5" style={{ color: "#B06068" }} /> : <Info className="w-5 h-5" style={{ color: tone ? "#B7862B" : "#C8868A" }} />}
+                  <div key={idx} className="rounded-[22px] p-4 flex gap-3" style={{ background: strong ? SK.tint : SK.surface, border: `1px solid ${strong ? SK.accent : SK.line}` }}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: strong ? SK.accent : SK.tint }}>
+                      {strong ? <FirstAidKit className="w-4 h-4 text-white" /> : <Info className="w-4 h-4" style={{ color: SK.accent }} />}
                     </div>
                     <div>
-                      {strong && (
-                        <p className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: "#B06068" }}>
-                          Avis dermatologique recommandé
-                        </p>
-                      )}
-                      <p className="text-[13px] leading-relaxed" style={{ color: "rgba(61,43,45,0.8)" }}>{notice.text}</p>
+                      {strong && <p className="text-[14px] font-bold mb-1">Avis dermatologique recommandé</p>}
+                      <p className="text-[14px] leading-relaxed">{notice.text}</p>
                     </div>
                   </div>
                 );
               })}
-            </motion.div>
+            </div>
           )}
 
           {/* ─── ROUTINE ─── */}
-          <motion.div variants={itemVariants}>
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-1 h-4 rounded-full" style={{ background: "#C8868A" }} />
-                <h2 className="text-sm font-bold" style={{ color: "#3D2B2D" }}>Votre Routine Sur-Mesure</h2>
-              </div>
-              {hasLinkedProducts && (
-                <span className="text-[10px] font-bold px-2 py-1 rounded-full"
-                  style={{ background: "rgba(200,134,138,0.1)", color: "#B06068", border: "1px solid rgba(200,134,138,0.2)" }}>
-                  Produits sélectionnés
-                </span>
-              )}
+          <motion.div {...fadeUp(0.3)} className="flex flex-col gap-4">
+            <div className="flex items-end justify-between gap-3">
+              {sectionTitle("Votre", "routine")}
+              <span className="text-[13px] font-semibold shrink-0" style={{ color: SK.muted }}>
+                {routine.length} étape{routine.length > 1 ? "s" : ""}
+              </span>
             </div>
+
             {locked ? (
               // Free preview: the steps are named, the products and explanations stay for account holders
-              <div className="rounded-3xl p-5 space-y-3"
-                style={{ background: "white", border: "1px solid rgba(200,134,138,0.15)", boxShadow: "0 4px 16px rgba(200,134,138,0.08)" }}>
-                {result.kbeauty_routine.map((step, idx) => (
+              <div className="rounded-[26px] p-5 flex flex-col gap-3" style={{ background: SK.surface, border: `1px solid ${SK.lineSoft}` }}>
+                {routine.map((s, idx) => (
                   <div key={idx} className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold"
-                      style={{ background: "rgba(200,134,138,0.1)", color: "#B06068" }}>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-[16px] font-semibold" style={{ background: SK.tint, fontFamily: DISPLAY_FONT }}>
                       {idx + 1}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold truncate" style={{ color: "#3D2B2D" }}>{step.step_name}</p>
-                      <div className="mt-1.5 h-2.5 rounded-full w-2/3" style={{ background: "rgba(200,134,138,0.12)" }} />
+                      <p className="text-[15px] font-semibold truncate">{s.step_name}</p>
+                      <div className="mt-1.5 h-2.5 rounded-full w-2/3" style={{ background: SK.lineSoft }} />
                     </div>
-                    <LockKey className="w-4 h-4 shrink-0" style={{ color: "rgba(176,96,104,0.5)" }} />
+                    <LockKey className="w-5 h-5 shrink-0" style={{ color: SK.muted }} />
                   </div>
                 ))}
-                <p className="text-[13px] leading-relaxed pt-2" style={{ color: "rgba(61,43,45,0.7)", borderTop: "1px solid rgba(200,134,138,0.1)" }}>
-                  Votre routine de {result.kbeauty_routine.length} étape{result.kbeauty_routine.length > 1 ? "s" : ""} est prête.
-                  Créez votre compte gratuit pour découvrir les produits choisis pour vous, leurs conseils d&apos;utilisation,
-                  et retrouver ce diagnostic à tout moment.
+                <p className="text-[14px] leading-relaxed pt-3" style={{ borderTop: `1px solid ${SK.lineSoft}` }}>
+                  Votre routine de {routine.length} étape{routine.length > 1 ? "s" : ""} est prête. Créez votre compte gratuit pour découvrir
+                  les produits choisis pour vous, leurs conseils d&apos;utilisation, et retrouver ce diagnostic à tout moment.
                 </p>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {result.kbeauty_routine.map((step, idx) => (
-                  <RoutineStepCard
-                    key={idx}
-                    step={step}
-                    idx={idx}
-                    onAddToCart={handleAddToCart}
-                    addedToCart={addedToCart}
-                  />
-                ))}
-              </div>
-            )}
+            ) : routine.length > 0 && step ? (
+              <>
+                {/* steps */}
+                <div className="flex gap-2 overflow-x-auto pb-1 print:hidden">
+                  {routine.map((s, i) => {
+                    const active = i === Math.min(selectedStep, routine.length - 1);
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => setSelectedStep(i)}
+                        aria-pressed={active}
+                        className="flex-1 min-w-[84px] min-h-[64px] rounded-[20px] px-2 py-2 flex flex-col items-center justify-center gap-0.5"
+                        style={{ background: active ? SK.accent : SK.surface, border: active ? "none" : `1px solid ${SK.line}`, color: active ? "#FFFFFF" : SK.ink }}
+                      >
+                        <span style={{ fontFamily: DISPLAY_FONT, fontSize: 22, fontWeight: 600, lineHeight: 1 }}>{i + 1}</span>
+                        <span className="text-[12px] font-semibold leading-tight text-center line-clamp-2">{s.step_name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* product of the selected step */}
+                <div className="rounded-[30px] overflow-hidden print:hidden" style={{ background: SK.surface, border: `1px solid ${SK.lineSoft}` }}>
+                  <div className="relative h-[240px] flex items-center justify-center" style={{ background: `radial-gradient(90% 90% at 50% 40%, #FFFFFF 0%, ${SK.tint} 100%)` }}>
+                    {stepLoading ? (
+                      <div className="w-40 h-40 rounded-3xl animate-pulse" style={{ background: SK.lineSoft }} />
+                    ) : stepProduct?.thumbnail ? (
+                      <img src={stepProduct.thumbnail} alt={stepProduct.title} className="h-[200px] w-[200px] object-contain" />
+                    ) : (
+                      <Package className="w-12 h-12" style={{ color: SK.muted }} />
+                    )}
+                    <span className="absolute top-3.5 left-3.5 px-3 py-1.5 rounded-full text-[12px] font-bold text-white" style={{ background: SK.accent }}>
+                      Étape {Math.min(selectedStep, routine.length - 1) + 1} · {step.step_name}
+                    </span>
+                  </div>
+                  <div className="px-5 pt-[18px] pb-5 flex flex-col gap-2.5">
+                    {stepProduct?.brand && (
+                      <p className="text-[12px] font-bold uppercase tracking-[0.08em]" style={{ color: SK.muted }}>{stepProduct.brand}</p>
+                    )}
+                    <p style={{ fontFamily: DISPLAY_FONT, fontSize: 22, lineHeight: 1.2, fontWeight: 600, margin: 0 }}>
+                      {stepProduct?.title || step.product_name || "Produit recommandé"}
+                    </p>
+                    {(step.explanation_for_client || step.explanation) && (
+                      <p className="text-[14px] leading-relaxed" style={{ color: "#3F3331" }}>
+                        <span className="font-bold">Pourquoi pour vous : </span>
+                        {step.explanation_for_client || step.explanation}
+                      </p>
+                    )}
+                    <div className="flex items-center justify-between gap-3 mt-1">
+                      <div style={{ fontFamily: DISPLAY_FONT, fontSize: 24, fontWeight: 600 }}>
+                        {stepProduct?.amount != null ? fmtPrice(stepProduct.amount, stepProduct.currency) : ""}
+                      </div>
+                      <div className="flex gap-2">
+                        {stepProduct?.handle && (
+                          <button
+                            onClick={() => router.push(`/shop/${stepProduct.handle}`)}
+                            aria-label="Voir la fiche produit"
+                            className="w-[46px] h-[46px] rounded-full flex items-center justify-center"
+                            style={{ border: `1px solid ${SK.line}` }}
+                          >
+                            <CaretRight className="w-4 h-4" />
+                          </button>
+                        )}
+                        {stepProduct?.variantId ? (
+                          <button
+                            onClick={() => handleAddToCart(stepProduct.variantId!)}
+                            className="h-[46px] px-[18px] rounded-full text-[14px] font-bold flex items-center gap-1.5"
+                            style={stepAdded ? { background: SK.tint, color: SK.ink } : { background: SK.surface, border: `1px solid ${SK.ink}`, color: SK.ink }}
+                          >
+                            {stepAdded ? <><CheckCircle className="w-4 h-4" style={{ color: SK.accent }} /> Ajouté</> : <><Plus className="w-4 h-4" /> Ajouter</>}
+                          </button>
+                        ) : !stepLoading ? (
+                          <button
+                            onClick={() => router.push("/shop")}
+                            className="h-[46px] px-[18px] rounded-full text-[14px] font-bold"
+                            style={{ border: `1px solid ${SK.line}` }}
+                          >
+                            Voir la boutique
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* printed report: every step */}
+                <div className="hidden print:flex flex-col gap-3">
+                  {routine.map((s, i) => {
+                    const p = s.medusa_product_id ? products[s.medusa_product_id] : null;
+                    return (
+                      <div key={i} className="rounded-2xl p-4" style={{ border: `1px solid ${SK.line}` }}>
+                        <p className="font-bold">{i + 1}. {s.step_name} — {p?.title || s.product_name}</p>
+                        <p className="text-[13px] mt-1">{s.explanation_for_client || s.explanation}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : null}
           </motion.div>
 
           {/* ─── MEDICAL DISCLAIMER ─── */}
-          <motion.p
-            variants={itemVariants}
-            className="text-[11px] leading-relaxed text-center px-2"
-            style={{ color: "rgba(61,43,45,0.5)" }}
-          >
-            Ce diagnostic est établi par une intelligence artificielle à partir de vos photos et de vos réponses. Il ne constitue pas un avis médical et ne remplace pas la consultation d'un dermatologue. En cas de lésions, de douleur, d'irritation persistante, de grossesse ou de traitement en cours, demandez conseil à un professionnel de santé avant de commencer une nouvelle routine.
-          </motion.p>
-        </motion.div>
+          <p className="text-[12px] leading-relaxed text-center px-2" style={{ color: SK.muted }}>
+            Ce diagnostic est établi par une intelligence artificielle à partir de vos photos et de vos réponses. Il ne constitue pas un avis médical et ne remplace pas la consultation d&apos;un dermatologue. En cas de lésions, de douleur, d&apos;irritation persistante, de grossesse ou de traitement en cours, demandez conseil à un professionnel de santé avant de commencer une nouvelle routine.
+          </p>
+        </div>
       </div>
 
       {/* ─── STICKY BOTTOM ─── */}
       <motion.div
         initial={{ y: 120 }}
         animate={{ y: 0 }}
-        transition={{ delay: 0.8, type: "spring", bounce: 0.2 }}
-        className="fixed bottom-0 left-0 right-0 z-50 px-5 pb-8 pt-4 print:hidden"
-        style={{ background: "linear-gradient(to top, #FDF8F7 60%, transparent)" }}
+        transition={{ delay: 0.6, type: "spring", bounce: 0.2 }}
+        className="fixed bottom-0 left-0 right-0 z-50 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-6 print:hidden"
+        style={{ background: `linear-gradient(to top, ${SK.ground} 70%, rgba(251,248,249,0))` }}
       >
-        {locked ? (
-          <div className="flex flex-col gap-2 mb-3">
-            <Link
-              href="/account/register?redirect=/skin-coach/result"
-              onClick={() => posthog.capture("skin_coach_signup_clicked", { scan_id: result.scan_id })}
-              className="w-full py-4 px-6 rounded-2xl font-bold text-[15px] flex justify-center items-center gap-2.5 transition-all active:scale-[0.98] shadow-lg"
-              style={{ background: "linear-gradient(135deg, #C8868A, #E5B6B9)", color: "white", boxShadow: "0 8px 30px rgba(200,134,138,0.35)" }}
-            >
-              <LockKey className="w-5 h-5" /> Découvrir ma routine
-            </Link>
-            <Link
-              href="/account/login?redirect=/skin-coach/result"
-              onClick={() => posthog.capture("skin_coach_login_clicked", { scan_id: result.scan_id })}
-              className="w-full py-3 text-center text-[14px] font-semibold rounded-2xl bg-white border border-[#EDE0E0]"
-              style={{ color: "#3D2B2D" }}
-            >
-              J&apos;ai déjà un compte
-            </Link>
-          </div>
-        ) : (
-        <div className="flex gap-2 mb-3">
-          {hasLinkedProducts ? (
-            <button
-              onClick={handleAddAllToCart}
-              disabled={addingAll || allAdded}
-              className="flex-1 py-4 px-6 rounded-2xl font-bold text-[15px] flex justify-center items-center gap-2.5 transition-all active:scale-[0.98] shadow-lg disabled:opacity-70"
-              style={{
-                background: allAdded
-                  ? "linear-gradient(135deg, #10b981, #34d399)"
-                  : "linear-gradient(135deg, #C8868A, #E5B6B9)",
-                color: "white",
-                boxShadow: allAdded
-                  ? "0 8px 30px rgba(16,185,129,0.35)"
-                  : "0 8px 30px rgba(200,134,138,0.35)"
-              }}
-            >
-              {allAdded ? (
-                <><CheckCircle className="w-5 h-5" /> Routine ajoutée</>
-              ) : addingAll ? (
-                <><span className="animate-spin">⏳</span> Ajout...</>
-              ) : (
-                <><ShoppingBag className="w-5 h-5" /> Ajouter la routine</>
-              )}
-            </button>
+        <div className="w-full max-w-md mx-auto flex flex-col gap-2">
+          {locked ? (
+            <>
+              <Link
+                href="/account/register?redirect=/skin-coach/result"
+                onClick={() => posthog.capture("skin_coach_signup_clicked", { scan_id: result.scan_id })}
+                className="w-full h-[60px] rounded-full font-bold text-[16px] flex justify-center items-center gap-2.5 active:scale-[0.98] transition-transform"
+                style={{ background: SK.accent, color: "#FFFFFF" }}
+              >
+                <LockKey className="w-5 h-5" /> Découvrir ma routine
+              </Link>
+              <Link
+                href="/account/login?redirect=/skin-coach/result"
+                onClick={() => posthog.capture("skin_coach_login_clicked", { scan_id: result.scan_id })}
+                className="w-full h-[52px] flex items-center justify-center text-[15px] font-semibold rounded-full"
+                style={{ background: SK.surface, border: `1px solid ${SK.line}`, color: SK.ink }}
+              >
+                J&apos;ai déjà un compte
+              </Link>
+            </>
           ) : (
-            <button
-              onClick={() => router.push("/shop")}
-              className="flex-1 py-4 px-6 rounded-2xl font-bold text-[15px] flex justify-center items-center gap-2.5 transition-all active:scale-[0.98] shadow-lg"
-              style={{ background: "linear-gradient(135deg, #C8868A, #E5B6B9)", color: "white", boxShadow: "0 8px 30px rgba(200,134,138,0.35)" }}
-            >
-              <ShoppingBag className="w-5 h-5" />
-              Découvrir ma sélection
-            </button>
+            <div className="flex gap-2">
+              {hasLinkedProducts ? (
+                <button
+                  onClick={handleAddAllToCart}
+                  disabled={addingAll || allAdded || routineProducts.length === 0}
+                  className="flex-1 h-[60px] px-5 rounded-full font-bold text-[16px] flex justify-center items-center gap-2.5 active:scale-[0.98] transition-transform disabled:opacity-80"
+                  style={{ background: allAdded ? SK.ink : SK.accent, color: "#FFFFFF" }}
+                >
+                  {allAdded ? (
+                    <><CheckCircle className="w-5 h-5" /> Routine ajoutée</>
+                  ) : addingAll ? (
+                    <>Ajout en cours…</>
+                  ) : (
+                    <><ShoppingBag className="w-5 h-5" /> Ajouter la routine{total > 0 ? ` · ${fmtPrice(total, currency)}` : ""}</>
+                  )}
+                </button>
+              ) : (
+                <button
+                  onClick={() => router.push("/shop")}
+                  className="flex-1 h-[60px] px-5 rounded-full font-bold text-[16px] flex justify-center items-center gap-2.5"
+                  style={{ background: SK.accent, color: "#FFFFFF" }}
+                >
+                  <ShoppingBag className="w-5 h-5" /> Découvrir ma sélection
+                </button>
+              )}
+              <button
+                onClick={() => window.print()}
+                aria-label="Imprimer ou enregistrer le rapport en PDF"
+                className="w-[60px] h-[60px] shrink-0 flex items-center justify-center rounded-full"
+                style={{ background: SK.surface, border: `1px solid ${SK.line}`, color: SK.ink }}
+              >
+                <Printer className="w-6 h-6" />
+              </button>
+            </div>
           )}
-
-          <button
-            onClick={exportReportToPDF}
-            disabled={isExportingPDF}
-            className="w-14 shrink-0 flex items-center justify-center rounded-2xl bg-white border border-[#EDE0E0] shadow-sm text-[#3D2B2D] hover:bg-gray-50 transition-colors disabled:opacity-50"
-            title="Exporter le rapport en PDF"
-          >
-            {isExportingPDF ? (
-              <span className="animate-spin text-xl">⏳</span>
-            ) : (
-              <Printer className="w-6 h-6" />
-            )}
+          <button onClick={onRetake} className="h-11 flex items-center justify-center gap-2 text-[14px] font-semibold" style={{ color: SK.ink }}>
+            <ArrowCounterClockwise className="w-4 h-4" />
+            Refaire le diagnostic
           </button>
         </div>
-        )}
-
-        <button
-          onClick={onRetake}
-          className="w-full flex items-center justify-center gap-2 text-[13px] font-semibold transition-colors"
-          style={{ color: "rgba(61,43,45,0.4)" }}
-        >
-          <ArrowCounterClockwise className="w-3.5 h-3.5" />
-          Refaire le diagnostic
-        </button>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }

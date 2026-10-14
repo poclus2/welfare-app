@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {  Scan, CaretRight, Camera, ArrowCounterClockwise, PaperPlaneTilt, Lightning, Images, X } from "@phosphor-icons/react";
+import { CaretRight, Camera, ArrowCounterClockwise, PaperPlaneTilt, Images, X, Check } from "@phosphor-icons/react";
 import Webcam from "react-webcam";
 import { analyzeFace, analyzeSkin, SkinAnalysisResult } from "@/app/actions/analyze-skin";
 import posthog from "posthog-js";
@@ -13,6 +13,9 @@ import { useRouter } from "next/navigation";
 import SmartCameraCapture, { CaptureResult } from "./smart-camera-capture";
 import { IconIA } from "@/components/ui/icons/IconIA";
 import { useI18n } from "@/lib/i18n-context";
+import type { FaceMap } from "@/lib/face-map";
+import { ScanGauge } from "@/components/ui/skin-coach/scan-gauge";
+import { DISPLAY_FONT, SK } from "@/components/ui/skin-coach/theme";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -253,11 +256,13 @@ const FOLLOWUP_NODES: QuestionNode[] = FOLLOWUP_QUESTIONS.map((q) => ({
 // ─── Reusable AI Avatar ──────────────────────────────────────────────────────
 
 const AIAvatar = () => (
-  <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 mr-2.5 mt-auto shadow-md"
-    style={{ background: "linear-gradient(135deg, #E8C4C6 0%, #F0D4D6 100%)", border: "1.5px solid rgba(200,134,138,0.4)" }}>
-    <IconIA className="w-4 h-4" style={{ color: "#B06068" }} />
+  <div className="w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0" style={{ background: SK.accent }}>
+    <IconIA className="w-4 h-4 text-white" />
   </div>
 );
+
+// What the analysis screen ticks off while the server works (the gauge follows analysisProgress)
+const ANALYSIS_STEPS = ["Lecture de vos 3 photos", "Sébum et pores", "Hydratation et barrière", "Imperfections et taches", "Choix des produits en stock"];
 
 // ─── Progress steps ──────────────────────────────────────────────────────────
 const TOTAL_STEPS = 12;
@@ -294,6 +299,9 @@ export default function SkinCoachFlow() {
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const setResult = useSkinCoachStore((state) => state.setResult);
+  const setFace = useSkinCoachStore((state) => state.setFace);
+  // where the face is on the front photo (capture screen), for the analysis filter of the result page
+  const faceMapRef = useRef<FaceMap | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // The flow sits under the announcement bar and navbar: at a full 100dvh its bottom (the answer input)
@@ -356,7 +364,8 @@ export default function SkinCoachFlow() {
   // follow-up questions still to ask at the end of the questionnaire
   const followUpQueueRef = useRef<QuestionNode[]>([]);
 
-  const handleCaptureComplete = (result: CaptureResult) => {
+  const handleCaptureComplete = (result: CaptureResult, frontMap: FaceMap | null) => {
+    faceMapRef.current = frontMap;
     setCaptures(result);
     setHasCaptured(true);
     posthog.capture("skin_coach_photos_captured");
@@ -419,6 +428,7 @@ export default function SkinCoachFlow() {
         posthog.capture("skin_coach_analysis_succeeded", { scan_id: result.data.scan_id, early_visual: !!early?.success });
         rememberPendingScan(result.data.scan_id); // attached to the account as soon as she is logged in
         setResult(result.data);
+        setFace(photos.front, faceMapRef.current); // memory only, see use-skin-coach-store
         setAnalysisProgress(100);
         setTimeout(() => {
           router.push("/skin-coach/result");
@@ -566,16 +576,18 @@ export default function SkinCoachFlow() {
   };
 
   const currentNode = DECISION_TREE.find((n) => n.id === currentQuestionId) || FOLLOWUP_NODES.find((n) => n.id === currentQuestionId);
+  const litSegments = Math.round((progressPercent / 100) * 12);
+  const analysisStep = analysisProgress >= 100 ? ANALYSIS_STEPS.length : Math.min(ANALYSIS_STEPS.length - 1, Math.floor(analysisProgress / 20));
 
   return (
     <div
       ref={rootRef}
       className="relative w-full h-[100dvh] overflow-hidden flex flex-col font-sans"
-      style={{ background: "#FDF8F7", height: `calc(100dvh - ${headerOffset}px)` }}
+      style={{ background: SK.ground, height: `calc(100dvh - ${headerOffset}px)` }}
     >
 
       {/* ─── 1. BACKGROUND ─── */}
-      <div className={`absolute z-0 ${hasCaptured ? "inset-x-0 top-0 h-[52vh]" : "inset-0"} w-full bg-slate-900 transition-all duration-700 ease-in-out`}>
+      <div className={`absolute z-0 ${hasCaptured ? "inset-x-0 top-0 h-[52vh]" : "inset-0"} w-full transition-all duration-700 ease-in-out`} style={{ background: SK.ink }}>
 
         {!hasCaptured ? (
           <SmartCameraCapture
@@ -589,23 +601,23 @@ export default function SkinCoachFlow() {
             <img src={captures?.left} alt={t("Analyse de peau Gauche")} className="w-1/3 h-full object-cover object-top border-l border-white/10" />
             <img src={captures?.right} alt={t("Analyse de peau Droite")} className="w-1/3 h-full object-cover object-top border-l border-white/10" />
 
-            {/* Gradient fade to light background */}
+            {/* Gradient fade to the light background */}
             <div className="absolute inset-0 pointer-events-none"
-              style={{ background: "linear-gradient(to bottom, rgba(253,248,247,0.1) 0%, rgba(253,248,247,0.55) 60%, #FDF8F7 100%)" }}
+              style={{ background: "linear-gradient(to bottom, rgba(251,248,249,0.05) 0%, rgba(251,248,249,0.55) 60%, #FBF8F9 100%)" }}
             />
 
-            {/* Scanning animation */}
+            {/* Scanning line */}
             <motion.div
-              className="absolute inset-x-0 h-[2px] pointer-events-none"
-              style={{ background: "linear-gradient(90deg, transparent, rgba(176,96,104,0.6), transparent)" }}
+              className="absolute inset-x-[6%] h-[2px] rounded-full pointer-events-none"
+              style={{ background: SK.accent, boxShadow: "0 0 14px 3px rgba(224,24,124,.45)" }}
               animate={{ top: ["10%", "90%", "10%"] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
             />
 
             {/* Labels */}
             <div className="absolute top-5 left-0 right-0 flex justify-around px-2 pointer-events-none">
-              {["FACE", "GAUCHE", "DROITE"].map((label) => (
-                <div key={label} className="text-[10px] font-bold tracking-widest uppercase bg-black/25 px-2 py-1 rounded-full backdrop-blur-sm border border-white/10" style={{ color: "rgba(255,240,240,0.9)" }}>
+              {["Face", "Gauche", "Droite"].map((label) => (
+                <div key={label} className="text-[11px] font-bold px-2.5 py-1 rounded-full text-white" style={{ background: "rgba(42,36,36,0.55)" }}>
                   {t(label)}
                 </div>
               ))}
@@ -614,9 +626,11 @@ export default function SkinCoachFlow() {
             {/* Retake button */}
             <button
               onClick={handleRetake}
-              className="absolute top-5 right-4 bg-white/70 hover:bg-white backdrop-blur-md border border-rose-100 text-rose-500 p-2.5 rounded-full transition-all z-50 shadow-md hover:scale-105 active:scale-95"
+              aria-label={t("Refaire le diagnostic")}
+              className="absolute top-4 right-4 w-11 h-11 rounded-full flex items-center justify-center z-50 active:scale-95 transition-transform"
+              style={{ background: "rgba(255,255,255,0.92)", color: SK.ink }}
             >
-              <ArrowCounterClockwise className="w-4 h-4" />
+              <ArrowCounterClockwise className="w-[18px] h-[18px]" />
             </button>
           </div>
         )}
@@ -624,59 +638,59 @@ export default function SkinCoachFlow() {
 
       {/* ─── 2. CHAT PANEL ─── */}
       {hasCaptured && (
-        <div className="relative z-10 flex-1 flex flex-col mt-[12vh] rounded-t-[2rem] overflow-hidden"
-          style={{ background: "linear-gradient(180deg, rgba(253,248,247,0.98) 0%, #FDF8F7 100%)", backdropFilter: "blur(30px)", borderTop: "1px solid rgba(200,134,138,0.18)", boxShadow: "0 -8px 40px rgba(200,134,138,0.1)" }}>
+        <div className="relative z-10 flex-1 flex flex-col mt-[12vh] rounded-t-[30px] overflow-hidden"
+          style={{ background: SK.ground, borderTop: `1px solid ${SK.lineSoft}`, boxShadow: "0 -8px 40px rgba(42,36,36,0.08)" }}>
 
-          {/* ─── Header ─── */}
-          <div className="flex flex-col items-center pt-3 pb-4 px-6 shrink-0 border-b border-rose-100">
-            <div className="w-10 h-1 rounded-full mb-4" style={{ background: "rgba(200,134,138,0.25)" }} />
-
-            {/* Progress bar */}
-            <div className="w-full flex items-center gap-3">
-              <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(200,134,138,0.12)" }}>
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progressPercent}%` }}
-                  transition={{ duration: 0.6, ease: "easeOut" }}
-                  className="h-full rounded-full"
-                  style={{ background: "linear-gradient(90deg, #C8868A, #E5B6B9)" }}
-                />
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <Lightning className="w-3 h-3" style={{ color: "#C8868A" }} />
-                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#C8868A" }}>
-                  {progressPercent}%
-                </span>
-              </div>
+          {/* ─── Header: progress ─── */}
+          <div className="flex flex-col gap-3 pt-3 pb-4 px-5 shrink-0" style={{ borderBottom: `1px solid ${SK.lineSoft}` }}>
+            <div className="w-10 h-1 rounded-full mx-auto" style={{ background: SK.line }} />
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] font-semibold uppercase tracking-[0.08em]" style={{ color: SK.muted }}>Skin Coach</span>
+              <span className="text-[15px] font-semibold" style={{ fontFamily: DISPLAY_FONT, color: SK.ink }}>{t("Questionnaire")}</span>
+            </div>
+            <div className="grid grid-cols-12 gap-1" aria-hidden="true">
+              {Array.from({ length: 12 }, (_, i) => (
+                <div key={i} className="h-1 rounded-full transition-colors duration-500" style={{ background: i < litSegments ? SK.accent : SK.line }} />
+              ))}
             </div>
           </div>
 
           {/* ─── Messages ─── */}
-          <div className="flex-1 overflow-y-auto px-5 pb-6 pt-5 space-y-4 scroll-smooth">
+          <div className="flex-1 overflow-y-auto px-5 pb-6 pt-5 space-y-5 scroll-smooth">
             <AnimatePresence initial={false}>
               {messages.map((msg, idx) => {
                 const isLastMsg = idx === messages.length - 1;
+                const isFollowUp = FOLLOWUP_NODES.some((n) => n.text === msg.text);
                 return (
                 <motion.div
                   key={msg.id}
-                  initial={{ opacity: 0, y: 16, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.35, type: "spring", bounce: 0.25 }}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, ease: "easeOut" }}
                   className={`flex flex-col w-full ${msg.sender === "user" ? "items-end" : "items-start"}`}
                 >
-                  <div className={`flex w-full ${msg.sender === "user" ? "justify-end" : "justify-start items-end"}`}>
-                    {msg.sender === "ai" && <AIAvatar />}
-
-                    <div className={`max-w-[78%] text-[14px] leading-relaxed ${
-                      msg.sender === "user"
-                        ? "rounded-2xl rounded-br-sm px-4 py-3 shadow-sm"
-                        : "rounded-2xl rounded-bl-sm px-4 py-3.5"
-                    }`}
-                      style={msg.sender === "user"
-                        ? { background: "linear-gradient(135deg, #C8868A, #D99EA1)", color: "white", boxShadow: "0 2px 12px rgba(200,134,138,0.25)" }
-                        : { background: "white", border: "1px solid rgba(200,134,138,0.15)", color: "#3D2B2D", boxShadow: "0 2px 8px rgba(200,134,138,0.08)" }
-                      }
-                    >
+                  {msg.sender === "ai" ? (
+                    <div className="flex w-full items-start gap-2.5 max-w-[92%]">
+                      <AIAvatar />
+                      <div className="flex flex-col gap-1.5 min-w-0">
+                        {isFollowUp && (
+                          <span className="self-start px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-[0.06em]" style={{ background: SK.tint, color: SK.muted }}>
+                            {t("Une précision")}
+                          </span>
+                        )}
+                        <div className="text-[16px] leading-relaxed" style={{ color: SK.ink }}>
+                          {msg.text ? t(msg.text) : null}
+                          {msg.errorCode && (
+                            <span className="block mt-2 text-[12px]" style={{ color: SK.muted }}>
+                              {t("Code")} : {msg.errorCode}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="max-w-[78%] px-4 py-3 text-[15px] leading-snug font-medium"
+                      style={{ background: SK.accent, color: "#FFFFFF", borderRadius: "22px 22px 6px 22px" }}>
                       {msg.images ? (
                         <div className={`grid gap-1.5 ${msg.images.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
                           {msg.images.map((src, i) => (
@@ -688,46 +702,33 @@ export default function SkinCoachFlow() {
                       ) : (
                         msg.text ? t(msg.text) : null
                       )}
-                      {msg.errorCode && (
-                        <span className="block mt-2 text-[11px]" style={{ color: "rgba(61,43,45,0.45)" }}>
-                          {t("Code")} : {msg.errorCode}
-                        </span>
-                      )}
                     </div>
-                  </div>
+                  )}
 
                   {/* Analysis failure: retry with the same photos and answers, or retake only the photos */}
                   {msg.action && isLastMsg && !isGenerating && (
-                    <div className="flex flex-col gap-2 mt-3 ml-[46px] w-[calc(100%-46px)] pr-4">
-                      {msg.action === "retry" ? (
-                        <button
-                          onClick={retryAnalysis}
-                          className="w-full py-3.5 px-4 rounded-2xl text-[13px] font-bold text-white flex items-center justify-center gap-2"
-                          style={{ background: "#2A2424" }}
-                        >
-                          <ArrowCounterClockwise className="w-4 h-4" /> {t("Réessayer l'analyse")}
-                        </button>
-                      ) : (
-                        <button
-                          onClick={retakePhotosKeepingAnswers}
-                          className="w-full py-3.5 px-4 rounded-2xl text-[13px] font-bold text-white flex items-center justify-center gap-2"
-                          style={{ background: "#2A2424" }}
-                        >
-                          <Camera className="w-4 h-4" /> {t("Reprendre les photos")}
-                        </button>
-                      )}
-                      <p className="text-[11px] text-center" style={{ color: "rgba(61,43,45,0.45)" }}>
+                    <div className="flex flex-col gap-2 mt-3 ml-10 w-[calc(100%-40px)]">
+                      <button
+                        onClick={msg.action === "retry" ? retryAnalysis : retakePhotosKeepingAnswers}
+                        className="w-full h-[54px] px-4 rounded-full text-[15px] font-bold text-white flex items-center justify-center gap-2"
+                        style={{ background: SK.accent }}
+                      >
+                        {msg.action === "retry"
+                          ? <><ArrowCounterClockwise className="w-4 h-4" /> {t("Réessayer l'analyse")}</>
+                          : <><Camera className="w-4 h-4" /> {t("Reprendre les photos")}</>}
+                      </button>
+                      <p className="text-[13px] text-center" style={{ color: SK.muted }}>
                         {t("Vos réponses au questionnaire sont conservées.")}
                       </p>
                     </div>
                   )}
 
-                  {/* Render Options inline if it's an AI message, it's the last message, and it has options */}
+                  {/* Answer options, under the last question */}
                   {msg.sender === "ai" && msg.options && isLastMsg && !isTyping && !isGenerating && (
                     currentNode?.type === "multi_choice" ? (
-                      <div className="flex flex-col gap-4 mt-3 ml-[46px] w-[calc(100%-46px)] pr-4">
+                      <div className="flex flex-col gap-4 mt-3 ml-10 w-[calc(100%-40px)]">
                         {currentNode.subtitle && (
-                          <p className="text-[13px] font-medium -mt-1 mb-1" style={{ color: "rgba(61,43,45,0.6)" }}>
+                          <p className="text-[14px] -mt-1" style={{ color: SK.muted }}>
                             {t(currentNode.subtitle)}
                           </p>
                         )}
@@ -737,23 +738,20 @@ export default function SkinCoachFlow() {
                             return (
                               <motion.button
                                 key={`${option.label}-${index}`}
-                                initial={{ opacity: 0, scale: 0.9 }}
+                                initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: index * 0.04, type: "spring", bounce: 0.3 }}
+                                transition={{ delay: index * 0.03 }}
                                 onClick={() => {
-                                  let newSel = [...selectedMultiChoice];
-                                  if (newSel.includes(option.label)) {
-                                    newSel = newSel.filter(l => l !== option.label);
-                                  } else {
-                                    newSel.push(option.label);
-                                  }
-                                  setSelectedMultiChoice(newSel);
+                                  setSelectedMultiChoice((prev) =>
+                                    prev.includes(option.label) ? prev.filter((l) => l !== option.label) : [...prev, option.label]
+                                  );
                                 }}
-                                className="px-3.5 py-2 rounded-full text-[12px] md:text-[13px] font-semibold transition-all duration-200"
+                                aria-pressed={isSelected}
+                                className="min-h-[44px] px-4 py-2 rounded-full text-[14px] font-semibold transition-colors"
                                 style={
                                   isSelected
-                                    ? { background: "#2A2424", color: "white", border: "1px solid #2A2424", boxShadow: "0 2px 8px rgba(42,36,36,0.2)" }
-                                    : { background: "transparent", color: "rgba(61,43,45,0.8)", border: "1px solid rgba(200,134,138,0.4)" }
+                                    ? { background: SK.accent, color: "#FFFFFF", border: `1px solid ${SK.accent}` }
+                                    : { background: SK.surface, color: SK.ink, border: `1px solid ${SK.line}` }
                                 }
                               >
                                 {t(option.label)}
@@ -761,7 +759,7 @@ export default function SkinCoachFlow() {
                             );
                           })}
                         </div>
-                        
+
                         <AnimatePresence>
                           {selectedMultiChoice.includes("Autres (à préciser)") && (
                             <motion.div
@@ -775,19 +773,17 @@ export default function SkinCoachFlow() {
                                 placeholder={t("Précisez vos allergies...")}
                                 value={otherText}
                                 onChange={(e) => setOtherText(e.target.value)}
-                                className="w-full mt-2 px-4 py-3 rounded-xl text-sm focus:outline-none transition-all"
-                                style={{ background: "white", border: "1px solid rgba(200,134,138,0.4)", color: "#3D2B2D" }}
+                                className="w-full mt-1 px-4 h-12 rounded-2xl text-[15px] focus:outline-none"
+                                style={{ background: SK.surface, border: `1px solid ${SK.line}`, color: SK.ink }}
                               />
                             </motion.div>
                           )}
                         </AnimatePresence>
 
-                        <motion.button
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
+                        <button
                           onClick={() => {
                             if (selectedMultiChoice.length === 0) return;
-                            
+
                             let finalChoices = [...selectedMultiChoice];
                             if (finalChoices.includes("Autres (à préciser)") && otherText.trim()) {
                               finalChoices = finalChoices.filter(c => c !== "Autres (à préciser)");
@@ -799,49 +795,33 @@ export default function SkinCoachFlow() {
                             setUserResponses(newResponses);
                             const userMsg: Message = { id: `msg-user-${Date.now()}`, sender: "user", text: finalChoices.map(c => t(c)).join(", ") };
                             setMessages((prev) => [...prev, userMsg]);
-                            
+
                             setSelectedMultiChoice([]);
                             setOtherText("");
-                            
+
                             processNextStep(newResponses, currentNode.nextQuestionId!);
                           }}
                           disabled={selectedMultiChoice.length === 0 || (selectedMultiChoice.includes("Autres (à préciser)") && !otherText.trim())}
-                          className="mt-3 w-full py-3.5 px-4 rounded-full text-sm font-bold tracking-wide transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                          style={{ background: "#2A2424", color: "white", boxShadow: "0 4px 12px rgba(42,36,36,0.15)" }}
+                          className="w-full h-[54px] rounded-full text-[15px] font-bold transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                          style={{ background: SK.accent, color: "#FFFFFF" }}
                         >
                           {t("Valider mes choix")}
-                        </motion.button>
+                        </button>
                       </div>
                     ) : (
-                      <div className="flex flex-col gap-2.5 mt-3 ml-[46px] w-[calc(100%-46px)] pr-4">
+                      <div className="flex flex-col gap-2.5 mt-3 ml-10 w-[calc(100%-40px)]">
                         {msg.options.map((option, index) => (
                           <motion.button
                             key={`${option.label}-${index}`}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.07, type: "spring", bounce: 0.2 }}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.05 }}
                             onClick={() => handleOptionSelect(option)}
-                            className="w-full text-left py-3.5 px-4 rounded-2xl text-[13px] font-semibold flex items-center justify-between group transition-all active:scale-[0.98]"
-                            style={{
-                              background: "white",
-                              border: "1px solid rgba(200,134,138,0.2)",
-                              color: "#3D2B2D",
-                              boxShadow: "0 2px 8px rgba(200,134,138,0.07)"
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = "rgba(200,134,138,0.06)";
-                              e.currentTarget.style.borderColor = "rgba(200,134,138,0.4)";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = "white";
-                              e.currentTarget.style.borderColor = "rgba(200,134,138,0.2)";
-                            }}
+                            className="w-full min-h-[52px] text-left py-3 px-4 rounded-[18px] text-[15px] font-semibold flex items-center justify-between gap-3 transition-colors active:scale-[0.99] hover:border-[#2A2424]"
+                            style={{ background: SK.surface, border: `1px solid ${SK.line}`, color: SK.ink }}
                           >
                             <span>{t(option.label)}</span>
-                            <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 ml-3"
-                              style={{ background: "rgba(200,134,138,0.1)", border: "1px solid rgba(200,134,138,0.2)" }}>
-                              <CaretRight className="w-3.5 h-3.5" style={{ color: "#C8868A" }} />
-                            </div>
+                            <CaretRight className="w-4 h-4 shrink-0" style={{ color: SK.muted }} />
                           </motion.button>
                         ))}
                       </div>
@@ -855,20 +835,19 @@ export default function SkinCoachFlow() {
               {isTyping && (
                 <motion.div
                   key="typing-indicator"
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
-                  className="flex w-full justify-start items-end gap-2.5"
+                  exit={{ opacity: 0, transition: { duration: 0.2 } }}
+                  className="flex w-full items-center gap-2.5"
                 >
                   <AIAvatar />
-                  <div className="px-4 py-3.5 rounded-2xl rounded-bl-sm flex items-center gap-1.5"
-                    style={{ background: "white", border: "1px solid rgba(200,134,138,0.15)", boxShadow: "0 2px 8px rgba(200,134,138,0.08)" }}>
+                  <div className="flex items-center gap-1.5 py-2">
                     {[0, 0.2, 0.4].map((delay, i) => (
                       <motion.div key={i}
-                        animate={{ y: [0, -5, 0] }}
+                        animate={{ y: [0, -4, 0], opacity: [0.5, 1, 0.5] }}
                         transition={{ repeat: Infinity, duration: 0.9, delay }}
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{ background: "rgba(200,134,138,0.7)" }}
+                        className="w-2 h-2 rounded-full"
+                        style={{ background: SK.accent }}
                       />
                     ))}
                   </div>
@@ -886,7 +865,7 @@ export default function SkinCoachFlow() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ type: "spring", bounce: 0.2 }}
               className="px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shrink-0"
-              style={{ borderTop: "1px solid rgba(200,134,138,0.1)" }}
+              style={{ background: SK.surface, borderTop: `1px solid ${SK.lineSoft}` }}
             >
               {currentNode.type === "text_or_photo" && (
                 <>
@@ -895,11 +874,12 @@ export default function SkinCoachFlow() {
                     <div className="flex gap-2 mb-3 overflow-x-auto">
                       {pendingPhotos.map((src, i) => (
                         <div key={i} className="relative shrink-0">
-                          <img src={src} alt={t("Photo de produit")} className="w-16 h-16 rounded-xl object-cover border border-rose-100" />
+                          <img src={src} alt={t("Photo de produit")} className="w-16 h-16 rounded-xl object-cover" style={{ border: `1px solid ${SK.line}` }} />
                           <button
                             onClick={() => setPendingPhotos((prev) => prev.filter((_, j) => j !== i))}
                             aria-label={t("Retirer la photo")}
-                            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#2A2424] text-white flex items-center justify-center shadow"
+                            className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full text-white flex items-center justify-center shadow"
+                            style={{ background: SK.ink }}
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -908,7 +888,7 @@ export default function SkinCoachFlow() {
                     </div>
                   )}
                   {photoError && (
-                    <p className="text-xs mb-2" style={{ color: "#B06068" }}>{photoError}</p>
+                    <p className="text-[13px] mb-2" style={{ color: SK.accent }}>{photoError}</p>
                   )}
                   <input
                     ref={galleryInputRef}
@@ -936,21 +916,16 @@ export default function SkinCoachFlow() {
                         }
                       }}
                       placeholder={t(currentNode.type === "text_or_photo" ? "Nom des produits, ou ajoutez des photos" : "Votre réponse...")}
-                      className={`w-full text-[14px] py-4 ${currentNode.type === "text_or_photo" ? 'pl-5 pr-[5.5rem]' : 'pl-5 pr-5'} rounded-2xl outline-none transition-all`}
-                      style={{
-                        background: "white",
-                        border: "1.5px solid rgba(200,134,138,0.25)",
-                        color: "#3D2B2D",
-                        boxShadow: "0 2px 8px rgba(200,134,138,0.07)"
-                      }}
+                      className={`w-full text-[15px] h-[54px] ${currentNode.type === "text_or_photo" ? 'pl-5 pr-[5.5rem]' : 'pl-5 pr-5'} rounded-full outline-none`}
+                      style={{ background: SK.ground, border: `1px solid ${SK.line}`, color: SK.ink }}
                     />
                     {currentNode.type === "text_or_photo" && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-3" style={{ color: "rgba(200,134,138,0.8)" }}>
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center" style={{ color: SK.ink }}>
                         <button
                           onClick={() => galleryInputRef.current?.click()}
                           disabled={pendingPhotos.length >= MAX_ROUTINE_PHOTOS}
                           aria-label={t("Choisir dans la galerie")}
-                          className="transition-colors disabled:opacity-30"
+                          className="w-10 h-10 flex items-center justify-center disabled:opacity-30"
                         >
                           <Images className="w-5 h-5" />
                         </button>
@@ -958,7 +933,7 @@ export default function SkinCoachFlow() {
                           onClick={() => setShowCamera(true)}
                           disabled={pendingPhotos.length >= MAX_ROUTINE_PHOTOS}
                           aria-label={t("Prendre une photo")}
-                          className="transition-colors disabled:opacity-30"
+                          className="w-10 h-10 flex items-center justify-center disabled:opacity-30"
                         >
                           <Camera className="w-5 h-5" />
                         </button>
@@ -972,8 +947,9 @@ export default function SkinCoachFlow() {
                         : handleTextSubmit(inputText, currentNode.nextQuestionId)
                     }
                     disabled={!inputText.trim() && !(currentNode.type === "text_or_photo" && pendingPhotos.length > 0)}
-                    className="p-4 rounded-2xl transition-all disabled:opacity-30 shadow-md active:scale-95"
-                    style={{ background: "linear-gradient(135deg, #C8868A, #E5B6B9)" }}
+                    aria-label={t("Envoyer")}
+                    className="w-[54px] h-[54px] rounded-full flex items-center justify-center transition-opacity disabled:opacity-30 active:scale-95"
+                    style={{ background: SK.accent }}
                   >
                     <PaperPlaneTilt className="w-5 h-5 text-white" />
                   </button>
@@ -983,7 +959,7 @@ export default function SkinCoachFlow() {
         </div>
       )}
 
-      {/* ─── Camera Overlay ─── */}
+      {/* ─── Camera Overlay (photos of products she uses) ─── */}
       <AnimatePresence>
         {showCamera && (
           <motion.div
@@ -1005,7 +981,8 @@ export default function SkinCoachFlow() {
               <div className="absolute top-6 left-6">
                 <button
                   onClick={() => setShowCamera(false)}
-                  className="bg-black/50 text-white px-4 py-2 rounded-full backdrop-blur-md border border-white/20 text-sm font-semibold"
+                  className="h-11 px-4 rounded-full text-white text-[14px] font-semibold"
+                  style={{ background: "rgba(42,36,36,0.55)", border: "1px solid rgba(255,255,255,0.22)" }}
                 >
                   {t("Annuler")}
                 </button>
@@ -1019,9 +996,11 @@ export default function SkinCoachFlow() {
                       setShowCamera(false);
                     }
                   }}
-                  className="w-20 h-20 bg-white/20 rounded-full border-4 border-white flex items-center justify-center p-2 backdrop-blur-sm hover:scale-105 active:scale-95 transition-transform"
+                  aria-label={t("Prendre la photo")}
+                  className="w-[76px] h-[76px] rounded-full p-1 active:scale-95 transition-transform"
+                  style={{ background: SK.accent }}
                 >
-                  <div className="w-full h-full bg-white rounded-full shadow-lg" />
+                  <span className="block w-full h-full rounded-full bg-white" style={{ border: "4px solid #2A2424" }} />
                 </button>
               </div>
             </div>
@@ -1029,7 +1008,7 @@ export default function SkinCoachFlow() {
         )}
       </AnimatePresence>
 
-      {/* ─── Analysis Popup Modal ─── */}
+      {/* ─── Analysis screen ─── */}
       <AnimatePresence>
         {isGenerating && (
           <motion.div
@@ -1038,148 +1017,46 @@ export default function SkinCoachFlow() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
-            className="absolute inset-0 z-[100] flex flex-col items-center justify-center"
-            style={{ background: "rgba(253, 248, 247, 0.95)", backdropFilter: "blur(20px)" }}
+            className="absolute inset-0 z-[100] flex flex-col overflow-y-auto px-6 pt-7 pb-8"
+            style={{ background: SK.ground }}
           >
-            {/* Background soft orbs */}
-            <motion.div
-              className="absolute rounded-full pointer-events-none"
-              style={{ width: 400, height: 400, background: "radial-gradient(circle, rgba(229,182,185,0.25) 0%, transparent 70%)", top: "5%", left: "50%", translateX: "-50%" }}
-              animate={{ scale: [1, 1.15, 1], opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-            />
-            <motion.div
-              className="absolute rounded-full pointer-events-none"
-              style={{ width: 300, height: 300, background: "radial-gradient(circle, rgba(200,134,138,0.15) 0%, transparent 70%)", bottom: "15%", left: "20%" }}
-              animate={{ scale: [1.1, 1, 1.1], opacity: [0.3, 0.7, 0.3] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            />
-
-            {/* Scan rings */}
-            <div className="relative flex items-center justify-center mb-10">
-              {[0, 1, 2, 3].map((i) => (
-                <motion.div
-                  key={i}
-                  className="absolute rounded-full border"
-                  style={{
-                    width: 80 + i * 50,
-                    height: 80 + i * 50,
-                    borderColor: `rgba(200,134,138,${0.35 - i * 0.07})`,
-                  }}
-                  animate={{ rotate: i % 2 === 0 ? [0, 360] : [360, 0], scale: [1, 1.04, 1] }}
-                  transition={{ duration: 6 + i * 2, repeat: Infinity, ease: "linear" }}
-                />
-              ))}
-
-              {/* Center logo */}
-              <motion.div
-                className="relative z-10 w-20 h-20 rounded-full flex items-center justify-center"
-                style={{
-                  background: "linear-gradient(135deg, #F0D4D6 0%, #E5B6B9 100%)",
-                  border: "2px solid rgba(200,134,138,0.4)",
-                  boxShadow: "0 0 40px rgba(200,134,138,0.25), inset 0 0 20px rgba(255,255,255,0.5)"
-                }}
-                animate={{ scale: [1, 1.06, 1] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              >
-                <Scan className="w-9 h-9" style={{ color: "#8B4347" }} />
-              </motion.div>
-            </div>
-
-            {/* Text block */}
-            <div className="text-center px-8 space-y-4 relative z-10">
-              <motion.h2
-                className="text-2xl font-extrabold"
-                style={{ color: "#3D2B2D", letterSpacing: "-0.02em" }}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                {t("Analyse en cours...")}
-              </motion.h2>
-
-              <motion.p
-                className="text-sm font-medium"
-                style={{ color: "rgba(61,43,45,0.55)" }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-              >
-                {t("Notre IA dermatologique croise vos données visuelles avec vos réponses pour créer votre routine parfaite.")}
-              </motion.p>
-
-              {/* Step list */}
-              <div className="mt-6 space-y-2.5 text-left">
-                {[
-                  { label: t("Analyse des photos (Face, Gauche, Droite)"), delay: 0.6 },
-                  { label: t("Calcul des indices cutanés"), delay: 1.1 },
-                  { label: t("Croisement avec vos réponses"), delay: 1.6 },
-                  { label: t("Génération de votre routine K-Beauty"), delay: 2.1 },
-                ].map((step, i) => (
-                  <motion.div
-                    key={i}
-                    className="flex items-center gap-3 px-4 py-3 rounded-2xl"
-                    style={{ background: "white", border: "1px solid rgba(200,134,138,0.15)", boxShadow: "0 2px 8px rgba(200,134,138,0.07)" }}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: step.delay, type: "spring", bounce: 0.3 }}
-                  >
-                    <motion.div
-                      className="w-2 h-2 rounded-full shrink-0"
-                      style={{ background: "#C8868A" }}
-                      animate={{ opacity: [0.4, 1, 0.4], scale: [0.8, 1.2, 0.8] }}
-                      transition={{ duration: 1.5, repeat: Infinity, delay: step.delay }}
-                    />
-                    <span className="text-[13px] font-medium" style={{ color: "rgba(61,43,45,0.7)" }}>
-                      {step.label}
-                    </span>
-                  </motion.div>
-                ))}
+            <div className="w-full max-w-md mx-auto flex flex-col gap-5 flex-1">
+              <div>
+                <p className="text-[13px] font-semibold uppercase tracking-[0.08em]" style={{ color: SK.muted }}>Skin Coach</p>
+                <h2 className="mt-2" style={{ fontFamily: DISPLAY_FONT, fontSize: 38, lineHeight: 1.05, fontWeight: 300, color: SK.ink, letterSpacing: "-0.01em" }}>
+                  {t("Nous lisons")}<br />
+                  <span style={{ fontWeight: 700, color: SK.accent }}>{t("votre peau.")}</span>
+                </h2>
               </div>
 
-              {/* Circular Progress bar */}
-              <motion.div
-                className="mt-8 flex flex-col items-center justify-center"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.8 }}
-              >
-                <div className="relative w-20 h-20">
-                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="40"
-                      stroke="rgba(200,134,138,0.15)"
-                      strokeWidth="8"
-                      fill="none"
-                    />
-                    <motion.circle
-                      cx="50"
-                      cy="50"
-                      r="40"
-                      stroke="url(#progress-gradient)"
-                      strokeWidth="8"
-                      fill="none"
-                      strokeLinecap="round"
-                      initial={{ strokeDasharray: "251.2", strokeDashoffset: 251.2 }}
-                      animate={{ strokeDashoffset: 251.2 - (251.2 * analysisProgress) / 100 }}
-                      transition={{ duration: 0.5, ease: "easeOut" }}
-                    />
-                    <defs>
-                      <linearGradient id="progress-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#C8868A" />
-                        <stop offset="100%" stopColor="#E5B6B9" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-sm font-bold" style={{ color: "#3D2B2D" }}>
-                      {Math.round(analysisProgress)}%
-                    </span>
-                  </div>
-                </div>
-              </motion.div>
+              <div className="flex items-center justify-center py-2">
+                <ScanGauge progress={analysisProgress} size={260} />
+              </div>
+
+              <div className="rounded-[26px] px-4 py-2.5 flex flex-col gap-1" style={{ background: SK.surface, border: `1px solid ${SK.lineSoft}` }}>
+                {ANALYSIS_STEPS.map((label, i) => {
+                  const done = i < analysisStep;
+                  const current = i === analysisStep;
+                  return (
+                    <div key={label} className="flex items-center gap-3 min-h-[40px]">
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style={{ background: done ? SK.accent : SK.tint }}>
+                        {done ? (
+                          <Check className="w-3.5 h-3.5 text-white" weight="bold" />
+                        ) : current ? (
+                          <span className="w-3.5 h-3.5 rounded-full animate-spin" style={{ border: `2px solid ${SK.ink}`, borderRightColor: "transparent" }} />
+                        ) : null}
+                      </div>
+                      <span className="text-[15px]" style={{ fontWeight: current ? 700 : 500, color: i <= analysisStep ? SK.ink : SK.muted }}>
+                        {t(label)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <p className="text-[14px] leading-relaxed text-center mt-auto" style={{ color: SK.muted }}>
+                {t("Une photo peut tromper : vos réponses comptent autant que l'image.")}
+              </p>
             </div>
           </motion.div>
         )}
