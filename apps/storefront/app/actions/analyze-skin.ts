@@ -22,6 +22,7 @@ import {
   withArticle,
 } from "@/lib/skin-routine";
 import { callOpenRouter, parseJsonAnswer, type AiErrorCode } from "@/lib/openrouter";
+import { buildRoutineScript, signScript } from "@/lib/routine-audio";
 import { ACNE_SCAN_LOW, ACNE_SCAN_THRESHOLD, answerOf, FOLLOWUP_QUESTIONS, moisturizerTextures, readAcne, readDarkSpots, readSkinProfile, TEXTURE_LABEL } from "@/lib/skin-profile";
 
 export type UserResponse = {
@@ -60,6 +61,8 @@ export type SkinAnalysisResult = {
   empathetic_message: string;
   scan_id?: string; // id of the saved diagnostic, used to attach it to the customer's history
   kbeauty_routine: RoutineStep[];
+  // what the "Écouter ma routine" button reads, signed by the server (lib/routine-audio.ts)
+  audio?: { script: string; sig: string };
   metrics?: {
     sebum_level_percentage: number;
     acne_severity_percentage: number;
@@ -933,6 +936,8 @@ RÈGLES D'EXPERTISE K-BEAUTY — THE WELFARE
    Tiens compte du climat chaud et humide d'Afrique centrale. Privilégie les textures légères en journée, sans laisser de zones sèches inconfortables.
    Si le phototype est foncé (Fitzpatrick IV-VI), insiste sur la protection solaire et la prévention des taches.
 
+NOM DES ÉTAPES ('step_name') : 2 ou 3 mots, le type de soin puis une précision utile pour elle, par exemple « Nettoyant doux », « Hydratant sans rinçage », « Protection solaire », « Sérum apaisant ». Jamais le nom de marque du produit.
+
 IMPORTANT : Tu dois répondre UNIQUEMENT avec un objet JSON valide, sans aucun texte avant ou après.
 
 FORMAT JSON ATTENDU :
@@ -1149,6 +1154,10 @@ FORMAT JSON ATTENDU :
     } catch (logError) {
       console.error("[SkinCoach] Erreur lors de la journalisation du scan :", logError);
     }
+
+    const audioScript = buildRoutineScript(finalResult);
+    const audioSig = signScript(audioScript);
+    if (audioSig) finalResult.audio = { script: audioScript, sig: audioSig };
 
     return { success: true, data: finalResult };
   } catch (error: any) {

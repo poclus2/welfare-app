@@ -28,8 +28,8 @@ export function withArticle(fn: ProductFunction, article: "un" | "de"): string {
 }
 
 const FUNCTION_STEP_NAME: Record<ProductFunction, string> = {
-  cleanser: "Nettoyant",
-  moisturizer: "Hydratant",
+  cleanser: "Nettoyant visage",
+  moisturizer: "Hydratant sans rinçage",
   sunscreen: "Protection solaire",
   other: "Soin complémentaire",
 };

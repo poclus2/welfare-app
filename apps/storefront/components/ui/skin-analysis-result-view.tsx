@@ -12,6 +12,7 @@ import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
 import { LevelRing } from "@/components/ui/skin-coach/level-ring";
 import { FaceScanFrame, type FaceMarker } from "@/components/ui/skin-coach/face-scan-frame";
 import { DISPLAY_FONT, SK } from "@/components/ui/skin-coach/theme";
+import { RoutineAudioPlayer } from "@/components/ui/skin-coach/routine-audio-player";
 
 interface Props {
   result: SkinAnalysisResult;
@@ -44,6 +45,12 @@ function splitSkinType(type: string): [string, string] {
   return [words.slice(0, 2).join(" "), words.slice(2).join(" ")];
 }
 
+// "Hydratant sans rinçage" → ["Hydratant", "sans rinçage"]: first word, then the rest on a second line
+function splitStepName(name: string): [string, string] {
+  const words = (name || "").trim().split(/s+/);
+  return [words[0] || "", words.slice(1).join(" ")];
+}
+
 const fmtPrice = (amount: number, currency: string) =>
   `${Math.round(amount).toLocaleString("fr-FR")} ${currency.toUpperCase() === "XAF" ? "FCFA" : currency.toUpperCase()}`;
 
@@ -60,7 +67,8 @@ function useRoutineProducts(ids: string[]): Record<string, ProductInfo | null> {
     let cancelled = false;
     Promise.all(
       ids.map((id) =>
-        fetch(`${url}/store/products/${id}`, { headers: { "x-publishable-api-key": pk } })
+        // prices and collection are not in the default store fields: without them no price was shown
+        fetch(`${url}/store/products/${id}?fields=*variants,*variants.prices,*collection`, { headers: { "x-publishable-api-key": pk } })
           .then((r) => (r.ok ? r.json() : null))
           .then((data): [string, ProductInfo | null] => {
             const p = data?.product;
@@ -330,20 +338,35 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
               </div>
             ) : routine.length > 0 && step ? (
               <>
+                {/* the routine read aloud (not for a routine an advisor corrected since: the script is the original one) */}
+                {result.audio && result.review?.status !== "corrected" && (
+                  <RoutineAudioPlayer audio={result.audio} scanId={result.scan_id} />
+                )}
+
                 {/* steps */}
                 <div className="flex gap-2 overflow-x-auto pb-1 print:hidden">
                   {routine.map((s, i) => {
                     const active = i === Math.min(selectedStep, routine.length - 1);
+                    const [first, rest] = splitStepName(s.step_name);
+                    const p = s.medusa_product_id ? products[s.medusa_product_id] : null;
                     return (
                       <button
                         key={i}
                         onClick={() => setSelectedStep(i)}
                         aria-pressed={active}
-                        className="flex-1 min-w-[84px] min-h-[64px] rounded-[20px] px-2 py-2 flex flex-col items-center justify-center gap-0.5"
+                        className="flex-1 min-w-[96px] min-h-[96px] rounded-[20px] px-2 py-2.5 flex flex-col items-center justify-center gap-1"
                         style={{ background: active ? SK.accent : SK.surface, border: active ? "none" : `1px solid ${SK.line}`, color: active ? "#FFFFFF" : SK.ink }}
                       >
                         <span style={{ fontFamily: DISPLAY_FONT, fontSize: 22, fontWeight: 600, lineHeight: 1 }}>{i + 1}</span>
-                        <span className="text-[12px] font-semibold leading-tight text-center line-clamp-2">{s.step_name}</span>
+                        <span className="text-[12px] leading-tight text-center">
+                          <span className="block font-bold">{first}</span>
+                          {rest && <span className="block font-medium line-clamp-1">{rest}</span>}
+                        </span>
+                        {p?.amount != null && (
+                          <span className="text-[12px] font-bold whitespace-nowrap" style={{ color: active ? "#FFFFFF" : SK.accent }}>
+                            {fmtPrice(p.amount, p.currency)}
+                          </span>
+                        )}
                       </button>
                     );
                   })}
