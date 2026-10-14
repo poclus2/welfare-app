@@ -284,6 +284,8 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
                 {result.empathetic_message}
               </p>
               <div className="text-[13px] font-semibold" style={{ color: SK.muted }}>Votre Skin Coach</div>
+              {/* the message read aloud (accounts only, like the routine) */}
+              {!locked && result.audio && <RoutineAudioPlayer audio={result.audio} scanId={result.scan_id} />}
             </motion.div>
           )}
 
@@ -338,10 +340,6 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
               </div>
             ) : routine.length > 0 && step ? (
               <>
-                {/* the routine read aloud (not for a routine an advisor corrected since: the script is the original one) */}
-                {result.audio && result.review?.status !== "corrected" && (
-                  <RoutineAudioPlayer audio={result.audio} scanId={result.scan_id} />
-                )}
 
                 {/* steps */}
                 <div className="flex gap-2 overflow-x-auto pb-1 print:hidden">

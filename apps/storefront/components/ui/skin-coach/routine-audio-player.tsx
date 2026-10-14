@@ -5,7 +5,7 @@ import { Pause, Play, SpeakerHigh } from "@phosphor-icons/react";
 import posthog from "posthog-js";
 import { DISPLAY_FONT, SK } from "./theme";
 
-// "Écouter ma routine": the routine read aloud, generated on the first tap only (app/api/skin-coach/audio)
+// "Écouter le message": the Skin Coach's message read aloud, generated on the first tap only (app/api/skin-coach/audio)
 type State = "idle" | "loading" | "ready" | "error";
 
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
@@ -18,7 +18,7 @@ export function RoutineAudioPlayer({ audio, scanId }: { audio: { script: string;
   const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const urlRef = useRef<string | null>(null);
-  const estimate = Math.max(30, Math.round(audio.script.length / 15)); // ~15 characters per second
+  const estimate = Math.max(10, Math.round(audio.script.length / 15)); // ~15 characters per second
 
   useEffect(() => () => {
     audioRef.current?.pause();
@@ -73,10 +73,10 @@ export function RoutineAudioPlayer({ audio, scanId }: { audio: { script: string;
   const progress = duration ? (time / duration) * 100 : 0;
 
   return (
-    <div className="rounded-[22px] p-3.5 flex items-center gap-3.5 print:hidden" style={{ background: SK.surface, border: `1px solid ${SK.line}` }}>
+    <div className="rounded-[22px] p-3 mt-1 flex items-center gap-3 print:hidden" style={{ background: SK.surface }}>
       <button
         onClick={state === "loading" ? undefined : toggle}
-        aria-label={playing ? "Mettre en pause" : "Écouter ma routine"}
+        aria-label={playing ? "Mettre en pause" : "Écouter le message"}
         className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 active:scale-95 transition-transform"
         style={{ background: SK.accent }}
       >
@@ -93,7 +93,7 @@ export function RoutineAudioPlayer({ audio, scanId }: { audio: { script: string;
         {state === "ready" ? (
           <>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[14px] font-bold" style={{ color: SK.ink }}>Votre routine, à écouter</span>
+              <span className="text-[14px] font-bold" style={{ color: SK.ink }}>Le message de votre Skin Coach</span>
               <span className="text-[12px] font-semibold tabular-nums" style={{ color: SK.muted }}>
                 {fmt(time)} / {fmt(duration || estimate)}
               </span>
@@ -116,10 +116,10 @@ export function RoutineAudioPlayer({ audio, scanId }: { audio: { script: string;
           <button onClick={state === "loading" ? undefined : load} className="text-left w-full">
             <span className="flex items-center gap-1.5 text-[15px] font-bold" style={{ color: SK.ink, fontFamily: DISPLAY_FONT }}>
               <SpeakerHigh className="w-4 h-4" style={{ color: SK.accent }} />
-              {state === "loading" ? "Préparation de l'audio…" : "Écouter ma routine"}
+              {state === "loading" ? "Préparation de l'audio…" : "Écouter le message"}
             </span>
             <span className="block text-[13px] mt-0.5" style={{ color: state === "error" ? SK.accent : SK.muted }}>
-              {state === "error" ? error : state === "loading" ? "Quelques secondes, votre Skin Coach prend la parole" : `Environ ${Math.max(1, Math.round(estimate / 60))} min · lu par votre Skin Coach`}
+              {state === "error" ? error : state === "loading" ? "Quelques secondes, votre Skin Coach prend la parole" : estimate < 60 ? `Environ ${estimate} s · lu par votre Skin Coach` : `Environ ${Math.round(estimate / 60)} min · lu par votre Skin Coach`}
             </span>
           </button>
         )}
