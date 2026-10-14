@@ -47,7 +47,7 @@ function splitSkinType(type: string): [string, string] {
 
 // "Hydratant sans rinçage" → ["Hydratant", "sans rinçage"]: first word, then the rest on a second line
 function splitStepName(name: string): [string, string] {
-  const words = (name || "").trim().split(/s+/);
+  const words = (name || "").trim().split(/\s+/);
   return [words[0] || "", words.slice(1).join(" ")];
 }
 
@@ -192,7 +192,7 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
 
   return (
     <div className="min-h-[100dvh] relative w-full flex flex-col font-sans print:h-auto print:block" style={{ background: SK.ground, color: SK.ink }}>
-      <div id="pdf-report-content" className="relative flex-1 pb-48 print:pb-10">
+      <div id="pdf-report-content" className="relative flex-1 pb-40 print:pb-10">
         <div className="w-full max-w-md mx-auto px-5 pt-6 flex flex-col gap-7">
 
           {/* ─── HERO ─── */}
@@ -454,6 +454,16 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
           <p className="text-[12px] leading-relaxed text-center px-2" style={{ color: SK.muted }}>
             Ce diagnostic est établi par une intelligence artificielle à partir de vos photos et de vos réponses. Il ne constitue pas un avis médical et ne remplace pas la consultation d&apos;un dermatologue. En cas de lésions, de douleur, d&apos;irritation persistante, de grossesse ou de traitement en cours, demandez conseil à un professionnel de santé avant de commencer une nouvelle routine.
           </p>
+
+          {/* out of the sticky bar: it hid too much of the page on phones */}
+          <button
+            onClick={onRetake}
+            className="self-center h-12 px-5 rounded-full flex items-center justify-center gap-2 text-[14px] font-semibold print:hidden"
+            style={{ color: SK.ink, border: `1px solid ${SK.line}`, background: SK.surface }}
+          >
+            <ArrowCounterClockwise className="w-4 h-4" />
+            Refaire le diagnostic
+          </button>
         </div>
       </div>
 
@@ -462,8 +472,8 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
         initial={{ y: 120 }}
         animate={{ y: 0 }}
         transition={{ delay: 0.6, type: "spring", bounce: 0.2 }}
-        className="fixed bottom-0 left-0 right-0 z-50 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-6 print:hidden"
-        style={{ background: `linear-gradient(to top, ${SK.ground} 70%, rgba(251,248,249,0))` }}
+        className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-4 print:hidden"
+        style={{ background: `linear-gradient(to top, ${SK.ground} 75%, rgba(251,248,249,0))` }}
       >
         <div className="w-full max-w-md mx-auto flex flex-col gap-2">
           {locked ? (
@@ -499,7 +509,13 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
                   ) : addingAll ? (
                     <>Ajout en cours…</>
                   ) : (
-                    <><ShoppingBag className="w-5 h-5" /> Ajouter la routine{total > 0 ? ` · ${fmtPrice(total, currency)}` : ""}</>
+                    <>
+                      <ShoppingBag className="w-5 h-5 shrink-0" />
+                      <span className="flex flex-col items-start leading-tight">
+                        <span className="text-[16px] font-bold whitespace-nowrap">Ajouter la routine</span>
+                        {total > 0 && <span className="text-[13px] font-semibold whitespace-nowrap" style={{ opacity: 0.9 }}>{fmtPrice(total, currency)}</span>}
+                      </span>
+                    </>
                   )}
                 </button>
               ) : (
@@ -521,10 +537,6 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
               </button>
             </div>
           )}
-          <button onClick={onRetake} className="h-11 flex items-center justify-center gap-2 text-[14px] font-semibold" style={{ color: SK.ink }}>
-            <ArrowCounterClockwise className="w-4 h-4" />
-            Refaire le diagnostic
-          </button>
         </div>
       </motion.div>
     </div>
