@@ -72,7 +72,7 @@ export function ChatWidget() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={toggleChat}
-            className="fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-[#2A2424] text-white shadow-xl flex items-center justify-center overflow-hidden"
+            className={`fixed ${pathname === "/account" ? "bottom-28 md:bottom-6" : "bottom-6"} right-6 z-50 w-12 h-12 rounded-full bg-[#2A2424] text-white shadow-xl flex items-center justify-center overflow-hidden`}
           >
             {/* Soft pulse background */}
             <div className="absolute inset-0 bg-[#E5B6B9]/20 animate-pulse rounded-full" />

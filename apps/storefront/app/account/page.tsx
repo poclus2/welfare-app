@@ -1,83 +1,42 @@
-
 "use client";
 
-import { Suspense, useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { sdk } from "@/lib/medusa";
 import { claimPendingScans } from "@/lib/pending-scans";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Package,
-  Truck,
-  Star,
-  SignOut,
-  Heart,
-  Sparkle,
-  ArrowRight,
-  ChartLine,
-  Seal,
-  Scan,
-  Calendar,
-  List,
-  X,
-  User,
-  House,
-  ShoppingBag
-} from "@phosphor-icons/react";
+import { SignOut, Sparkle, House, Package, User, ShoppingBag, Scan } from "@phosphor-icons/react";
 import Link from "next/link";
-import { IconIA } from "@/components/ui/icons/IconIA";
 import { OrderCard } from "@/components/account/OrderCard";
 import { OrderDetailsTab } from "@/components/account/OrderDetailsTab";
 import ProfileTab from "@/components/account/ProfileTab";
-import { ORDER_FIELDS } from "@/lib/order-view";
-
+import { ORDER_FIELDS, getOrderStage } from "@/lib/order-view";
 import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
 import { useI18n } from "@/lib/i18n-context";
+import { DISPLAY_FONT, Eyebrow, METRIC_KEYS, MiniRing, SK, SectionTitle, levelOf, splitSkinType } from "@/components/account/account-ui";
 
-// Animated counter hook
-function useCounter(target: number, duration = 1500) {
-  const [count, setCount] = useState(0);
-  const started = useRef(false);
+// The customer space, in the Skin Coach look (prototype "Espace client" validated by the owner, 2026-10-15):
+// one column on the phone with a bottom tab bar, a side menu on a computer.
 
-  useEffect(() => {
-    if (started.current || target === 0) return;
-    started.current = true;
-    const step = target / (duration / 16);
-    let current = 0;
-    const timer = setInterval(() => {
-      current += step;
-      if (current >= target) {
-        setCount(target);
-        clearInterval(timer);
-      } else {
-        setCount(Math.floor(current));
-      }
-    }, 16);
-    return () => clearInterval(timer);
-  }, [target, duration]);
-
-  return count;
-}
-
-type TierType = { name: string; min: number; max: number; color: string; icon: any };
+type Tab = "dashboard" | "orders" | "scans" | "profile";
+type TierType = { name: string; min: number; max: number };
 
 // 1 point = 1000 FCFA spent (rule applied by the API when an order is placed). The tiers sit at
 // 50 000 / 150 000 / 300 000 FCFA of purchases.
 const loyaltyTiers: TierType[] = [
-  { name: "Découverte", min: 0, max: 50, color: "#8B7B7B", icon: Star },
-  { name: "Bien-être", min: 50, max: 150, color: "#C97C85", icon: Heart },
-  { name: "Prestige", min: 150, max: 300, color: "#9B59B6", icon: Seal },
-  { name: "Élite", min: 300, max: Infinity, color: "#F59E0B", icon: IconIA },
+  { name: "Découverte", min: 0, max: 50 },
+  { name: "Bien-être", min: 50, max: 150 },
+  { name: "Prestige", min: 150, max: 300 },
+  { name: "Élite", min: 300, max: Infinity },
 ];
 
 function getTier(points: number): TierType {
-  const found = loyaltyTiers.find((t) => points >= t.min && points < t.max);
-  return (found ?? loyaltyTiers[0]) as TierType;
+  return loyaltyTiers.find((t) => points >= t.min && points < t.max) ?? loyaltyTiers[0]!;
 }
 
 function getNextTier(points: number): TierType | null {
   const idx = loyaltyTiers.findIndex((t) => points >= t.min && points < t.max);
-  return idx >= 0 && idx < loyaltyTiers.length - 1 ? (loyaltyTiers[idx + 1] as TierType) : null;
+  return idx >= 0 && idx < loyaltyTiers.length - 1 ? loyaltyTiers[idx + 1]! : null;
 }
 
 // Older records were saved with this placeholder instead of the real message
@@ -95,76 +54,62 @@ const scanNotices = (scan: any) => {
   return [...raw.matchAll(LEGACY_NOTICE)].map((m) => ({ kind: m[1], text: m[2] }));
 };
 
-const SkinCoachScanCard = ({ scan, onClick }: { scan: any, onClick: () => void }) => {
-  const { t, locale } = useI18n();
-  const dateLocale = locale === "en" ? "en-GB" : "fr-FR";
-  const displaySummary = scanMessage(scan)
-    || t("Votre rituel beauté sur-mesure a été élaboré par notre intelligence artificielle à partir de votre diagnostic.");
-  
-  const rawSkinType = scan.final_skin_type || "";
-  const displaySkinType = rawSkinType.toUpperCase().startsWith("PEAU ") 
-    ? rawSkinType 
-    : `${t("Peau")} ${rawSkinType}`;
+const NAV: { id: Tab; label: string; icon: typeof House }[] = [
+  { id: "dashboard", label: "Accueil", icon: House },
+  { id: "orders", label: "Commandes", icon: Package },
+  { id: "scans", label: "Diagnostics", icon: Scan },
+  { id: "profile", label: "Profil", icon: User },
+];
 
+// ─── one diagnostic: date, skin type, three levels ───────────────────────────
+function ScanCard({ scan, onOpen, compact = false }: { scan: any; onOpen: () => void; compact?: boolean }) {
+  const { t, locale } = useI18n();
+  const date = new Date(scan.created_at).toLocaleDateString(locale === "en" ? "en-GB" : "fr-FR", { day: "numeric", month: "long", year: compact ? undefined : "numeric" });
+  const [light, bold] = splitSkinType(scan.final_skin_type || "");
+  const rings = METRIC_KEYS.filter((m) => m.key !== "acne")
+    .map((m) => ({ ...m, level: levelOf(m.key, scan.metrics?.[m.field]) }))
+    .filter((m) => m.level);
   return (
-    <div 
-      className="relative overflow-hidden bg-white rounded-[24px] border border-[#F1E5D8] shadow-[0_4px_24px_-8px_rgba(201,124,133,0.15)] hover:shadow-[0_12px_40px_-8px_rgba(201,124,133,0.25)] transition-all duration-500 group cursor-pointer" 
-      onClick={onClick}
-    >
-      <div className="absolute inset-0 bg-gradient-to-b from-[#FCF9F8] to-white opacity-80 z-0"></div>
-      
-      <div className="absolute -top-16 -right-16 w-48 h-48 bg-[#cd858d] rounded-full mix-blend-multiply filter blur-[50px] opacity-[0.08] group-hover:opacity-[0.15] transition-opacity duration-700"></div>
-      <div className="absolute -bottom-16 -left-16 w-48 h-48 bg-[#E5B6B9] rounded-full mix-blend-multiply filter blur-[50px] opacity-[0.12] group-hover:opacity-[0.25] transition-opacity duration-700"></div>
-      
-      <div className="relative z-10 p-6 sm:p-7 h-full flex flex-col">
-        <div className="flex items-start justify-between mb-6">
-          <div className="w-11 h-11 rounded-2xl bg-white shadow-sm border border-[#F1E5D8] flex items-center justify-center text-[#cd858d] transform group-hover:scale-105 group-hover:-rotate-3 transition-transform duration-500">
-            <IconIA className="w-5 h-5" />
-          </div>
-          <span className="max-w-[70%] text-right px-3 py-1.5 bg-white/60 backdrop-blur-md border border-[#F1E5D8]/50 rounded-full text-[9px] font-bold tracking-[0.1em] uppercase text-[#cd858d] leading-none truncate shadow-sm">
-            {displaySkinType}
+    <div className="rounded-[26px] p-[18px] flex flex-col gap-3.5" style={{ background: SK.surface, border: `1px solid ${SK.lineSoft}` }}>
+      <div className="flex items-center justify-between gap-2.5">
+        <span className="text-[13px]" style={{ color: SK.muted }}>{compact ? `${t("Dernier diagnostic")} · ${date}` : date}</span>
+        {scan.review_status && (
+          <span className="px-2.5 py-[5px] rounded-full text-[12px] font-bold" style={{ background: "#EEF6F1", color: "#0B6B45" }}>
+            {scan.review_status === "corrected" ? t("Revu par une conseillère") : t("Validé par une conseillère")}
           </span>
-        </div>
-        
-        <h3 className="text-[1.15rem] font-bold text-[#2A2424] mb-1.5 tracking-tight group-hover:text-[#cd858d] transition-colors">
-          {t("Votre rituel sur-mesure")}
-        </h3>
-        <p className="text-[10px] text-[#C97C85]/80 font-bold tracking-[0.15em] uppercase mb-4">
-          {t("Analysé le")} {new Date(scan.created_at).toLocaleDateString(dateLocale, { day: 'numeric', month: 'long', year: 'numeric' })}
-        </p>
-        
-        <p className="text-[13px] text-gray-500 mb-8 line-clamp-3 leading-[1.6] flex-grow font-medium">
-          {displaySummary}
-        </p>
-        
-        {(scan.melanin_phototype || scan.review_status) && (
-          <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100/60">
-            {scan.review_status && (
-              <>
-                <div className="flex flex-col">
-                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t("Conseillère")}</span>
-                  <span className="text-sm font-semibold text-emerald-600">{scan.review_status === "corrected" ? t("Routine revue") : t("Routine validée")}</span>
-                </div>
-                <div className="w-px h-8 bg-gray-100"></div>
-              </>
-            )}
-            <div className="flex flex-col">
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t("Phototype")}</span>
-              <span className="text-sm font-semibold text-[#2A2424]">{scan.melanin_phototype || "N/A"}</span>
-            </div>
-          </div>
         )}
-        
-        <button 
-          onClick={(e) => { e.stopPropagation(); onClick(); }}
-          className="mt-auto w-full py-[14px] bg-[#FAF5F0] text-[#cd858d] text-[10px] font-bold uppercase tracking-[0.15em] rounded-xl hover:bg-[#cd858d] hover:text-white hover:shadow-lg hover:shadow-[#cd858d]/20 transition-all duration-300 flex items-center justify-center gap-2 group-hover:translate-y-[-2px]"
-        >
-          {t("Consulter la routine")} <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
-        </button>
       </div>
+      <p style={{ fontFamily: DISPLAY_FONT, fontSize: compact ? 24 : 22, lineHeight: 1.12, fontWeight: 300, color: SK.ink }}>
+        {light} <span style={{ fontWeight: 700 }}>{bold}</span>
+      </p>
+      {rings.length > 0 && (
+        <div className="grid grid-cols-3 gap-2">
+          {rings.map((r) => (
+            <div key={r.key} className="flex flex-col items-center gap-1.5">
+              <MiniRing thirds={r.level!.thirds} label={t(r.level!.label)} size={compact ? 74 : 70} />
+              <span className="text-[12px] font-semibold" style={{ color: SK.muted }}>{t(r.label)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <button onClick={onOpen} className="h-12 rounded-full text-[14px] font-bold" style={{ border: `1px solid ${SK.ink}`, color: SK.ink, background: SK.surface }}>
+        {compact ? t("Revoir ma routine") : t("Revoir le diagnostic")}
+      </button>
     </div>
   );
-};
+}
+
+function EmptyCard({ title, text, href, cta }: { title: string; text: string; href: string; cta: string }) {
+  return (
+    <div className="rounded-[26px] p-6 flex flex-col items-start gap-3" style={{ background: SK.surface, border: `1px dashed ${SK.line}` }}>
+      <p style={{ fontFamily: DISPLAY_FONT, fontSize: 20, fontWeight: 700 }}>{title}</p>
+      <p className="text-[14px] leading-relaxed" style={{ color: SK.muted }}>{text}</p>
+      <Link href={href} className="h-[46px] px-[18px] rounded-full flex items-center text-[14px] font-bold" style={{ background: SK.accent, color: "#FFFFFF" }}>
+        {cta}
+      </Link>
+    </div>
+  );
+}
 
 export default function AccountPage() {
   const { t, locale } = useI18n();
@@ -176,13 +121,13 @@ export default function AccountPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false); // the account itself could not be loaded (network...)
   const [partialError, setPartialError] = useState(false); // orders or diagnostics could not be loaded
-  const [activeTab, setActiveTab] = useState<"dashboard" | "orders" | "scans" | "profile">("dashboard");
+  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const [orderFilter, setOrderFilter] = useState<"all" | "open" | "done">("all");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const router = useRouter();
-  
+
   const setSkinCoachResult = useSkinCoachStore((state) => state.setResult);
 
-  
   const fetchCustomer = async () => {
     try {
       setIsLoading(true);
@@ -223,8 +168,8 @@ export default function AccountPage() {
 
   useEffect(() => {
     fetchCustomer();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
-
 
   const handleLogout = async () => {
     try {
@@ -235,7 +180,7 @@ export default function AccountPage() {
       console.error(err);
     }
   };
-  
+
   const handleViewScan = (scan: any) => {
     setSkinCoachResult({
       final_skin_type: scan.final_skin_type,
@@ -247,33 +192,61 @@ export default function AccountPage() {
       notices: scanNotices(scan),
       review: scan.review_status ? { status: scan.review_status, corrections: scan.review_corrections || [] } : undefined,
       metrics: scan.metrics,
-        id: scan.id
-      } as any);
+      id: scan.id,
+    } as any);
     router.push("/skin-coach/result");
   };
 
+  // an order opened from the home page belongs to "Commandes" in the menus
+  const navTab: Tab = selectedOrder ? "orders" : activeTab;
+
+  const goTo = (tab: Tab) => {
+    setSelectedOrder(null);
+    setActiveTab(tab);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   // The balance is kept on the customer by the API (credited when an order is placed, taken back if it is
-  // canceled). It used to be recomputed here from the order totals at a different rate, so the dashboard
-  // and the profile showed two different numbers.
+  // canceled).
   const loyaltyPoints = Math.max(0, Math.floor(Number(customer?.metadata?.loyalty_points) || 0));
   const memberSince = (() => {
     const y = new Date(customer?.created_at).getFullYear();
     return Number.isFinite(y) ? y : new Date().getFullYear();
   })();
-  const animatedPoints = useCounter(loyaltyPoints);
-  const tier = getTier(loyaltyPoints) ?? loyaltyTiers[0];
+  const tier = getTier(loyaltyPoints);
   const nextTier = getNextTier(loyaltyPoints);
-  const progressPct = nextTier
-    ? Math.min(100, ((loyaltyPoints - tier.min) / (nextTier.min - tier.min)) * 100)
-    : 100;
+  const progress = nextTier ? Math.min(1, (loyaltyPoints - tier.min) / (nextTier.min - tier.min)) : 1;
+
+  const isOpen = (o: any) => {
+    const stage = getOrderStage(o);
+    return stage !== "delivered" && stage !== "canceled";
+  };
+  const currentOrder = orders.find(isOpen) || orders[0];
+  const filteredOrders = orders.filter((o) => orderFilter === "all" || (orderFilter === "open" ? isOpen(o) : !isOpen(o)));
+
+  // how her skin moved between her two last diagnostics (same levels as the rings)
+  const evolution = (() => {
+    const [latest, previous] = scans;
+    if (!latest || !previous) return null;
+    const rows = METRIC_KEYS.map((m) => {
+      const before = levelOf(m.key, previous.metrics?.[m.field]);
+      const after = levelOf(m.key, latest.metrics?.[m.field]);
+      if (!before || !after) return null;
+      const better = m.key === "hydration" ? after.thirds > before.thirds : after.thirds < before.thirds;
+      return { label: m.label, before: before.label, after: after.label, better };
+    }).filter(Boolean) as { label: string; before: string; after: string; better: boolean }[];
+    if (!rows.length) return null;
+    const since = new Date(previous.created_at).toLocaleDateString(numLocale, { month: "long" });
+    return { rows, since };
+  })();
 
   if (loadError) {
     return (
-      <div className="min-h-screen bg-[#FDF8F8] flex items-center justify-center p-6">
+      <div className="min-h-[70vh] flex items-center justify-center p-6" style={{ background: SK.ground }}>
         <div className="text-center max-w-sm">
-          <p className="text-[#2A2424] font-medium mb-2">{t("Impossible de charger votre espace pour le moment.")}</p>
-          <p className="text-sm text-gray-500 mb-6">{t("Vérifiez votre connexion et réessayez.")}</p>
-          <button onClick={fetchCustomer} className="px-6 py-3 bg-[#2A2424] text-white text-sm font-semibold rounded-xl hover:bg-black transition-colors">
+          <p className="font-semibold mb-2" style={{ color: SK.ink }}>{t("Impossible de charger votre espace pour le moment.")}</p>
+          <p className="text-[14px] mb-6" style={{ color: SK.muted }}>{t("Vérifiez votre connexion et réessayez.")}</p>
+          <button onClick={fetchCustomer} className="h-12 px-6 rounded-full text-[15px] font-bold" style={{ background: SK.accent, color: "#FFFFFF" }}>
             {t("Réessayer")}
           </button>
         </div>
@@ -283,131 +256,59 @@ export default function AccountPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#FDF8F8] flex items-center justify-center">
-          <div className="flex flex-col items-center gap-4">
-            <div className="relative w-12 h-12">
-              <motion.div
-                className="absolute inset-0 rounded-full border-2 border-[#cd858d]"
-                animate={{ scale: [1, 1.5, 1], opacity: [1, 0, 1] }}
-                transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-              />
-              <motion.div
-                className="absolute inset-2 rounded-full bg-[#cd858d]"
-                animate={{ scale: [0.8, 1, 0.8] }}
-                transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-              />
-            </div>
-            <p className="text-xs text-[#2A2424]/40 tracking-widest uppercase mt-2">{t("Chargement")}</p>
-          </div>
+      <div className="min-h-[70vh] flex items-center justify-center" style={{ background: SK.ground }}>
+        <div className="flex flex-col items-center gap-4" role="status" aria-label={t("Chargement")}>
+          <div className="w-12 h-12 rounded-full animate-spin" style={{ border: `4px solid ${SK.track}`, borderTopColor: SK.accent }} />
+          <p className="text-[13px] font-semibold uppercase tracking-[0.08em]" style={{ color: SK.muted }}>{t("Chargement")}</p>
         </div>
+      </div>
     );
   }
 
-  const navItems = [
-    { id: "dashboard", label: "Tableau de bord", icon: House },
-    { id: "orders", label: "Mes commandes", icon: Package },
-    { id: "scans", label: "Diagnostics IA", icon: Scan },
-    { id: "profile", label: "Profil & Préférences", icon: User },
-  ] as const;
+  const ringR = 56;
+  const ringC = 2 * Math.PI * ringR;
 
   return (
-    <div className="min-h-screen bg-[#FDF8F8] flex flex-col md:flex-row items-stretch">
-      
-      {/* Sidebar (Desktop) / Top Section (Mobile) */}
-      <aside className="w-full md:w-72 md:sticky md:top-[80px] md:h-[calc(100vh-80px)] bg-[#2A2424] flex flex-col shrink-0 overflow-y-auto">
-        <div className="p-5 md:p-8 flex-1 flex flex-col">
-          {/* User Info */}
-          <div className="mb-6 md:mb-10 flex items-center justify-between md:block">
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-[#F4EAEB]/40 mb-1 font-semibold">{t("Mon Espace")}</p>
-              <h2 className="text-lg md:text-xl text-[#F4EAEB]">{customer?.first_name} {customer?.last_name}</h2>
-            </div>
-            
-            {/* Mobile Logout */}
-            <button
-              onClick={handleLogout}
-              className="md:hidden p-2 text-[#F4EAEB]/60 hover:text-[#C97C85] bg-white/5 rounded-full"
-            >
-              <SignOut className="w-5 h-5" />
-            </button>
-          </div>
+    <div className="min-h-screen" style={{ background: SK.ground, color: SK.ink }}>
+      <div className="w-full max-w-5xl mx-auto md:flex md:gap-10 md:px-8 md:py-10">
 
-          {/* Navigation */}
-          <nav className="flex md:flex-col overflow-x-auto md:overflow-visible gap-2 pb-4 md:pb-0 mb-2 md:mb-0 no-scrollbar snap-x">
-            {navItems.map((item) => {
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => { setSelectedOrder(null); setActiveTab(item.id); }}
-                  className={`snap-start whitespace-nowrap md:w-full flex items-center gap-2 md:gap-3 px-4 py-2.5 md:py-3 rounded-xl transition-all duration-200 text-sm font-medium ${
-                    isActive 
-                      ? "bg-[#F4EAEB]/10 text-[#C97C85]" 
-                      : "text-[#F4EAEB]/60 hover:text-[#F4EAEB] hover:bg-[#F4EAEB]/5 bg-white/5 md:bg-transparent"
-                  }`}
-                >
-                  <item.icon weight={isActive ? "fill" : "regular"} className="w-4 h-4 md:w-5 md:h-5" />
-                  {t(item.label)}
-                </button>
-              );
-            })}
-            {isCreator && (
-              <Link
-                href="/ambassadrices"
-                className="snap-start whitespace-nowrap md:w-full flex items-center gap-2 md:gap-3 px-4 py-2.5 md:py-3 rounded-xl transition-all duration-200 text-sm font-medium text-[#E5B6B9] hover:text-[#F4EAEB] hover:bg-[#F4EAEB]/5 bg-white/5 md:bg-transparent"
+        {/* ─── side menu (computer) ─── */}
+        <aside className="hidden md:flex md:flex-col md:w-60 shrink-0 gap-2 self-start sticky top-28">
+          <div className="mb-4">
+            <Eyebrow>{t("Mon espace")}</Eyebrow>
+            <p className="mt-1" style={{ fontFamily: DISPLAY_FONT, fontSize: 24, fontWeight: 700 }}>{customer?.first_name} {customer?.last_name}</p>
+          </div>
+          {NAV.map((item) => {
+            const active = navTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => goTo(item.id)}
+                aria-current={active ? "page" : undefined}
+                className="h-12 px-4 rounded-2xl flex items-center gap-3 text-[15px] font-bold text-left"
+                style={{ background: active ? SK.tint : "transparent", color: active ? SK.accent : SK.ink }}
               >
-                <Sparkle weight="fill" className="w-4 h-4 md:w-5 md:h-5" />
-                {t("Espace créatrice")}
-              </Link>
-            )}
-          </nav>
+                <item.icon weight={active ? "fill" : "regular"} className="w-5 h-5" />
+                {t(item.label)}
+              </button>
+            );
+          })}
+          {isCreator && (
+            <Link href="/ambassadrices" className="h-12 px-4 rounded-2xl flex items-center gap-3 text-[15px] font-bold" style={{ color: SK.ink }}>
+              <Sparkle className="w-5 h-5" /> {t("Espace créatrice")}
+            </Link>
+          )}
+          <button onClick={handleLogout} className="mt-4 h-12 px-4 rounded-2xl flex items-center gap-3 text-[15px] font-semibold text-left" style={{ color: SK.muted }}>
+            <SignOut className="w-5 h-5" /> {t("Se déconnecter")}
+          </button>
+        </aside>
 
-          {/* Bottom section (Desktop only or just styled nicely) */}
-          <div className="mt-auto pt-6 border-t border-[#F4EAEB]/10 hidden md:block">
-            <div className="bg-white/5 rounded-2xl p-4 mb-4">
-              <div className="flex items-center gap-3 mb-3">
-                <tier.icon weight="fill" className="w-5 h-5" style={{ color: tier.color }} />
-                <div>
-                  <p className="text-xs text-[#F4EAEB]/50">{t(tier.name)}</p>
-                  <p className="text-sm font-semibold text-[#F4EAEB]">{animatedPoints.toLocaleString(numLocale)} pts</p>
-                </div>
-              </div>
-              {nextTier && (
-                <div>
-                  <div className="relative h-1 bg-white/10 rounded-full overflow-hidden mb-1.5">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${progressPct}%` }}
-                      transition={{ duration: 1.2, delay: 0.6, ease: "easeOut" }}
-                      className="absolute left-0 top-0 h-full rounded-full"
-                      style={{ background: `linear-gradient(90deg, ${tier.color}, ${nextTier.color})` }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-[#F4EAEB]/40 text-right">
-                    {t("Plus que")} {(nextTier.min - loyaltyPoints).toLocaleString(numLocale)} pts {t("avant")} {t(nextTier.name)}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-[#F4EAEB]/60 hover:text-[#c97c85] transition-colors"
-            >
-              <SignOut className="w-5 h-5" />
-              <span>{t("Se déconnecter")}</span>
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content Area */}
-      <main className="flex-1 w-full max-w-full overflow-hidden">
-        <div className="max-w-5xl mx-auto p-4 sm:p-8">
+        {/* ─── content ─── */}
+        <main className="flex-1 min-w-0 max-w-2xl px-5 pt-6 pb-32 md:px-0 md:pt-0 md:pb-10">
           {partialError && (
-            <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-[#F5C2C0] bg-[#FDECEC] px-4 py-3 text-sm text-[#B42318]">
+            <div className="mb-6 flex items-center justify-between gap-4 rounded-[18px] px-4 py-3 text-[14px]" style={{ background: "#FDECEC", color: "#9F1C12" }}>
               <span>{t("Certaines informations n'ont pas pu être chargées.")}</span>
-              <button onClick={fetchCustomer} className="font-semibold underline underline-offset-2">{t("Réessayer")}</button>
+              <button onClick={fetchCustomer} className="font-bold underline underline-offset-2">{t("Réessayer")}</button>
             </div>
           )}
 
@@ -415,315 +316,232 @@ export default function AccountPage() {
             <OrderDetailsTab order={selectedOrder} onBack={() => setSelectedOrder(null)} />
           ) : (
             <AnimatePresence mode="wait">
-
-            
-            {/* ------------------------- DASHBOARD TAB ------------------------- */}
-            {activeTab === "dashboard" && (
-              <motion.div
-                key="dashboard"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="space-y-8"
-              >
-                
-                {/* Hero Block (Glamour Edition) */}
-                <div className="relative rounded-[2rem] p-8 sm:p-12 overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 bg-white/40 backdrop-blur-3xl">
-                  {/* Animated Background Orbs */}
-                  <div className="absolute top-0 right-0 w-72 h-72 bg-[#E5B6B9] rounded-full mix-blend-multiply filter blur-[80px] opacity-30 animate-pulse" style={{ animationDuration: '8s' }}></div>
-                  <div className="absolute -bottom-8 right-32 w-72 h-72 bg-[#C97C85] rounded-full mix-blend-multiply filter blur-[80px] opacity-20 animate-pulse" style={{ animationDuration: '10s', animationDelay: '2s' }}></div>
-                  <div className="absolute top-1/2 left-0 w-64 h-64 bg-[#F1EFEA] rounded-full mix-blend-multiply filter blur-[60px] opacity-40 animate-pulse" style={{ animationDuration: '12s' }}></div>
-                  
-                  <div className="relative z-10">
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/60 backdrop-blur-md border border-white/50 shadow-sm text-xs font-semibold tracking-wide text-[#C97C85] mb-6"
-                    >
-                      <IconIA className="w-3.5 h-3.5" />
-                      {t("MEMBRE DEPUIS")} {memberSince}
-                    </motion.div>
-                    
-                    <motion.h1 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 }}
-                      className="text-4xl sm:text-5xl font-bold text-[#2A2424] mb-4 leading-[1.15]"
-                    >
-                      {t("Bonjour")} {customer?.first_name},<br />
-                      <span className="italic bg-clip-text text-transparent bg-gradient-to-r from-[#C97C85] via-[#E5B6B9] to-[#C97C85] bg-[length:200%_auto] animate-gradient-x">
-                        {t("bienvenue dans votre espace.")}
-                      </span>
-                    </motion.h1>
-                    
-                    <motion.p 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
-                      className="text-[#2A2424]/70 text-sm sm:text-base max-w-md leading-relaxed font-medium"
-                    >
-                      {t("Retrouvez ici l'historique de vos commandes, votre suivi fidélité et les résultats de vos diagnostics de peau personnalisés.")}
-                    </motion.p>
-                    
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 }}
-                      className="mt-8 flex flex-wrap gap-4"
-                    >
-                      <Link href="/shop" className="px-7 py-3.5 bg-[#2A2424] text-white text-sm font-semibold rounded-2xl shadow-[0_8px_20px_rgba(42,36,36,0.2)] hover:shadow-[0_12px_25px_rgba(42,36,36,0.3)] hover:-translate-y-[2px] transition-all duration-300 flex items-center gap-2 group">
-                        {t("Découvrir la boutique")}
-                        <ArrowRight weight="bold" className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                      </Link>
-                      <Link href="/skin-coach" className="px-7 py-3.5 bg-white/80 backdrop-blur-md text-[#2A2424] border border-white shadow-[0_4px_14px_0_rgba(0,0,0,0.05)] text-sm font-semibold rounded-2xl hover:bg-white hover:-translate-y-[2px] hover:shadow-[0_6px_20px_rgba(0,0,0,0.08)] transition-all duration-300 flex items-center gap-2">
-                        <Scan weight="bold" className="w-4 h-4 text-[#C97C85]" />
-                        {t("Lancer un diagnostic IA")}
-                      </Link>
-                    </motion.div>
+              {/* ─────────── ACCUEIL ─────────── */}
+              {activeTab === "dashboard" && (
+                <motion.div key="dashboard" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col gap-[26px]">
+                  <div className="flex items-center justify-between gap-3">
+                    <Eyebrow>{t("Mon espace")}</Eyebrow>
+                    <span className="px-3 py-[7px] rounded-full text-[12px] font-semibold" style={{ background: SK.surface, border: `1px solid ${SK.line}` }}>
+                      {t("Membre depuis")} {memberSince}
+                    </span>
                   </div>
-                </div>
 
-                {/* KPI Cards (Glamour Edition) */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-                  {[
-                    { label: "Commandes", value: orders.filter((o: any) => o.status !== "canceled").length, icon: Package, color: "#cd858d", glow: "rgba(205,133,141,0.15)", delay: 0.1 },
-                    { label: "Scans IA", value: scans.length, icon: Scan, color: "#cd858d", glow: "rgba(205,133,141,0.15)", delay: 0.2 },
-                    { label: "Fidélité", value: loyaltyPoints.toLocaleString(numLocale), icon: Star, color: "#cd858d", glow: "rgba(205,133,141,0.15)", delay: 0.3 },
-                    { label: "Statut", value: t(tier.name), icon: Seal, color: "#cd858d", glow: "rgba(205,133,141,0.15)", delay: 0.4 },
-                  ].map((stat) => (
-                    <motion.div
-                      key={stat.label}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: stat.delay, duration: 0.5, ease: "easeOut" }}
-                      className="group relative bg-white/60 backdrop-blur-2xl rounded-3xl p-6 border border-white shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] hover:-translate-y-1.5 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] hover:bg-white transition-all duration-500 overflow-hidden"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                      
-                      <div 
-                        className="relative w-12 h-12 rounded-full flex items-center justify-center mb-5 bg-gradient-to-b from-white to-gray-50/50 shadow-[inset_0_2px_4px_rgba(255,255,255,0.8)] border border-gray-100"
-                        style={{ boxShadow: `0 8px 16px -4px ${stat.glow}, inset 0 2px 4px rgba(255,255,255,0.8)` }}
-                      >
-                        <stat.icon weight="fill" className="w-5 h-5 transition-transform duration-500 group-hover:scale-110" style={{ color: stat.color }} />
-                      </div>
-                      
-                      <div className="relative z-10">
-                        <p className="text-3xl font-bold text-[#2A2424] mb-1" style={{ letterSpacing: "-0.03em" }}>{stat.value}</p>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t(stat.label)}</p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
+                  <h1 style={{ margin: 0, fontFamily: DISPLAY_FONT, fontSize: 44, lineHeight: 1.02, fontWeight: 300, letterSpacing: "-0.02em" }}>
+                    {t("Bonjour")} {customer?.first_name},<br />
+                    <span style={{ fontWeight: 700, color: SK.accent }}>{t("belle journée à vous.")}</span>
+                  </h1>
 
-                
-                  {/* Loyalty (mobile: the sidebar card is desktop only) */}
-                <div className="md:hidden bg-white/70 rounded-3xl p-5 border border-white shadow-sm">
-                  <div className="flex items-center gap-3 mb-3">
-                    <tier.icon weight="fill" className="w-6 h-6" style={{ color: tier.color }} />
-                    <div>
-                      <p className="text-xs text-gray-400">{t(tier.name)}</p>
-                      <p className="text-base font-semibold text-[#2A2424]">{loyaltyPoints.toLocaleString(numLocale)} pts</p>
+                  {/* loyalty */}
+                  <div className="rounded-[28px] p-5 flex items-center gap-[18px]" style={{ background: SK.surface, border: `1px solid ${SK.lineSoft}` }}>
+                    <div role="img" aria-label={`${loyaltyPoints} ${t("points fidélité")}, ${t(tier.name)}`} className="relative w-[132px] h-[132px] shrink-0">
+                      <svg width="132" height="132" viewBox="0 0 132 132" className="absolute inset-0" aria-hidden="true">
+                        <defs>
+                          <linearGradient id="loyaltyRing" gradientUnits="userSpaceOnUse" x1="10" y1="122" x2="122" y2="10">
+                            <stop offset="0" stopColor={SK.accentLight} />
+                            <stop offset="1" stopColor={SK.accent} />
+                          </linearGradient>
+                        </defs>
+                        <circle cx="66" cy="66" r={ringR} fill="none" stroke={SK.track} strokeWidth="10" />
+                        <circle
+                          cx="66" cy="66" r={ringR} fill="none" stroke="url(#loyaltyRing)" strokeWidth="10" strokeLinecap="round"
+                          strokeDasharray={`${Math.max(progress, 0.02) * ringC} ${ringC}`} transform="rotate(-90 66 66)"
+                          style={{ transition: "stroke-dasharray 1s ease-out" }}
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span style={{ fontFamily: DISPLAY_FONT, fontSize: 38, fontWeight: 300, lineHeight: 1 }}>{loyaltyPoints.toLocaleString(numLocale)}</span>
+                        <span className="text-[12px] font-semibold" style={{ color: SK.muted }}>{t("points")}</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1.5 min-w-0">
+                      <p className="text-[12px] font-bold uppercase tracking-[0.06em]" style={{ color: SK.muted }}>{t("Fidélité")}</p>
+                      <p style={{ fontFamily: DISPLAY_FONT, fontSize: 26, lineHeight: 1.05, fontWeight: 700, color: SK.accent }}>{t(tier.name)}</p>
+                      {nextTier ? (
+                        <p className="text-[14px] leading-snug">
+                          {t("Plus que")} <span className="font-bold">{(nextTier.min - loyaltyPoints).toLocaleString(numLocale)} {t("points")}</span> {t("avant")} {t(nextTier.name)}
+                        </p>
+                      ) : (
+                        <p className="text-[14px] leading-snug">{t("Vous avez atteint le plus haut niveau.")}</p>
+                      )}
+                      <p className="text-[12px]" style={{ color: SK.muted }}>{t("1 point pour 1 000 FCFA d'achats")}</p>
                     </div>
                   </div>
-                  {nextTier && (
-                    <>
-                      <div className="relative h-1.5 bg-gray-100 rounded-full overflow-hidden mb-1.5">
-                        <div className="absolute left-0 top-0 h-full rounded-full" style={{ width: `${progressPct}%`, background: `linear-gradient(90deg, ${tier.color}, ${nextTier.color})` }} />
-                      </div>
-                      <p className="text-[11px] text-gray-400 text-right">
-                        {t("Plus que")} {(nextTier.min - loyaltyPoints).toLocaleString(numLocale)} pts {t("avant")} {t(nextTier.name)}
-                      </p>
-                    </>
-                  )}
-                </div>
 
-                {/* Dashboard - Dernières Commandes (Full Width) */}
-                  <div className="mt-8">
-                    <div className="flex items-end justify-between mb-6">
-                      <div>
-                        <p className="text-[10px] font-bold tracking-widest text-gray-400 uppercase mb-1">{t("Historique et acheminement")}</p>
-                        <h2 className="text-2xl text-[#2A2424]">{t("Dernières Commandes")}</h2>
-                      </div>
-                      <button onClick={() => setActiveTab('orders')} className="text-sm font-medium text-gray-500 hover:text-[#C97C85] transition-colors flex items-center gap-1">
-                        {t("Toutes mes commandes")} ({orders.length}) <ArrowRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                    
-                    {orders.length > 0 ? (
-                      <div>
-                        {orders.slice(0, 2).map((order: any) => (
-                          <OrderCard key={order.id} order={order} onViewDetails={setSelectedOrder} />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center shadow-sm">
-                        <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                        <p className="text-gray-500 font-medium">{t("Vous n'avez pas encore de commande.")}</p>
-                      </div>
-                    )}
-                  </div>
-
-
-                  
-                  {/* Dashboard - Derniers Diagnostics */}
-                  <div className="mt-16 mb-8 pt-8 border-t border-gray-100">
-                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-                      <div className="flex gap-4 items-center">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#cd858d] to-[#e4a8b0] text-white flex items-center justify-center shadow-md shadow-[#cd858d]/20">
-                          <IconIA className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <h2 className="text-2xl text-[#2A2424] flex items-center gap-2">
-                            {t("Coach Beauté IA")} <span className="px-2 py-0.5 bg-[#FAF5F0] text-[#cd858d] text-[9px] rounded-full uppercase tracking-widest font-sans font-bold border border-[#F1E5D8]">{t("Bêta")}</span>
-                          </h2>
-                          <p className="text-sm text-gray-500 mt-0.5">{t("Votre expert dermo-cosmétique personnel")}</p>
-                        </div>
-                      </div>
-                      <button onClick={() => setActiveTab('scans')} className="text-xs font-bold tracking-widest uppercase text-[#cd858d] hover:text-[#b5737a] transition-colors flex items-center gap-1">
-                        {t("Historique")} ({scans.length}) <ArrowRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                    
-                    {scans.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {scans.slice(0, 2).map((scan: any) => (
-                          <SkinCoachScanCard key={scan.id} scan={scan} onClick={() => handleViewScan(scan)} />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="relative overflow-hidden rounded-[2rem] border border-[#F1E5D8] bg-white p-8 md:p-12 text-center shadow-sm">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-[#cd858d] rounded-full mix-blend-multiply filter blur-[80px] opacity-10"></div>
-                        <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#FAF5F0] rounded-full mix-blend-multiply filter blur-[80px] opacity-40"></div>
-                        
-                        <div className="relative z-10 flex flex-col items-center">
-                          <div className="w-16 h-16 rounded-3xl bg-[#FAF5F0] text-[#cd858d] flex items-center justify-center mb-6 shadow-inner border border-white">
-                            <IconIA className="w-8 h-8" />
-                          </div>
-                          <h3 className="text-xl font-bold text-[#2A2424] mb-3">
-                            {t("Découvrez les besoins de votre peau")}
-                          </h3>
-                          <p className="text-gray-500 font-medium mb-8 max-w-md mx-auto leading-relaxed">
-                            {t("Notre intelligence artificielle analyse votre visage pour créer une routine de soins botanique 100% sur-mesure.")}
-                          </p>
-                          <Link href="/skin-coach" className="inline-flex items-center gap-2 px-8 py-4 bg-[#cd858d] text-white text-sm font-bold uppercase tracking-widest rounded-xl hover:bg-[#b5737a] transition-colors shadow-lg shadow-[#cd858d]/20">
-                            <IconIA className="w-4 h-4" />
-                            {t("Démarrer l'analyse IA")}
-                          </Link>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-            )}
-                  
-            {/* ------------------------- ORDERS TAB ------------------------- */}
-            {activeTab === "orders" && (
-              <motion.div
-                key="orders"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-              >
-                <div className="flex items-end justify-between mb-8">
-                  <div>
-                    <h2 className="text-2xl text-[#2A2424] mb-1">{t("Mes commandes")}</h2>
-                    <p className="text-sm text-gray-500">{t("Retrouvez l'historique et le suivi de vos achats.")}</p>
-                  </div>
-                </div>
-
-                {orders.length > 0 ? (
-                  <div className="space-y-6">
-                    {orders.map((order: any) => (
-                      <OrderCard key={order.id} order={order} onViewDetails={setSelectedOrder} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center shadow-sm">
-                    <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-[#2A2424] mb-2">{t("Aucune commande")}</h3>
-                    <p className="text-sm text-gray-500 max-w-sm mx-auto mb-6">
-                      {t("Vous n'avez pas encore passé de commande sur notre boutique.")}
-                    </p>
-                    <Link href="/shop" className="inline-flex items-center gap-2 px-6 py-3 bg-[#2A2424] text-white text-sm font-medium rounded-xl hover:bg-black transition-colors">
-                      <ShoppingBag className="w-4 h-4" />
-                      {t("Visiter la boutique")}
+                  {/* shortcuts */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <Link href="/skin-coach" className="min-h-[112px] rounded-3xl p-4 flex flex-col justify-between" style={{ background: SK.accent, color: "#FFFFFF" }}>
+                      <Scan className="w-[26px] h-[26px]" />
+                      <span style={{ fontFamily: DISPLAY_FONT, fontSize: 19, lineHeight: 1.1, fontWeight: 700 }}>{t("Nouveau diagnostic")}</span>
+                    </Link>
+                    <Link href="/shop" className="min-h-[112px] rounded-3xl p-4 flex flex-col justify-between" style={{ background: SK.surface, border: `1px solid ${SK.line}`, color: SK.ink }}>
+                      <ShoppingBag className="w-[26px] h-[26px]" />
+                      <span style={{ fontFamily: DISPLAY_FONT, fontSize: 19, lineHeight: 1.1, fontWeight: 700 }}>{t("Voir la boutique")}</span>
                     </Link>
                   </div>
-                )}
-              </motion.div>
-            )}
 
-                        {/* ------------------------- SCANS TAB ------------------------- */}
-            {activeTab === "scans" && (
-              <motion.div
-                key="scans"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-              >
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-                  <div className="flex gap-4 items-center">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#cd858d] to-[#e4a8b0] text-white flex items-center justify-center shadow-md shadow-[#cd858d]/20">
-                      <IconIA className="w-6 h-6" />
+                  {/* current order */}
+                  <section className="flex flex-col gap-3">
+                    <div className="flex items-end justify-between gap-3">
+                      <SectionTitle light={t(currentOrder && isOpen(currentOrder) ? "Commande" : "Dernière")} bold={t(currentOrder && isOpen(currentOrder) ? "en cours" : "commande")} />
+                      {orders.length > 0 && (
+                        <button onClick={() => goTo("orders")} className="text-[13px] font-bold shrink-0 underline-offset-2 hover:underline">{t("Tout voir")} ({orders.length})</button>
+                      )}
                     </div>
-                    <div>
-                      <h2 className="text-2xl text-[#2A2424] flex items-center gap-2">
-                        {t("Diagnostics IA")} <span className="px-2 py-0.5 bg-[#FAF5F0] text-[#cd858d] text-[9px] rounded-full uppercase tracking-widest font-sans font-bold border border-[#F1E5D8]">{t("Bêta")}</span>
-                      </h2>
-                      <p className="text-sm text-gray-500 mt-1">{t("Historique de vos analyses de peau et routines.")}</p>
+                    {currentOrder ? (
+                      <OrderCard order={currentOrder} onViewDetails={setSelectedOrder} />
+                    ) : (
+                      <EmptyCard title={t("Aucune commande pour l'instant")} text={t("Vos commandes et leur suivi apparaîtront ici.")} href="/shop" cta={t("Visiter la boutique")} />
+                    )}
+                  </section>
+
+                  {/* skin */}
+                  <section className="flex flex-col gap-3">
+                    <div className="flex items-end justify-between gap-3">
+                      <SectionTitle light={t("Votre")} bold={t("peau")} />
+                      {scans.length > 0 && (
+                        <button onClick={() => goTo("scans")} className="text-[13px] font-bold shrink-0 underline-offset-2 hover:underline">{t("Historique")} ({scans.length})</button>
+                      )}
                     </div>
-                  </div>
-                  <Link href="/skin-coach" className="hidden sm:flex items-center gap-2 px-6 py-3 bg-[#cd858d] text-white rounded-xl text-sm font-medium hover:opacity-90 shadow-md shadow-[#cd858d]/20">
-                    <Scan className="w-4 h-4" /> {t("Nouveau diagnostic")}
+                    {scans[0] ? (
+                      <ScanCard scan={scans[0]} onOpen={() => handleViewScan(scans[0])} compact />
+                    ) : (
+                      <EmptyCard
+                        title={t("Découvrez les besoins de votre peau")}
+                        text={t("Le Skin Coach analyse trois photos de votre visage et vos réponses pour vous proposer une routine adaptée.")}
+                        href="/skin-coach"
+                        cta={t("Faire mon diagnostic")}
+                      />
+                    )}
+                  </section>
+                </motion.div>
+              )}
+
+              {/* ─────────── COMMANDES ─────────── */}
+              {activeTab === "orders" && (
+                <motion.div key="orders" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col gap-5">
+                  <Eyebrow>{t("Mon espace")}</Eyebrow>
+                  <SectionTitle as="h1" light={t("Mes")} bold={t("commandes")} size={42} />
+                  {orders.length > 0 && (
+                    <div className="flex gap-2 flex-wrap">
+                      {([["all", "Toutes"], ["open", "En cours"], ["done", "Livrées"]] as const).map(([id, label]) => {
+                        const on = orderFilter === id;
+                        return (
+                          <button
+                            key={id}
+                            onClick={() => setOrderFilter(id)}
+                            aria-pressed={on}
+                            className="h-11 px-4 rounded-full text-[14px] font-bold"
+                            style={on ? { background: SK.accent, color: "#FFFFFF" } : { background: SK.surface, color: SK.ink, border: `1px solid ${SK.line}` }}
+                          >
+                            {t(label)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {orders.length === 0 ? (
+                    <EmptyCard title={t("Aucune commande")} text={t("Vous n'avez pas encore passé de commande sur notre boutique.")} href="/shop" cta={t("Visiter la boutique")} />
+                  ) : filteredOrders.length === 0 ? (
+                    <p className="text-[14px] p-5 rounded-[22px] text-center" style={{ color: SK.muted, background: SK.surface, border: `1px dashed ${SK.line}` }}>
+                      {orderFilter === "open" ? t("Aucune commande en cours.") : t("Aucune commande livrée pour l'instant.")}
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-3.5">
+                      {filteredOrders.map((order) => (
+                        <OrderCard key={order.id} order={order} onViewDetails={setSelectedOrder} />
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {/* ─────────── DIAGNOSTICS ─────────── */}
+              {activeTab === "scans" && (
+                <motion.div key="scans" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col gap-[22px]">
+                  <Eyebrow>{t("Mon espace")}</Eyebrow>
+                  <SectionTitle as="h1" light={t("Mes")} bold={t("diagnostics")} size={42} />
+                  <Link href="/skin-coach" className="h-[58px] rounded-full flex items-center justify-center gap-2.5 text-[16px] font-bold" style={{ background: SK.accent, color: "#FFFFFF" }}>
+                    <Scan className="w-5 h-5" /> {t("Faire un nouveau diagnostic")}
                   </Link>
-                </div>
 
-                {scans.length === 0 ? (
-                  <div className="relative overflow-hidden rounded-[2rem] border border-[#F1E5D8] bg-white p-8 md:p-12 text-center shadow-sm">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-[#cd858d] rounded-full mix-blend-multiply filter blur-[80px] opacity-10"></div>
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#FAF5F0] rounded-full mix-blend-multiply filter blur-[80px] opacity-40"></div>
-                    
-                    <div className="relative z-10 flex flex-col items-center">
-                      <div className="w-16 h-16 rounded-3xl bg-[#FAF5F0] text-[#cd858d] flex items-center justify-center mb-6 shadow-inner border border-white">
-                        <IconIA className="w-8 h-8" />
-                      </div>
-                      <h3 className="text-xl font-bold text-[#2A2424] mb-3">
-                        {t("Découvrez les besoins de votre peau")}
-                      </h3>
-                      <p className="text-gray-500 font-medium mb-8 max-w-md mx-auto leading-relaxed">
-                        {t("Notre intelligence artificielle analyse votre visage pour créer une routine de soins botanique 100% sur-mesure.")}
+                  {evolution && (
+                    <div className="rounded-[26px] p-[18px] flex flex-col gap-3" style={{ background: SK.tint }}>
+                      <p style={{ fontFamily: DISPLAY_FONT, fontSize: 22, lineHeight: 1.15, fontWeight: 400 }}>
+                        {t("Votre peau")} <span style={{ fontWeight: 700 }}>{t("depuis")} {evolution.since}</span>
                       </p>
-                      <Link href="/skin-coach" className="inline-flex items-center gap-2 px-8 py-4 bg-[#cd858d] text-white text-sm font-bold uppercase tracking-widest rounded-xl hover:bg-[#b5737a] transition-colors shadow-lg shadow-[#cd858d]/20">
-                        <IconIA className="w-4 h-4" />
-                        {t("Démarrer l'analyse IA")}
-                      </Link>
+                      {evolution.rows.map((r) => (
+                        <div key={r.label} className="flex items-center justify-between gap-2.5 rounded-2xl px-3 py-2.5" style={{ background: SK.surface }}>
+                          <span className="text-[14px] font-semibold">{t(r.label)}</span>
+                          <span className="flex items-center gap-2 text-[13px]">
+                            <span style={{ color: SK.muted }}>{t(r.before)}</span>
+                            <span aria-hidden="true" style={{ color: SK.muted }}>→</span>
+                            <span className="font-bold" style={{ color: r.better ? "#0B6B45" : SK.ink }}>{t(r.after)}</span>
+                          </span>
+                        </div>
+                      ))}
+                      <p className="text-[12px] leading-relaxed" style={{ color: SK.muted }}>
+                        {t("Comparaison de vos deux derniers diagnostics. Les estimations varient aussi avec la lumière des photos.")}
+                      </p>
                     </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {scans.map((scan: any) => (
-                      <SkinCoachScanCard key={scan.id} scan={scan} onClick={() => handleViewScan(scan)} />
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-            )}
+                  )}
 
-            
-            {/* ------------------------- PROFILE TAB ------------------------- */}
-            {activeTab === "profile" && (
-              <ProfileTab 
-                key="profile" 
-                customer={customer} 
-                onUpdate={fetchCustomer} 
-              />
-            )}
+                  {scans.length === 0 ? (
+                    <EmptyCard
+                      title={t("Découvrez les besoins de votre peau")}
+                      text={t("Le Skin Coach analyse trois photos de votre visage et vos réponses pour vous proposer une routine adaptée.")}
+                      href="/skin-coach"
+                      cta={t("Faire mon diagnostic")}
+                    />
+                  ) : (
+                    <div className="flex flex-col gap-3.5">
+                      {scans.map((scan) => (
+                        <ScanCard key={scan.id} scan={scan} onOpen={() => handleViewScan(scan)} />
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              )}
 
-          
+              {/* ─────────── PROFIL ─────────── */}
+              {activeTab === "profile" && (
+                <motion.div key="profile" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col gap-5">
+                  <Eyebrow>{t("Mon espace")}</Eyebrow>
+                  <ProfileTab
+                    customer={customer}
+                    onUpdate={fetchCustomer}
+                    isCreator={isCreator}
+                    onLogout={handleLogout}
+                    loyalty={{ tier: tier.name, points: loyaltyPoints }}
+                  />
+                </motion.div>
+              )}
             </AnimatePresence>
           )}
-        </div>
-      </main>
+        </main>
+      </div>
+
+      {/* ─── bottom tab bar (phone) ─── */}
+      <nav
+        aria-label={t("Navigation de l'espace client")}
+        className="md:hidden fixed left-3 right-3 z-40 h-[68px] rounded-3xl grid grid-cols-4 items-center px-1.5"
+        style={{ bottom: "max(1rem, env(safe-area-inset-bottom))", background: SK.surface, border: `1px solid ${SK.line}`, boxShadow: "0 10px 30px rgba(42,36,36,.08)" }}
+      >
+        {NAV.map((item) => {
+          const active = navTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => goTo(item.id)}
+              aria-current={active ? "page" : undefined}
+              className="h-14 rounded-[18px] flex flex-col items-center justify-center gap-1 text-[11px] font-bold"
+              style={{ background: active ? SK.tint : "transparent", color: active ? SK.accent : SK.muted }}
+            >
+              <item.icon weight={active ? "fill" : "regular"} className="w-5 h-5" />
+              {t(item.label)}
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }

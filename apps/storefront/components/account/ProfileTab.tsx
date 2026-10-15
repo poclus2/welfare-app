@@ -1,40 +1,68 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, MapPin, Plus, PencilSimple, Trash, CheckCircle, WarningCircle, X } from "@phosphor-icons/react";
+import { MapPin, PencilSimple, Trash, CheckCircle, WarningCircle, X, CaretRight, House } from "@phosphor-icons/react";
 import { sdk } from "@/lib/medusa";
 import { useI18n } from "@/lib/i18n-context";
+import { DISPLAY_FONT, SK, SectionTitle } from "@/components/account/account-ui";
 
-export default function ProfileTab({ customer, onUpdate }: { customer: any, onUpdate: () => void }) {
+// Declared outside the component: defined inside, the inputs were re-created on every keystroke
+// (focus lost while typing)
+function Field({ label, type = "text", value, onChange, required = false, disabled = false, list, placeholder }: {
+  label: string; type?: string; value: string; onChange?: (v: string) => void; required?: boolean; disabled?: boolean; list?: string; placeholder?: string;
+}) {
+  return (
+    <label className="flex flex-col gap-1.5 text-[12px] font-bold" style={{ color: SK.muted }}>
+      {label}
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange?.(e.target.value)}
+        required={required}
+        disabled={disabled}
+        list={list}
+        placeholder={placeholder}
+        className="h-[46px] rounded-[14px] px-3 text-[15px] font-normal outline-none focus:ring-2 disabled:opacity-100"
+        style={{
+          border: `1px solid ${disabled ? SK.lineSoft : SK.line}`,
+          background: disabled ? SK.ground : SK.surface,
+          color: SK.ink,
+          ["--tw-ring-color" as any]: SK.accent,
+        }}
+      />
+    </label>
+  );
+}
+
+const emptyAddress = { first_name: "", last_name: "", address_1: "", address_2: "", city: "", postal_code: "", country_code: "CM", phone: "" };
+
+export default function ProfileTab({
+  customer,
+  onUpdate,
+  isCreator = false,
+  onLogout,
+  loyalty,
+}: {
+  customer: any;
+  onUpdate: () => void;
+  isCreator?: boolean;
+  onLogout?: () => void;
+  loyalty?: { tier: string; points: number };
+}) {
   const { t, locale } = useI18n();
   // Customers who signed up with a phone number carry a made-up address (see /store/customers/me/email)
   const isPlaceholderEmail = String(customer?.email || "").toLowerCase().endsWith("@phone.thewelfarecm.com");
   const [newEmail, setNewEmail] = useState("");
   const [cities, setCities] = useState<string[]>([]);
   const [isEditingInfo, setIsEditingInfo] = useState(false);
-  const [formData, setFormData] = useState({
-    first_name: customer?.first_name || "",
-    last_name: customer?.last_name || "",
-    phone: customer?.phone || "",
-  });
+  const [formData, setFormData] = useState({ first_name: customer?.first_name || "", last_name: customer?.last_name || "" });
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error", text: string } | null>(null);
-
-  // Address State
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [isAddingAddress, setIsAddingAddress] = useState(false);
-  const [addressForm, setAddressForm] = useState({
-    first_name: "",
-    last_name: "",
-    address_1: "",
-    address_2: "",
-    city: "",
-    postal_code: "",
-    country_code: "CM",
-    phone: "",
-  });
+  const [addressForm, setAddressForm] = useState(emptyAddress);
 
   useEffect(() => {
     sdk.client
@@ -51,63 +79,59 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
     }
   };
 
+  const flash = (type: "success" | "error", text: string) => {
+    setMessage({ type, text });
+    setTimeout(() => setMessage(null), 4000);
+  };
+
   const handleSaveEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setMessage(null);
     try {
       await sdk.client.fetch("/store/customers/me/email", { method: "POST", body: { email: newEmail } });
-      setMessage({ type: "success", text: t("E-mail enregistré.") });
+      flash("success", t("E-mail enregistré."));
       setNewEmail("");
       onUpdate();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message || t("Une erreur est survenue.") });
+      flash("error", err.message || t("Une erreur est survenue."));
     } finally {
       setLoading(false);
-      setTimeout(() => setMessage(null), 4000);
     }
   };
 
   const handleUpdateInfo = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setMessage(null);
     try {
-      await sdk.store.customer.update({
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-      });
-      setMessage({ type: "success", text: t("Informations mises à jour.") });
+      await sdk.store.customer.update({ first_name: formData.first_name, last_name: formData.last_name });
+      flash("success", t("Informations mises à jour."));
       setIsEditingInfo(false);
       onUpdate();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message || t("Une erreur est survenue.") });
+      flash("error", err.message || t("Une erreur est survenue."));
     } finally {
       setLoading(false);
-      setTimeout(() => setMessage(null), 4000);
     }
   };
 
   const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setMessage(null);
     try {
       if (editingAddressId) {
         await sdk.store.customer.updateAddress(editingAddressId, addressForm);
-        setMessage({ type: "success", text: t("Adresse modifiée.") });
+        flash("success", t("Adresse modifiée."));
       } else {
         await sdk.store.customer.createAddress(addressForm);
-        setMessage({ type: "success", text: t("Nouvelle adresse ajoutée.") });
+        flash("success", t("Nouvelle adresse ajoutée."));
       }
       setIsAddingAddress(false);
       setEditingAddressId(null);
       onUpdate();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message || t("Erreur.") });
+      flash("error", err.message || t("Erreur."));
     } finally {
       setLoading(false);
-      setTimeout(() => setMessage(null), 4000);
     }
   };
 
@@ -116,13 +140,12 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
     setLoading(true);
     try {
       await sdk.store.customer.deleteAddress(id);
-      setMessage({ type: "success", text: t("Adresse supprimée.") });
+      flash("success", t("Adresse supprimée."));
       onUpdate();
     } catch (err: any) {
-      setMessage({ type: "error", text: err.message || t("Erreur lors de la suppression.") });
+      flash("error", err.message || t("Erreur lors de la suppression."));
     } finally {
       setLoading(false);
-      setTimeout(() => setMessage(null), 4000);
     }
   };
 
@@ -141,37 +164,20 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
     setIsAddingAddress(true);
   };
 
-  const InputField = ({ label, type = "text", value, onChange, required = false, disabled = false, list }: any) => (
-    <div className="mb-4">
-      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1.5">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={onChange}
-        required={required}
-        disabled={disabled}
-        list={list}
-        className="w-full bg-white/50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-[#2A2424] focus:outline-none focus:ring-2 focus:ring-[#C97C85]/30 focus:border-[#C97C85] transition-all disabled:opacity-50 shadow-sm"
-      />
-    </div>
-  );
+  const initials = `${(customer?.first_name || "").charAt(0)}${(customer?.last_name || "").charAt(0)}`.toUpperCase() || "W";
+  const setAddr = (key: keyof typeof emptyAddress) => (v: string) => setAddressForm((f) => ({ ...f, [key]: v }));
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      className="space-y-8"
-    >
+    <div className="flex flex-col gap-[22px]">
       <AnimatePresence>
         {message && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }} 
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className={`p-4 rounded-xl flex items-center gap-3 text-sm font-medium ${
-              message.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"
-            }`}
+            role="status"
+            className="p-4 rounded-[18px] flex items-center gap-3 text-[14px] font-semibold"
+            style={message.type === "success" ? { background: "#EEF6F1", color: "#0B6B45" } : { background: "#FDECEC", color: "#9F1C12" }}
           >
             {message.type === "success" ? <CheckCircle weight="fill" className="w-5 h-5" /> : <WarningCircle weight="fill" className="w-5 h-5" />}
             {message.text}
@@ -179,181 +185,142 @@ export default function ProfileTab({ customer, onUpdate }: { customer: any, onUp
         )}
       </AnimatePresence>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
-        {/* --- PERSONAL INFO --- */}
-        <div className="bg-white/60 backdrop-blur-2xl rounded-[2rem] p-8 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-b from-white to-gray-50/50 shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),_0_4px_8px_rgba(201,124,133,0.15)] border border-gray-100">
-                <User weight="fill" className="w-5 h-5 text-[#C97C85]" />
-              </div>
-              <h3 className="text-xl font-semibold text-[#2A2424]">{t("Mes Informations")}</h3>
-            </div>
-            {!isEditingInfo && (
-              <button 
-                onClick={() => setIsEditingInfo(true)}
-                className="text-sm font-medium text-gray-500 hover:text-[#C97C85] transition-colors flex items-center gap-1.5"
-              >
-                <PencilSimple weight="bold" /> {t("Modifier")}
-              </button>
-            )}
-          </div>
-
-          {!isEditingInfo ? (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t("Prénom")}</p>
-                  <p className="text-sm font-medium text-[#2A2424]">{customer?.first_name || "-"}</p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t("Nom")}</p>
-                  <p className="text-sm font-medium text-[#2A2424]">{customer?.last_name || "-"}</p>
-                </div>
-              </div>
-              <div>
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t("Email")}</p>
-                {isPlaceholderEmail ? (
-                  <form onSubmit={handleSaveEmail} className="mt-1">
-                    <p className="text-xs text-gray-500 mb-2">{t("Ajoutez votre e-mail pour recevoir les confirmations de vos commandes.")}</p>
-                    <div className="flex gap-2">
-                      <input
-                        type="email"
-                        required
-                        value={newEmail}
-                        onChange={(e) => setNewEmail(e.target.value)}
-                        placeholder={t("Votre e-mail")}
-                        className="flex-1 min-w-0 bg-white/50 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C97C85]/30 focus:border-[#C97C85]"
-                      />
-                      <button type="submit" disabled={loading} className="px-4 py-2 bg-[#C97C85] text-white text-sm font-semibold rounded-xl hover:bg-[#b0656e] disabled:opacity-70">
-                        {t("Enregistrer")}
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <p className="text-sm font-medium text-[#2A2424]">{customer?.email}</p>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t("Téléphone")}</p>
-                  <p className="text-sm font-medium text-[#2A2424]">{customer?.phone || t("Non renseigné")}</p>
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t("Points Fidélité")}</p>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-bold text-[#C97C85] bg-[#C97C85]/10 px-2 py-0.5 rounded-md">
-                      {customer?.metadata?.loyalty_points || 0} pts
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={handleUpdateInfo} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <InputField label={t("Prénom")} value={formData.first_name} onChange={(e: any) => setFormData({...formData, first_name: e.target.value})} required />
-                <InputField label={t("Nom")} value={formData.last_name} onChange={(e: any) => setFormData({...formData, last_name: e.target.value})} required />
-              </div>
-              {!isPlaceholderEmail && <InputField label={t("Email (Lecture seule)")} value={customer?.email} disabled />}
-              <InputField label={t("Téléphone (identifiant de connexion)")} type="tel" value={customer?.phone || ""} disabled />
-              
-              <div className="pt-4 flex items-center gap-3">
-                <button type="submit" disabled={loading} className="px-6 py-2.5 bg-[#C97C85] text-white text-sm font-semibold rounded-xl hover:bg-[#b0656e] transition-all shadow-[0_4px_14px_0_rgba(201,124,133,0.39)] hover:shadow-[0_6px_20px_rgba(201,124,133,0.23)] hover:-translate-y-[1px] disabled:opacity-70">
-                  {loading ? t("Enregistrement...") : t("Enregistrer")}
-                </button>
-                <button type="button" onClick={() => setIsEditingInfo(false)} className="px-6 py-2.5 text-gray-500 text-sm font-medium hover:text-[#2A2424] transition-colors">
-                  {t("Annuler")}
-                </button>
-              </div>
-            </form>
-          )}
+      {/* identity */}
+      <div className="flex items-center gap-4">
+        <div className="w-[72px] h-[72px] rounded-full flex items-center justify-center text-white shrink-0" style={{ background: SK.accent, fontFamily: DISPLAY_FONT, fontSize: 28, fontWeight: 700 }}>
+          {initials}
         </div>
-
-        {/* --- ADDRESSES --- */}
-        <div className="bg-white/60 backdrop-blur-2xl rounded-[2rem] p-8 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-b from-white to-gray-50/50 shadow-[inset_0_2px_4px_rgba(255,255,255,0.8),_0_4px_8px_rgba(139,92,246,0.15)] border border-gray-100">
-                <MapPin weight="fill" className="w-5 h-5 text-[#8B5CF6]" />
-              </div>
-              <h3 className="text-xl font-semibold text-[#2A2424]">{t("Carnet d'adresses")}</h3>
-            </div>
-            {!isAddingAddress && (
-              <button 
-                onClick={() => {
-                  setAddressForm({ first_name: "", last_name: "", address_1: "", address_2: "", city: "", postal_code: "", country_code: "CM", phone: "" });
-                  setEditingAddressId(null);
-                  setIsAddingAddress(true);
-                }}
-                className="text-sm font-medium text-[#8B5CF6] hover:text-[#7c3aed] transition-colors flex items-center gap-1.5"
-              >
-                <Plus weight="bold" /> {t("Ajouter")}
-              </button>
-            )}
-          </div>
-
-          {isAddingAddress ? (
-            <form onSubmit={handleSaveAddress} className="space-y-4">
-              <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
-                <h4 className="font-semibold text-[#2A2424]">{editingAddressId ? t("Modifier l'adresse") : t("Nouvelle adresse")}</h4>
-                <button type="button" onClick={() => setIsAddingAddress(false)} className="text-gray-400 hover:text-[#2A2424] transition-colors"><X className="w-5 h-5" /></button>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <InputField label={t("Prénom")} value={addressForm.first_name} onChange={(e: any) => setAddressForm({...addressForm, first_name: e.target.value})} required />
-                <InputField label={t("Nom")} value={addressForm.last_name} onChange={(e: any) => setAddressForm({...addressForm, last_name: e.target.value})} required />
-              </div>
-              
-              <InputField label={t("Adresse")} value={addressForm.address_1} onChange={(e: any) => setAddressForm({...addressForm, address_1: e.target.value})} required />
-              <InputField label={t("Complément (Optionnel)")} value={addressForm.address_2} onChange={(e: any) => setAddressForm({...addressForm, address_2: e.target.value})} />
-              
-              <div className="grid grid-cols-2 gap-4">
-                <InputField label={t("Code postal (optionnel)")} value={addressForm.postal_code} onChange={(e: any) => setAddressForm({...addressForm, postal_code: e.target.value})} />
-                <div>
-                  <InputField label={t("Ville")} value={addressForm.city} list="profile-cities" onChange={(e: any) => setAddressForm({...addressForm, city: e.target.value})} required />
-                  <datalist id="profile-cities">{cities.map((c) => <option key={c} value={c} />)}</datalist>
-                </div>
-              </div>
-              
-              <InputField label={t("Téléphone (Optionnel)")} value={addressForm.phone} onChange={(e: any) => setAddressForm({...addressForm, phone: e.target.value})} />
-
-              <div className="pt-4 flex items-center gap-3">
-                <button type="submit" disabled={loading} className="px-6 py-2.5 bg-[#8B5CF6] text-white text-sm font-semibold rounded-xl hover:bg-[#7c3aed] transition-all shadow-[0_4px_14px_0_rgba(139,92,246,0.39)] hover:shadow-[0_6px_20px_rgba(139,92,246,0.23)] hover:-translate-y-[1px] disabled:opacity-70">
-                  {loading ? t("Enregistrement...") : t("Enregistrer")}
-                </button>
-              </div>
-            </form>
-          ) : (
-            <div className="space-y-4">
-              {customer?.addresses?.length > 0 ? (
-                customer.addresses.map((addr: any) => (
-                  <div key={addr.id} className="group relative p-5 rounded-2xl border border-white bg-white/40 hover:bg-white hover:border-gray-100 shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:-translate-y-[1px] transition-all">
-                    <p className="font-semibold text-[#2A2424] mb-1">{addr.first_name} {addr.last_name}</p>
-                    <p className="text-sm text-gray-500 leading-relaxed">
-                      {addr.address_1} {addr.address_2 ? `, ${addr.address_2}` : ""}<br />
-                      {[addr.postal_code, addr.city].filter(Boolean).join(" ")}, {countryName(addr.country_code)}<br />
-                      {addr.phone && <span className="text-gray-400 mt-1 block">{addr.phone}</span>}
-                    </p>
-                    
-                    <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => openEditAddress(addr)} className="p-1.5 text-gray-400 hover:text-[#8B5CF6] hover:bg-purple-50 rounded-lg transition-colors" title={t("Modifier")}><PencilSimple className="w-4 h-4" /></button>
-                      <button onClick={() => handleDeleteAddress(addr.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title={t("Supprimer")}><Trash className="w-4 h-4" /></button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-10 bg-white/40 rounded-2xl border border-white border-dashed">
-                  <MapPin className="w-8 h-8 text-gray-300 mx-auto mb-3" />
-                  <p className="text-sm text-gray-500 font-medium">{t("Aucune adresse enregistrée.")}</p>
-                </div>
-              )}
-            </div>
-          )}
+        <div className="min-w-0">
+          <SectionTitle as="h1" light={customer?.first_name || ""} bold={customer?.last_name ? `${customer.last_name.charAt(0).toUpperCase()}.` : ""} size={34} />
+          {loyalty && <p className="mt-1.5 text-[14px]" style={{ color: SK.muted }}>{t(loyalty.tier)} · {loyalty.points.toLocaleString(locale === "en" ? "en-GB" : "fr-FR")} {t("points")}</p>}
         </div>
-        
       </div>
-    </motion.div>
+
+      {/* personal information */}
+      <div className="rounded-[26px] p-[18px] flex flex-col gap-3.5" style={{ background: SK.surface, border: `1px solid ${SK.lineSoft}` }}>
+        <div className="flex items-center justify-between">
+          <h2 style={{ fontFamily: DISPLAY_FONT, fontSize: 22, fontWeight: 700 }}>{t("Mes informations")}</h2>
+          <button
+            type="button"
+            onClick={() => { setFormData({ first_name: customer?.first_name || "", last_name: customer?.last_name || "" }); setIsEditingInfo((v) => !v); }}
+            className="h-10 px-3.5 rounded-full text-[13px] font-bold flex items-center gap-1.5"
+            style={{ border: `1px solid ${SK.ink}`, color: SK.ink, background: SK.surface }}
+          >
+            {isEditingInfo ? t("Annuler") : <><PencilSimple weight="bold" className="w-3.5 h-3.5" /> {t("Modifier")}</>}
+          </button>
+        </div>
+        <form onSubmit={handleUpdateInfo} className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-2.5">
+            <Field label={t("Prénom")} value={isEditingInfo ? formData.first_name : customer?.first_name || ""} onChange={(v) => setFormData((f) => ({ ...f, first_name: v }))} required disabled={!isEditingInfo} />
+            <Field label={t("Nom")} value={isEditingInfo ? formData.last_name : customer?.last_name || ""} onChange={(v) => setFormData((f) => ({ ...f, last_name: v }))} required disabled={!isEditingInfo} />
+          </div>
+          <Field label={t("Téléphone · identifiant de connexion")} type="tel" value={customer?.phone || t("Non renseigné")} disabled />
+          {!isPlaceholderEmail && <Field label={t("E-mail")} value={customer?.email || ""} disabled />}
+          {isEditingInfo && (
+            <button type="submit" disabled={loading} className="h-[52px] rounded-full text-[15px] font-bold disabled:opacity-70" style={{ background: SK.accent, color: "#FFFFFF" }}>
+              {loading ? t("Enregistrement...") : t("Enregistrer")}
+            </button>
+          )}
+        </form>
+        {isPlaceholderEmail && (
+          <form onSubmit={handleSaveEmail} className="flex flex-col gap-2 pt-1">
+            <Field label={t("E-mail · pour recevoir vos confirmations")} type="email" value={newEmail} onChange={setNewEmail} required placeholder={t("Votre e-mail")} />
+            <button type="submit" disabled={loading} className="self-start h-11 px-4 rounded-full text-[14px] font-bold disabled:opacity-70" style={{ background: SK.accent, color: "#FFFFFF" }}>
+              {t("Enregistrer l'e-mail")}
+            </button>
+          </form>
+        )}
+      </div>
+
+      {/* address book */}
+      <div className="flex flex-col gap-3">
+        <SectionTitle light={t("Carnet")} bold={t("d'adresses")} size={26} />
+
+        {isAddingAddress ? (
+          <form onSubmit={handleSaveAddress} className="rounded-[26px] p-[18px] flex flex-col gap-3" style={{ background: SK.surface, border: `1px solid ${SK.lineSoft}` }}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-[16px] font-bold">{editingAddressId ? t("Modifier l'adresse") : t("Nouvelle adresse")}</h3>
+              <button type="button" aria-label={t("Fermer")} onClick={() => setIsAddingAddress(false)} className="w-10 h-10 rounded-full flex items-center justify-center" style={{ border: `1px solid ${SK.line}` }}>
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              <Field label={t("Prénom")} value={addressForm.first_name} onChange={setAddr("first_name")} required />
+              <Field label={t("Nom")} value={addressForm.last_name} onChange={setAddr("last_name")} required />
+            </div>
+            <Field label={t("Adresse")} value={addressForm.address_1} onChange={setAddr("address_1")} required />
+            <Field label={t("Complément (optionnel)")} value={addressForm.address_2} onChange={setAddr("address_2")} />
+            <div className="grid grid-cols-2 gap-2.5">
+              <Field label={t("Ville")} value={addressForm.city} onChange={setAddr("city")} list="profile-cities" required />
+              <Field label={t("Code postal (optionnel)")} value={addressForm.postal_code} onChange={setAddr("postal_code")} />
+            </div>
+            <datalist id="profile-cities">{cities.map((c) => <option key={c} value={c} />)}</datalist>
+            <Field label={t("Téléphone (optionnel)")} type="tel" value={addressForm.phone} onChange={setAddr("phone")} />
+            <button type="submit" disabled={loading} className="h-[52px] rounded-full text-[15px] font-bold disabled:opacity-70" style={{ background: SK.accent, color: "#FFFFFF" }}>
+              {loading ? t("Enregistrement...") : t("Enregistrer l'adresse")}
+            </button>
+          </form>
+        ) : (
+          <>
+            {(customer?.addresses || []).length > 0 ? (
+              customer.addresses.map((addr: any) => (
+                <div key={addr.id} className="rounded-[22px] p-4 flex gap-3 items-start" style={{ background: SK.surface, border: `1px solid ${SK.lineSoft}` }}>
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: addr.is_default_shipping ? SK.tint : SK.ground }}>
+                    {addr.is_default_shipping ? <MapPin weight="fill" className="w-[18px] h-[18px]" style={{ color: SK.accent }} /> : <House className="w-[18px] h-[18px]" style={{ color: SK.muted }} />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[15px] font-bold">{addr.first_name} {addr.last_name}</span>
+                      {addr.is_default_shipping && <span className="px-2 py-0.5 rounded-full text-[11px] font-bold" style={{ background: SK.tint }}>{t("Par défaut")}</span>}
+                    </div>
+                    <p className="text-[14px] leading-relaxed" style={{ color: "#3F3331" }}>
+                      {addr.address_1}{addr.address_2 ? `, ${addr.address_2}` : ""}<br />
+                      {[addr.postal_code, addr.city].filter(Boolean).join(" ")}, {countryName(addr.country_code)}
+                    </p>
+                    {addr.phone && <p className="text-[13px]" style={{ color: SK.muted }}>{addr.phone}</p>}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button onClick={() => openEditAddress(addr)} aria-label={t("Modifier l'adresse")} className="w-10 h-10 rounded-full flex items-center justify-center" style={{ border: `1px solid ${SK.line}`, background: SK.surface }}>
+                      <PencilSimple className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDeleteAddress(addr.id)} aria-label={t("Supprimer l'adresse")} className="w-10 h-10 rounded-full flex items-center justify-center" style={{ border: `1px solid ${SK.line}`, background: SK.surface }}>
+                      <Trash className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-[14px] rounded-[22px] p-4 text-center" style={{ color: SK.muted, background: SK.surface, border: `1px dashed ${SK.line}` }}>
+                {t("Aucune adresse enregistrée.")}
+              </p>
+            )}
+            <button
+              onClick={() => { setAddressForm(emptyAddress); setEditingAddressId(null); setIsAddingAddress(true); }}
+              className="h-[50px] rounded-full text-[14px] font-bold"
+              style={{ border: `1px dashed ${SK.accent}`, background: SK.surface, color: SK.ink }}
+            >
+              + {t("Ajouter une adresse")}
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* links */}
+      <div className="flex flex-col gap-2.5">
+        {isCreator && (
+          <Link href="/ambassadrices" className="h-[58px] px-[18px] rounded-[20px] flex items-center justify-between text-[15px] font-bold" style={{ background: SK.tint, color: SK.ink }}>
+            {t("Espace créatrice")} <CaretRight className="w-4 h-4" />
+          </Link>
+        )}
+        <Link href={`/account/reset-password${customer?.phone ? `?phone=${encodeURIComponent(customer.phone)}` : ""}`} className="h-[58px] px-[18px] rounded-[20px] flex items-center justify-between text-[15px] font-bold" style={{ background: SK.surface, border: `1px solid ${SK.lineSoft}`, color: SK.ink }}>
+          {t("Changer mon mot de passe")} <CaretRight className="w-4 h-4" />
+        </Link>
+        {onLogout && (
+          <button onClick={onLogout} className="h-[52px] rounded-full text-[15px] font-bold" style={{ border: `1px solid ${SK.line}`, background: SK.surface, color: SK.ink }}>
+            {t("Se déconnecter")}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
