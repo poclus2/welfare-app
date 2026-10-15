@@ -14,6 +14,7 @@ import { LevelRing } from "@/components/ui/skin-coach/level-ring";
 import { FaceScanFrame, type FaceMarker } from "@/components/ui/skin-coach/face-scan-frame";
 import { DISPLAY_FONT, SK } from "@/components/ui/skin-coach/theme";
 import { RoutineAudioPlayer } from "@/components/ui/skin-coach/routine-audio-player";
+import { withoutScores } from "@/lib/coach-message";
 
 interface Props {
   result: SkinAnalysisResult;
@@ -307,7 +308,7 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
                 <path d="M0 24V14C0 6 4 1.5 12 0l1.4 3.4C8.8 4.8 6.8 7.6 6.6 11H12v13H0zm17 0V14c0-8 4-12.5 12-14l1 3.4C25.8 4.8 23.8 7.6 23.6 11H29v13H17z" fill={SK.accent} />
               </svg>
               <p style={{ fontFamily: DISPLAY_FONT, fontSize: 20, lineHeight: 1.35, fontWeight: 400, margin: 0, whiteSpace: "pre-line" }}>
-                {result.empathetic_message}
+                {withoutScores(result.empathetic_message)}
               </p>
               <div className="text-[13px] font-semibold" style={{ color: SK.muted }}>Votre Skin Coach</div>
               {/* the message read aloud (accounts only, like the routine) */}

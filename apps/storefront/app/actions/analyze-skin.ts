@@ -23,6 +23,7 @@ import {
 } from "@/lib/skin-routine";
 import { callOpenRouter, parseJsonAnswer, type AiErrorCode } from "@/lib/openrouter";
 import { buildRoutineScript, signScript } from "@/lib/routine-audio";
+import { withoutScores } from "@/lib/coach-message";
 import type { FaceMap } from "@/lib/face-map";
 import { ACNE_SCAN_LOW, ACNE_SCAN_THRESHOLD, answerOf, FOLLOWUP_QUESTIONS, moisturizerTextures, readAcne, readDarkSpots, readSkinProfile, TEXTURE_LABEL } from "@/lib/skin-profile";
 
@@ -901,6 +902,7 @@ TA MISSION (4 points obligatoires)
    Rédige un message extrêmement humain, chaleureux et bienveillant, en vouvoyant la cliente.
    Ce message DOIT faire le lien entre ce que voit objectivement l'IA (métriques visuelles) et ce que ressent subjectivement la cliente (ses déclarations dans le questionnaire).
    Il doit valider ses inquiétudes et la rassurer avec bienveillance, sans promesse excessive.
+   AUCUN CHIFFRE : n'écris jamais de score, de note sur 100 ni de pourcentage (pas de « 95/100 », « 45/100 », « 12 % »). Les notes des photos sont des estimations internes : exprime-les uniquement en mots (faible, modéré, marqué ; bonne, moyenne, à renforcer).
 
 2. TYPE DE PEAU FINAL ('final_skin_type') :
    Détermine le type de peau avec nuance (ex: "Peau Mixte à tendance déshydratée").
@@ -1098,7 +1100,7 @@ FORMAT JSON ATTENDU :
     const finalResult: SkinAnalysisResult = {
       final_skin_type: parsed.skin_type_detected || parsed.final_skin_type,
       estimated_skin_age: parsed.estimated_skin_age,
-      empathetic_message: parsed.skin_coach_intro || parsed.empathetic_message,
+      empathetic_message: withoutScores(parsed.skin_coach_intro || parsed.empathetic_message),
       kbeauty_routine: routineSteps as SkinAnalysisResult["kbeauty_routine"],
       metrics: qwenResult.metrics,
       melanin_phototype: qwenResult.melanin_phototype,
