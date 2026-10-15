@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { SkinAnalysisResult } from "@/app/actions/analyze-skin";
-import { ShoppingBag, ArrowCounterClockwise, CaretRight, Package, Plus, CheckCircle, Printer, LockKey, FirstAidKit, Info } from "@phosphor-icons/react";
+import { ShoppingBag, ArrowCounterClockwise, CaretRight, Package, Plus, CheckCircle, FilePdf, CircleNotch, LockKey, FirstAidKit, Info } from "@phosphor-icons/react";
 import Link from "next/link";
 import posthog from "posthog-js";
 import { useRouter } from "next/navigation";
@@ -208,6 +208,52 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
     }
     setAllAdded(true);
     setAddingAll(false);
+  };
+
+  // ─── PDF of the diagnostic (components/ui/skin-coach/diagnostic-pdf.tsx, loaded on the first tap) ───
+  const [pdfState, setPdfState] = useState<"idle" | "busy" | "error">("idle");
+  const plainSpaces = (s: string) => s.replace(/[\u202f\u00a0]/g, " "); // the PDF fonts have no narrow space
+  const handleDownloadPdf = async () => {
+    if (pdfState === "busy") return;
+    setPdfState("busy");
+    posthog.capture("skin_coach_pdf_requested", { scan_id: thisScanId });
+    try {
+      const [{ downloadDiagnosticPdf }, me] = await Promise.all([
+        import("@/components/ui/skin-coach/diagnostic-pdf"),
+        sdk.store.customer.retrieve().catch(() => null),
+      ]);
+      await downloadDiagnosticPdf({
+        firstName: (me as any)?.customer?.first_name || undefined,
+        date: (result as any).created_at ? new Date((result as any).created_at) : new Date(),
+        skinType: result.final_skin_type,
+        phototype: result.melanin_phototype,
+        concerns,
+        levels: metricDefs.map((m) => {
+          const r = ringOf(m);
+          return { label: m.label, level: r.label, thirds: r.thirds, hint: m.hint };
+        }),
+        message: withoutScores(result.empathetic_message),
+        notices: result.notices || [],
+        reviewed: result.review?.status,
+        face: facePhoto && faceMap && faceMarkers.length ? { photo: facePhoto, map: faceMap, markers: faceMarkers } : undefined,
+        routine: routine.map((s) => {
+          const p = s.medusa_product_id ? products[s.medusa_product_id] : null;
+          return {
+            stepName: s.step_name,
+            productTitle: p?.title || s.product_name || "Produit recommandé",
+            brand: p?.brand,
+            price: p?.amount != null ? plainSpaces(fmtPrice(p.amount, p.currency)) : undefined,
+            imageUrl: p?.thumbnail,
+            why: s.explanation_for_client || s.explanation,
+          };
+        }),
+        total: total > 0 ? plainSpaces(fmtPrice(total, currency)) : undefined,
+      });
+      setPdfState("idle");
+    } catch (e) {
+      console.error("[SkinCoach] PDF failed", e);
+      setPdfState("error");
+    }
   };
 
   const step = routine[Math.min(selectedStep, routine.length - 1)];
@@ -482,6 +528,21 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
             Ce diagnostic est établi par une intelligence artificielle à partir de vos photos et de vos réponses. Il ne constitue pas un avis médical et ne remplace pas la consultation d&apos;un dermatologue. En cas de lésions, de douleur, d&apos;irritation persistante, de grossesse ou de traitement en cours, demandez conseil à un professionnel de santé avant de commencer une nouvelle routine.
           </p>
 
+          {!locked && (
+            <div className="flex flex-col items-center gap-1.5">
+              <button
+                onClick={handleDownloadPdf}
+                disabled={pdfState === "busy"}
+                className="h-[52px] px-6 rounded-full flex items-center justify-center gap-2 text-[15px] font-bold disabled:opacity-70"
+                style={{ background: SK.tint, color: SK.ink }}
+              >
+                {pdfState === "busy" ? <CircleNotch className="w-5 h-5 animate-spin" /> : <FilePdf className="w-5 h-5" style={{ color: SK.accent }} />}
+                {pdfState === "busy" ? "Préparation du PDF…" : "Télécharger mon diagnostic (PDF)"}
+              </button>
+              {pdfState === "error" && <p className="text-[13px]" style={{ color: SK.accent }}>Le PDF n'a pas pu être préparé. Réessayez.</p>}
+            </div>
+          )}
+
           {/* out of the sticky bar: it hid too much of the page on phones */}
           <button
             onClick={onRetake}
@@ -555,12 +616,13 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
                 </button>
               )}
               <button
-                onClick={() => window.print()}
-                aria-label="Imprimer ou enregistrer le rapport en PDF"
-                className="w-[60px] h-[60px] shrink-0 flex items-center justify-center rounded-full"
+                onClick={handleDownloadPdf}
+                disabled={pdfState === "busy"}
+                aria-label="Télécharger mon diagnostic en PDF"
+                className="w-[60px] h-[60px] shrink-0 flex items-center justify-center rounded-full disabled:opacity-70"
                 style={{ background: SK.surface, border: `1px solid ${SK.line}`, color: SK.ink }}
               >
-                <Printer className="w-6 h-6" />
+                {pdfState === "busy" ? <CircleNotch className="w-6 h-6 animate-spin" /> : <FilePdf className="w-6 h-6" />}
               </button>
             </div>
           )}

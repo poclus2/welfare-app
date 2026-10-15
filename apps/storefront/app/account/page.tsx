@@ -192,6 +192,7 @@ export default function AccountPage() {
       notices: scanNotices(scan),
       review: scan.review_status ? { status: scan.review_status, corrections: scan.review_corrections || [] } : undefined,
       metrics: scan.metrics,
+      created_at: scan.created_at, // date printed on the PDF
       id: scan.id,
     } as any);
     router.push("/skin-coach/result");
