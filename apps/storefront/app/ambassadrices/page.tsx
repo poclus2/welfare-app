@@ -5,6 +5,7 @@ import { CircleNotch } from "@phosphor-icons/react";
 import { sdk } from "@/lib/medusa";
 import { LandingAmbassadrice } from "@/components/ambassadrices/landing";
 import { DashboardInfluenceur } from "@/components/ambassadrices/dashboard";
+import { SK } from "@/components/ui/skin-coach/theme";
 
 // A logged-in customer whose account is a creator space sees her dashboard; everyone else
 // (logged out, or a customer who isn't a creator) sees the programme page.
@@ -30,10 +31,10 @@ export default function AmbassadricesPage() {
   }, []);
 
   return (
-    <main className="flex flex-col w-full bg-[#FDFDFC]">
+    <main className="flex flex-col w-full" style={{ background: SK.ground }}>
       {state === "loading" ? (
         <div className="w-full flex items-center justify-center py-32">
-          <CircleNotch className="w-10 h-10 text-[#C2164A] animate-spin" />
+          <CircleNotch className="w-10 h-10 animate-spin" style={{ color: SK.accent }} />
         </div>
       ) : state === "creator" ? (
         <DashboardInfluenceur initialData={creatorData} />

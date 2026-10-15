@@ -55,6 +55,11 @@ export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) 
   
   const pendingCommission = pendingOrders.reduce((s: number, o: any) => s + o.commission_amount, 0)
   const validatedCommission = validatedOrders.reduce((s: number, o: any) => s + o.commission_amount, 0)
+  // Everything already paid since she joined: the months marked paid
+  const paidMonths = await service.listCreatorMonthlySummaries(
+    { creator_id: creator.id, commission_status: 'paid' }, {}
+  )
+  const paidCommission = paidMonths.reduce((s: number, m: any) => s + (Number(m.total_commission) || 0), 0)
   
   // Panier moyen
   const validOrdersAll = await service.listCreatorOrders(
@@ -98,10 +103,12 @@ export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) 
       threshold: nextTier.min,
       remaining: nextTier.min - currentRevenue,
     } : null,
+    // the programme's tiers, shown on the creator's earnings page
+    tiers: sortedTiers.map((t: any) => ({ min: t.min, max: t.max ?? null, rate: t.rate })),
     commissions: {
       pending: Math.round(pendingCommission),
       validated: Math.round(validatedCommission),
-      paid: 0, // TODO: sum from paid months
+      paid: Math.round(paidCommission),
     }
   })
 }
