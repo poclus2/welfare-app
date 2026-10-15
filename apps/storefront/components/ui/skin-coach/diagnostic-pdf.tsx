@@ -1,8 +1,8 @@
-"use client";
-
 // The diagnostic as a real A4 PDF, downloaded in one tap (owner's choice, 2026-10-15: printing the web
 // page went through the browser's print window and printed the site's header). Loaded only when she
 // taps the button (dynamic import), so the PDF library never weighs on the result page.
+// No "use client" here: with it, Next treated the module as a client entry and evaluated it while
+// rendering the page on the server, which loaded the Node build of react-pdf (missing pdfkit files).
 
 import { Document, Font, Image, Page, Path, Circle, Svg, StyleSheet, Text, View, pdf } from "@react-pdf/renderer";
 import type { FaceMap, FaceZone } from "@/lib/face-map";
