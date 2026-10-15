@@ -423,12 +423,12 @@ export default function SkinCoachFlow() {
       const early = earlyVisualRef.current ? await earlyVisualRef.current : null;
       // glasses already seen by the early analysis: no need to ask the server again
       if (early && !early.success && early.code === "GLASSES") return showFailure(early);
-      const result = await analyzeSkin(photos, finalResponses, photoConsent, early?.success ? early.visual : undefined);
+      const result = await analyzeSkin(photos, finalResponses, photoConsent, early?.success ? early.visual : undefined, faceMapRef.current);
       if (result.success) {
         posthog.capture("skin_coach_analysis_succeeded", { scan_id: result.data.scan_id, early_visual: !!early?.success });
         rememberPendingScan(result.data.scan_id); // attached to the account as soon as she is logged in
         setResult(result.data);
-        setFace(photos.front, faceMapRef.current); // memory only, see use-skin-coach-store
+        setFace(photos.front, faceMapRef.current, result.data.scan_id ?? null); // memory; also saved with the photos
         setAnalysisProgress(100);
         setTimeout(() => {
           router.push("/skin-coach/result");

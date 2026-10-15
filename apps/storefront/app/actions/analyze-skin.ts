@@ -23,6 +23,7 @@ import {
 } from "@/lib/skin-routine";
 import { callOpenRouter, parseJsonAnswer, type AiErrorCode } from "@/lib/openrouter";
 import { buildRoutineScript, signScript } from "@/lib/routine-audio";
+import type { FaceMap } from "@/lib/face-map";
 import { ACNE_SCAN_LOW, ACNE_SCAN_THRESHOLD, answerOf, FOLLOWUP_QUESTIONS, moisturizerTextures, readAcne, readDarkSpots, readSkinProfile, TEXTURE_LABEL } from "@/lib/skin-profile";
 
 export type UserResponse = {
@@ -543,7 +544,10 @@ export async function analyzeSkin(
   images: FaceImages,
   userResponses: UserResponse[],
   photoConsent: boolean,
-  earlyVisual?: SignedVisualAnalysis
+  earlyVisual?: SignedVisualAnalysis,
+  // where the face is on the front photo: saved with the photos (and purged with them), so she sees the
+  // analysis filter again when she reopens the diagnostic. The API validates it.
+  faceMap?: FaceMap | null
 ): Promise<{ success: true; data: SkinAnalysisResult } | ActionFailure> {
   try {
     const invalid = checkInputs(images, photoConsent);
@@ -1133,6 +1137,7 @@ FORMAT JSON ATTENDU :
             front: images.front,
             left: images.left,
             right: images.right,
+            ...(faceMap ? { front_map: faceMap } : {}),
           },
           qwen_raw_summary:
             qwenResult.visual_reasoning ||

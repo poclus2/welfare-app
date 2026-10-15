@@ -5,12 +5,14 @@ import type { FaceMap } from '@/lib/face-map'
 
 interface SkinCoachState {
   result: SkinAnalysisResult | null;
-  // front photo and face landmarks, for the analysis filter on the result page. Memory only (not
-  // persisted): the photo never stays in the browser's storage, and is gone after a reload.
+  // front photo and face landmarks of one diagnostic (faceScanId), for the analysis filter on the result
+  // page. Memory only (not persisted in the browser); when she reopens a diagnostic, they come back from
+  // the server, where they are kept with her photos.
   facePhoto: string | null;
   faceMap: FaceMap | null;
+  faceScanId: string | null;
   setResult: (result: SkinAnalysisResult) => void;
-  setFace: (photo: string | null, map: FaceMap | null) => void;
+  setFace: (photo: string | null, map: FaceMap | null, scanId: string | null) => void;
   clearResult: () => void;
 }
 
@@ -20,9 +22,10 @@ export const useSkinCoachStore = create<SkinCoachState>()(
       result: null,
       facePhoto: null,
       faceMap: null,
+      faceScanId: null,
       setResult: (result) => set({ result }),
-      setFace: (facePhoto, faceMap) => set({ facePhoto, faceMap }),
-      clearResult: () => set({ result: null, facePhoto: null, faceMap: null }),
+      setFace: (facePhoto, faceMap, faceScanId) => set({ facePhoto, faceMap, faceScanId }),
+      clearResult: () => set({ result: null, facePhoto: null, faceMap: null, faceScanId: null }),
     }),
     {
       name: 'welfare-skin-coach-storage',

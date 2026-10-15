@@ -1,6 +1,7 @@
 // Where the face is on the front photo, from the MediaPipe landmarks the capture screen already computes
 // (478 points, normalized 0-1 to the video frame). Used only to draw the analysis filter on the result
-// page: it stays in the browser's memory, is never sent to the server nor saved (biometric data).
+// page. Saved with the photos (owner's choice, 2026-10-15) and deleted with them by the purge job; the
+// privacy page and the consent text say so.
 
 export type FacePoint = [number, number];
 export type FaceZone = "forehead" | "nose" | "cheekA" | "cheekB" | "chin";

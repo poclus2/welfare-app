@@ -31,5 +31,10 @@ export default defineMiddlewares({
       method: ["POST"],
       middlewares: [authenticate("customer", ["session", "bearer"])],
     },
+    {
+      matcher: "/store/skin-scans/:id/face",
+      method: ["GET"],
+      middlewares: [authenticate("customer", ["session", "bearer"])],
+    },
   ],
 })

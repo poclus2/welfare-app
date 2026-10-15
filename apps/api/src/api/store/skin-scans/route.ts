@@ -30,6 +30,23 @@ if (!process.env.SKIN_SCAN_TOKEN) {
 
 const text = (v: unknown, max = MAX_TEXT_CHARS) => (typeof v === "string" ? v.slice(0, max) : null)
 
+// Where the face is on the front photo (landmarks from the capture screen, normalized 0-1), so the
+// customer sees the analysis filter again when she reopens her diagnostic. Kept inside `images`: it is
+// deleted with the photos (purge job), never apart from them. Anything malformed is dropped.
+const FACE_ZONES = ["forehead", "nose", "cheekA", "cheekB", "chin"]
+const isPoint = (p: unknown): p is [number, number] =>
+  Array.isArray(p) && p.length === 2 && p.every((n) => typeof n === "number" && n >= 0 && n <= 1)
+function faceMap(v: any) {
+  if (!v || typeof v !== "object") return null
+  const mesh = Array.isArray(v.mesh) ? v.mesh.slice(0, 200).filter(isPoint) : []
+  const zones = v.zones && typeof v.zones === "object" ? v.zones : null
+  const box = v.box && typeof v.box === "object" ? v.box : null
+  if (mesh.length < 20 || !zones || !FACE_ZONES.every((z) => isPoint(zones[z])) || !box) return null
+  const b = ["x0", "y0", "x1", "y1"].map((k) => box[k])
+  if (!b.every((n) => typeof n === "number" && n >= 0 && n <= 1)) return null
+  return { mesh, zones: Object.fromEntries(FACE_ZONES.map((z) => [z, zones[z]])), box: { x0: b[0], y0: b[1], x1: b[2], y1: b[3] } }
+}
+
 // JSON kept only when it is reasonably small (audit trail, answers, notices)
 const MAX_JSON_CHARS = 300_000
 const json = (v: unknown) => {
@@ -55,12 +72,15 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     return res.status(400).json({ message: "Missing required fields" })
   }
 
-  // photos: { front, left, right } as sent by the storefront (what the admin gallery reads)
-  const images: Record<string, string> = {}
+  // photos: { front, left, right } as sent by the storefront (what the admin gallery reads), plus the
+  // face map of the front photo when the capture screen had one
+  const images: Record<string, unknown> = {}
   for (const key of ["front", "left", "right"]) {
     const v = body.images?.[key]
     if (typeof v === "string" && v.length <= MAX_IMAGE_CHARS) images[key] = v
   }
+  const map = images.front ? faceMap(body.images?.front_map) : null
+  if (map) images.front_map = map
   const routine = Array.isArray(body.routine) ? body.routine.slice(0, 12) : []
   const concerns = Array.isArray(body.concerns) ? body.concerns.slice(0, 30).map((c: unknown) => String(c).slice(0, 200)) : []
 

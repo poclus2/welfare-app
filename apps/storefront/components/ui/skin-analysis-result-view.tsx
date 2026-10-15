@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useCart } from "@/lib/cart-context";
 import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
+import { sdk } from "@/lib/medusa";
 import { LevelRing } from "@/components/ui/skin-coach/level-ring";
 import { FaceScanFrame, type FaceMarker } from "@/components/ui/skin-coach/face-scan-frame";
 import { DISPLAY_FONT, SK } from "@/components/ui/skin-coach/theme";
@@ -107,8 +108,33 @@ const sectionTitle = (light: string, bold: string) => (
 export default function SkinAnalysisResultView({ result, onRetake, locked = false }: Props) {
   const router = useRouter();
   const cart = useCart();
-  const facePhoto = useSkinCoachStore((s) => s.facePhoto);
-  const faceMap = useSkinCoachStore((s) => s.faceMap);
+  const storedPhoto = useSkinCoachStore((s) => s.facePhoto);
+  const storedMap = useSkinCoachStore((s) => s.faceMap);
+  const faceScanId = useSkinCoachStore((s) => s.faceScanId);
+  const setFace = useSkinCoachStore((s) => s.setFace);
+  // the face shown must be the one of THIS diagnostic (another scan may still be in memory)
+  const thisScanId: string | null = result.scan_id || (result as any).id || null;
+  const faceIsThisScan = !!thisScanId && faceScanId === thisScanId;
+  const facePhoto = faceIsThisScan ? storedPhoto : null;
+  const faceMap = faceIsThisScan ? storedMap : null;
+
+  // reopened diagnostic (account history, reload): her photo and face map come back from the server
+  // while her photos are kept; a just-finished scan may still be attaching to her account, so one retry
+  useEffect(() => {
+    if (locked || !thisScanId || faceIsThisScan) return;
+    let cancelled = false;
+    const load = async (attempt: number) => {
+      try {
+        const data: any = await sdk.client.fetch(`/store/skin-scans/${thisScanId}/face`, { method: "GET" });
+        if (!cancelled && data?.photo && data?.map) setFace(data.photo, data.map, thisScanId);
+      } catch {
+        if (!cancelled && attempt === 0) setTimeout(() => load(1), 3000);
+      }
+    };
+    load(0);
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locked, thisScanId, faceIsThisScan]);
   const [addedToCart, setAddedToCart] = useState<Set<string>>(new Set());
   const [addingAll, setAddingAll] = useState(false);
   const [allAdded, setAllAdded] = useState(false);
@@ -217,7 +243,7 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
             <p className="text-[13px]" style={{ color: SK.muted }}>D&apos;après vos photos et vos réponses au questionnaire</p>
           </motion.div>
 
-          {/* ─── HER PHOTO WITH THE ANALYSIS FILTER (only right after the scan: the photo is never stored) ─── */}
+          {/* ─── HER PHOTO WITH THE ANALYSIS FILTER (memory after the scan, from the server when reopened) ─── */}
           {facePhoto && faceMap && faceMarkers.length > 0 && (
             <motion.div {...fadeUp(0.1)} className="flex flex-col gap-2.5 print:hidden">
               <FaceScanFrame photo={facePhoto} map={faceMap} markers={faceMarkers} />
