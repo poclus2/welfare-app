@@ -56,7 +56,7 @@ function Counter({ to, unit = "", unitStyle }: { to: number; unit?: string; unit
   return (
     <span ref={ref} className="inline-flex items-baseline whitespace-nowrap" style={{ fontVariantNumeric: "tabular-nums" }}>
       <motion.span>{display}</motion.span>
-      <span style={{ fontSize: "0.4em", fontWeight: 700, letterSpacing: "-0.01em", color: SK.accent, marginLeft: unit === "+" ? "0.04em" : "0.22em", ...unitStyle }}>{unit}</span>
+      <span style={{ fontSize: "0.4em", fontWeight: 700, letterSpacing: "-0.01em", color: SK.accent, marginLeft: unit === "+" ? "0.04em" : "0.22em", ...(unitStyle as object) }}>{unit}</span>
     </span>
   );
 }
