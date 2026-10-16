@@ -51,10 +51,11 @@ const SEARCH_SETTINGS = {
   ],
   displayedAttributes: ["id", "title", "brand", "description", "thumbnail", "handle", "price", "in_stock"],
   filterableAttributes: ["in_stock", "brand"],
-  sortableAttributes: ["price", "in_stock"],
+  sortableAttributes: ["price", "in_stock", "face"],
   // in-stock products first among those matching as many words (a sold-out product named in full still
   // comes first: no other product has all its words)
-  rankingRules: ["words", "typo", "in_stock:desc", "proximity", "attribute", "sort", "exactness"],
+  // then face care before hair / body care when both match as well ("peau grasse" is also on scalp serums)
+  rankingRules: ["words", "typo", "in_stock:desc", "proximity", "attribute", "face:desc", "sort", "exactness"],
   // "peau" is in every skin type label ("Peau grasse"...): as a search word it matched the whole catalogue
   stopWords: ["peau", "peaux", "skin", "de", "du", "des", "la", "le", "les", "pour", "et", "au", "aux", "en", "un", "une", "avec", "sur", "the", "for", "and", "of", "with"],
   typoTolerance: { disableOnAttributes: ["barcodes"] },
@@ -163,6 +164,16 @@ function inStock(variants: any[]): 0 | 1 {
   return !known || total > 0 ? 1 : 0
 }
 
+const HAIR = /cheveu|capillaire|shamp|cuir chevelu|scalp|\bhair\b|apr[èe]s-shampoing|conditioner/i
+const BODY = /\bcorps\b|corporel|\bbody\b|gel douche|shower|\bmains?\b|\bhand\b|\bpieds?\b|\bfoot\b|vergeture/i
+
+// 1 for face care, 0 for hair, body care and accessories (only breaks ties between equally relevant products)
+function isFace(p: any, fn: string): 0 | 1 {
+  if (fn === "corps" || fn === "accessoire") return 0
+  const text = [p.title, ...(p.categories || []).map((c: any) => c?.name)].join(" ")
+  return HAIR.test(text) || BODY.test(text) ? 0 : 1
+}
+
 export function toSearchDocument(p: any) {
   const brand = p.collection?.title || ""
   const m = p.metadata || {}
@@ -184,6 +195,7 @@ export function toSearchDocument(p: any) {
     texture: typeof m.texture === "string" ? m.texture : "",
     barcodes: [...new Set((p.variants || []).map((v: any) => v?.barcode).filter(Boolean).map(String))],
     in_stock: inStock(p.variants),
+    face: isFace(p, String(m.routine_function || "")),
     thumbnail: p.thumbnail,
     handle: p.handle,
     price: Number(price?.amount) || 0,
