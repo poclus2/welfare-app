@@ -1,7 +1,7 @@
 "use client";
 
 import { useI18n } from "@/lib/i18n-context";
-import { useState, useRef, useEffect, type ReactNode } from "react";
+import { useState, useRef, useEffect, type ReactNode, type CSSProperties } from "react";
 import { motion, useInView, AnimatePresence, useMotionValue, useSpring, useTransform, type Variants } from "framer-motion";
 import {
   ArrowRight,
@@ -45,7 +45,7 @@ const fadeUp: Variants = {
 };
 
 /* ─── ANIMATED COUNTER ────────────────────────────────────── */
-function Counter({ to, suffix = "" }: { to: number; suffix?: string }) {
+function Counter({ to, unit = "", unitStyle }: { to: number; unit?: string; unitStyle?: CSSProperties }) {
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true });
   const mv = useMotionValue(0);
@@ -54,9 +54,9 @@ function Counter({ to, suffix = "" }: { to: number; suffix?: string }) {
 
   useEffect(() => { if (inView) mv.set(to); }, [inView, to, mv]);
   return (
-    <span ref={ref}>
+    <span ref={ref} className="inline-flex items-baseline whitespace-nowrap" style={{ fontVariantNumeric: "tabular-nums" }}>
       <motion.span>{display}</motion.span>
-      <span style={{ fontSize: "0.55em", color: SK.accent }}>{suffix}</span>
+      <span style={{ fontSize: "0.4em", fontWeight: 700, letterSpacing: "-0.01em", color: SK.accent, marginLeft: unit === "+" ? "0.04em" : "0.22em", ...unitStyle }}>{unit}</span>
     </span>
   );
 }
@@ -77,11 +77,11 @@ const card = { background: SK.surface, border: `1px solid ${SK.lineSoft}` } as c
 
 /* ─── DATA ─────────────────────────────────────────────────── */
 const KPI_STATS = [
-  { value: 200, suffix: "+", label: "Créatrices partenaires actives", icon: Users },
-  { value: 12, suffix: "M FCFA", label: "Commissions versées", icon: CurrencyCircleDollar },
-  { value: 6, suffix: " %", label: "Commission maximale par vente", icon: TrendUp },
-  { value: 48, suffix: " h", label: "Réponse à votre candidature", icon: Clock },
-];
+  { value: 200, unit: "+", label: "Créatrices partenaires actives", icon: Users },
+  { value: 12, unit: "M FCFA", label: "Commissions versées", icon: CurrencyCircleDollar },
+  { value: 6, unit: "%", label: "Commission maximale par vente", icon: TrendUp },
+  { value: 48, unit: "h", label: "Réponse à votre candidature", icon: Clock },
+] as const;
 
 const PROFILES = [
   { name: "Aminata D.", img: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=120&h=120&fit=crop&crop=face" },
@@ -185,6 +185,84 @@ function FaqItem({ q, a, i }: { q: string; a: string; i: number }) {
         )}
       </AnimatePresence>
     </motion.div>
+  );
+}
+
+/* ─── KPI BENTO ───────────────────────────────────────────── */
+// The money in a large magenta block, the three other figures around it, each with its own detail.
+function KpiBento() {
+  const [creators, paid, rate, reply] = KPI_STATS;
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 md:grid-rows-2 gap-3 md:gap-4">
+      <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}
+        className="relative overflow-hidden col-span-2 md:row-span-2 rounded-[32px] p-6 md:p-9 flex flex-col justify-between gap-10 min-h-[260px] md:min-h-[360px] text-white"
+        style={{ background: `radial-gradient(130% 100% at 100% 0%, #EE3E93 0%, ${SK.accent} 42%, #B30E60 100%)`, boxShadow: "0 40px 70px -40px rgba(179,14,96,.55)" }}>
+        {/* the Skin Coach ring motif, as texture */}
+        <svg aria-hidden="true" viewBox="0 0 320 320" className="absolute -right-20 -top-20 w-[300px] md:w-[380px] pointer-events-none">
+          {[150, 118, 86].map((r) => <circle key={r} cx="160" cy="160" r={r} fill="none" stroke="rgba(255,255,255,.14)" strokeWidth="1" />)}
+          <circle cx="160" cy="160" r="118" fill="none" stroke="rgba(255,255,255,.7)" strokeWidth="3" strokeLinecap="round" strokeDasharray="160 742" transform="rotate(95 160 160)" />
+        </svg>
+        <div className="relative flex items-center gap-2.5">
+          <span className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: "rgba(255,255,255,.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,.22)" }}>
+            <paid.icon className="w-5 h-5" weight="bold" />
+          </span>
+          <span className="text-[12px] font-bold uppercase tracking-[0.1em]">{paid.label}</span>
+        </div>
+        <div className="relative">
+          <span style={{ fontFamily: DISPLAY_FONT, fontSize: "clamp(76px, 9vw, 120px)", lineHeight: 0.85, fontWeight: 300, letterSpacing: "-0.055em" }}>
+            <Counter to={paid.value} unit={paid.unit} unitStyle={{ color: "#FFFFFF", fontSize: "0.3em", marginLeft: "0.12em" }} />
+          </span>
+          <p className="mt-4 text-[14px] md:text-[15px] leading-relaxed max-w-[36ch]">
+            Reversés aux créatrices partenaires, chaque mois par Mobile Money ou virement bancaire.
+          </p>
+        </div>
+      </motion.div>
+
+      <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={1}
+        className="rounded-[28px] p-5 md:p-6 flex flex-col justify-between gap-5" style={card}>
+        <div className="flex -space-x-2.5">
+          {PROFILES.map((p) => (
+            <img key={p.name} src={p.img} alt="" className="w-8 h-8 md:w-9 md:h-9 rounded-full object-cover" style={{ border: `2px solid ${SK.surface}` }} />
+          ))}
+        </div>
+        <div>
+          <span style={{ fontFamily: DISPLAY_FONT, fontSize: "clamp(40px, 4vw, 52px)", lineHeight: 0.95, fontWeight: 300, letterSpacing: "-0.045em" }}>
+            <Counter to={creators.value} unit={creators.unit} />
+          </span>
+          <p className="mt-2 text-[13px] leading-snug" style={{ color: SK.muted }}>{creators.label}</p>
+        </div>
+      </motion.div>
+
+      <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={2}
+        className="rounded-[28px] p-5 md:p-6 flex flex-col justify-between gap-5" style={{ background: SK.tint }}>
+        {/* the three real commission tiers */}
+        <div aria-hidden="true" className="flex items-end gap-1.5 h-9">
+          {CALC_TIERS.map((t) => (
+            <span key={t.rate} className="w-3 rounded-full" style={{ height: `${(t.rate / 6) * 100}%`, background: t.rate === 6 ? SK.accent : SK.accentLight }} />
+          ))}
+        </div>
+        <div>
+          <span style={{ fontFamily: DISPLAY_FONT, fontSize: "clamp(40px, 4vw, 52px)", lineHeight: 0.95, fontWeight: 300, letterSpacing: "-0.045em" }}>
+            <Counter to={rate.value} unit={rate.unit} />
+          </span>
+          <p className="mt-2 text-[13px] leading-snug" style={{ color: SK.muted }}>{rate.label}</p>
+        </div>
+      </motion.div>
+
+      <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={3}
+        className="col-span-2 rounded-[28px] p-5 md:p-6 flex items-center justify-between gap-4" style={card}>
+        <div className="flex items-center gap-4 min-w-0">
+          <span style={{ fontFamily: DISPLAY_FONT, fontSize: "clamp(40px, 4vw, 52px)", lineHeight: 0.95, fontWeight: 300, letterSpacing: "-0.045em" }}>
+            <Counter to={reply.value} unit={reply.unit} />
+          </span>
+          <p className="min-w-0 text-[13px] leading-snug max-w-[16ch]" style={{ color: SK.muted }}>{reply.label}</p>
+        </div>
+        <span className="shrink-0 flex items-center gap-1.5 h-9 px-3.5 rounded-full text-[12px] font-bold" style={{ background: SK.tint, color: SK.accent }}>
+          <ChatCircle className="w-4 h-4" weight="bold" />
+          <span className="hidden sm:inline md:hidden lg:inline">Réponse sur</span> WhatsApp
+        </span>
+      </motion.div>
+    </div>
   );
 }
 
@@ -608,19 +686,8 @@ export function LandingAmbassadrice({ isLoggedIn = false }: { isLoggedIn?: boole
 
       {/* ━━ KPI ━━ */}
       <section className="w-full pt-7 md:pt-14">
-        <div className="max-w-[1120px] mx-auto px-5 md:px-6 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
-          {KPI_STATS.map((s, i) => (
-            <motion.div key={s.label} variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={i}
-              className="rounded-3xl p-4 md:p-6 flex flex-col gap-1.5" style={card}>
-              <span className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: SK.tint }}>
-                <s.icon className="w-[18px] h-[18px]" weight="bold" style={{ color: SK.accent }} />
-              </span>
-              <span style={{ fontFamily: DISPLAY_FONT, fontSize: 30, lineHeight: 1, fontWeight: 700, letterSpacing: "-0.02em" }}>
-                <Counter to={s.value} suffix={s.suffix} />
-              </span>
-              <span className="text-[12px] leading-snug" style={{ color: SK.muted }}>{s.label}</span>
-            </motion.div>
-          ))}
+        <div className="max-w-[1120px] mx-auto px-5 md:px-6">
+          <KpiBento />
         </div>
       </section>
 
