@@ -133,13 +133,13 @@ const STEPS = [
 ];
 
 const PERKS = [
-  { icon: TrendUp, title: "Commission progressive jusqu'à 6 %", sub: "Sur chaque vente, sans plafond" },
+  { icon: TrendUp, title: "Commission progressive jusqu'à 6 %", sub: "Sur chaque vente, sans plafond" },
   { icon: ChartBar, title: "Tableau de bord en temps réel", sub: "Clics, ventes, commissions" },
   { icon: Gift, title: "Produits offerts", sub: "Un panier de base offert à la sélection" },
   { icon: Trophy, title: "Classement des créatrices", sub: "Défis et récompenses chaque mois" },
-  { icon: Tag, title: "-15 % sur vos achats", sub: "Sur tous vos achats personnels" },
-  { icon: ShareNetwork, title: "Accompagnement dédié", sub: "Une équipe disponible 7 j/7" },
-];
+  { icon: Tag, title: "-15 % sur vos achats", sub: "Sur tous vos achats personnels" },
+  { icon: ShareNetwork, title: "Accompagnement dédié", sub: "Une équipe disponible 7 j/7" },
+] as const;
 
 const FAQ = [
   { q: "Le programme est-il vraiment gratuit ?", a: "Oui, entièrement. Aucun frais d'adhésion, aucun produit obligatoire, aucun engagement. Vous postulez, vous êtes acceptée, et vous commencez à partager votre lien." },
@@ -261,6 +261,113 @@ function KpiBento() {
           <ChatCircle className="w-4 h-4" weight="bold" />
           <span className="hidden sm:inline md:hidden lg:inline">Réponse sur</span> WhatsApp
         </span>
+      </motion.div>
+    </div>
+  );
+}
+
+/* ─── DASHBOARD GLIMPSE ──────────────────────────────────────── */
+// A glimpse of the creator space (same look as the real one).
+function DashboardGlimpse() {
+  return (
+    <div className="rounded-[26px] p-4 md:p-5 flex flex-col gap-3" style={{ background: SK.ground, border: `1px solid ${SK.line}` }}>
+      <div className="flex items-center justify-between">
+        <span style={{ fontFamily: DISPLAY_FONT, fontSize: 22, fontWeight: 300, color: SK.ink }}>Bonjour <span style={{ fontWeight: 700, color: SK.accent }}>Aminata</span></span>
+        <span className="px-2.5 py-1 rounded-full text-[11px] font-bold" style={{ background: SK.surface, border: `1px solid ${SK.line}`, color: SK.ink }}>Ce mois-ci</span>
+      </div>
+      <div className="rounded-[22px] p-3.5 flex items-center gap-3.5" style={card}>
+        <div className="relative w-[88px] h-[88px] shrink-0">
+          <svg width="88" height="88" viewBox="0 0 88 88" className="absolute inset-0">
+            <circle cx="44" cy="44" r="36" fill="none" stroke={SK.track} strokeWidth="8" />
+            <circle cx="44" cy="44" r="36" fill="none" stroke={SK.accent} strokeWidth="8" strokeLinecap="round" strokeDasharray="163 226" transform="rotate(-90 44 44)" />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center" style={{ fontFamily: DISPLAY_FONT, fontSize: 24, fontWeight: 700, color: SK.ink }}>4&nbsp;%</div>
+        </div>
+        <div className="flex flex-col gap-0.5 min-w-0">
+          <span className="text-[12px] font-semibold" style={{ color: SK.muted }}>Commission du mois</span>
+          <span className="whitespace-nowrap" style={{ fontFamily: DISPLAY_FONT, fontSize: 24, fontWeight: 700, color: SK.accent }}>28&nbsp;600 FCFA</span>
+          <span className="text-[12px]" style={{ color: SK.muted }}>18 ventes · 1&nbsp;243 clics</span>
+        </div>
+      </div>
+      <div className="flex items-center gap-2.5 rounded-[18px] py-2 pl-3.5 pr-2" style={card}>
+        <span className="flex-1 truncate text-[13px] font-semibold" style={{ color: SK.muted }}>thewelfarecm.com/r/AMINATA</span>
+        <span className="h-9 px-3.5 rounded-full flex items-center text-[12px] font-bold text-white" style={{ background: SK.accent }}>Copier</span>
+      </div>
+    </div>
+  );
+}
+
+/* ─── PERKS: FEATURE + GROUPED LIST ──────────────────────────── */
+// The commission as a magenta feature card with the real tiers, the five other perks grouped in one
+// white card, the dashboard with two floating notes.
+function PerksFeature() {
+  const [lead, ...rest] = PERKS;
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+      <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} className="flex flex-col gap-3">
+        <div className="mb-5">
+          <Eyebrow>Votre tableau de bord</Eyebrow>
+          <Title light="Tout pour" bold="réussir" />
+          <p className="mt-3 text-[15px] leading-relaxed max-w-[52ch]" style={{ color: SK.muted }}>
+            Un espace personnel pour suivre vos résultats, partager votre lien et encaisser vos commissions, depuis votre téléphone.
+          </p>
+        </div>
+
+        <div className="relative overflow-hidden rounded-[28px] p-5 md:p-6 text-white"
+          style={{ background: `radial-gradient(120% 120% at 100% 0%, #EE3E93 0%, ${SK.accent} 45%, #B30E60 100%)` }}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p style={{ fontFamily: DISPLAY_FONT, fontSize: 24, lineHeight: 1.1, fontWeight: 700 }}>{lead.title}</p>
+              <p className="mt-1.5 text-[14px]">Plus vous vendez dans le mois, plus votre taux monte.</p>
+            </div>
+            <span className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ background: "rgba(255,255,255,.16)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,.22)" }}>
+              <lead.icon className="w-5 h-5" weight="bold" />
+            </span>
+          </div>
+          <div className="mt-5 grid grid-cols-3 gap-2">
+            {CALC_TIERS.map((t) => (
+              <div key={t.rate} className="rounded-2xl px-2 py-2.5 flex flex-col items-center gap-0.5"
+                style={t.rate === 6 ? { background: "#FFFFFF", color: SK.accent } : { background: "rgba(255,255,255,.14)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,.2)" }}>
+                <span style={{ fontFamily: DISPLAY_FONT, fontSize: 22, fontWeight: 700, lineHeight: 1 }}>{t.rate}&nbsp;%</span>
+                <span className="text-[11px] font-semibold text-center leading-tight">{t.range}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-[28px] px-5 md:px-6" style={card}>
+          {rest.map((perk, i) => (
+            <div key={perk.title} className="flex items-center gap-4 py-4" style={i > 0 ? { borderTop: `1px solid ${SK.lineSoft}` } : undefined}>
+              <span className="w-10 h-10 rounded-[13px] flex items-center justify-center shrink-0" style={{ background: SK.tint }}>
+                <perk.icon className="w-[18px] h-[18px]" weight="bold" style={{ color: SK.accent }} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[15px] font-bold leading-snug" style={{ color: SK.ink }}>{perk.title}</p>
+                <p className="text-[13px] leading-snug" style={{ color: SK.muted }}>{perk.sub}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+
+      <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={2}
+        className="relative w-full max-w-[460px] mx-auto py-8" aria-hidden="true">
+        <div className="rounded-[36px] p-4 md:p-6" style={{ background: SK.tint, boxShadow: "0 50px 80px -50px rgba(224,24,124,.45)" }}>
+          <DashboardGlimpse />
+        </div>
+        <div className="absolute top-0 left-0 sm:-left-8 flex items-center gap-2.5 rounded-2xl pl-2 pr-4 py-2" style={{ background: SK.surface, border: `1px solid ${SK.lineSoft}`, boxShadow: "0 18px 40px -18px rgba(42,36,36,.25)" }}>
+          <span className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: SK.accent }}>
+            <CurrencyCircleDollar className="w-4 h-4 text-white" weight="bold" />
+          </span>
+          <div className="leading-tight">
+            <p className="text-[11px] font-semibold" style={{ color: SK.muted }}>Nouvelle vente</p>
+            <p className="text-[14px] font-bold" style={{ color: SK.ink }}>+1&nbsp;060 FCFA</p>
+          </div>
+        </div>
+        <div className="absolute bottom-0 right-0 sm:-right-6 flex items-center gap-2 rounded-full px-4 h-10 text-[12px] font-bold text-white" style={{ background: SK.ink, boxShadow: "0 18px 40px -18px rgba(42,36,36,.45)" }}>
+          <Wallet className="w-4 h-4" weight="bold" />
+          Paiement le 1er du mois
+        </div>
       </motion.div>
     </div>
   );
@@ -730,57 +837,8 @@ export function LandingAmbassadrice({ isLoggedIn = false }: { isLoggedIn?: boole
 
       {/* ━━ PERKS ━━ */}
       <section className="w-full py-12 md:py-24">
-        <div className="max-w-[1120px] mx-auto px-5 md:px-6 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
-          <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }}>
-            <Eyebrow>Votre tableau de bord</Eyebrow>
-            <Title light="Tout pour" bold="réussir" />
-            <p className="mt-3 mb-6 md:mb-8 text-[15px] leading-relaxed" style={{ color: SK.muted }}>
-              Un espace personnel pour suivre vos résultats, partager votre lien et encaisser vos commissions, depuis votre téléphone.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {PERKS.map((perk, i) => (
-                <motion.div key={perk.title} variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={i * 0.5}
-                  className="flex items-center gap-3.5 p-3.5 rounded-[22px]" style={card}>
-                  <span className="w-11 h-11 rounded-[14px] flex items-center justify-center shrink-0" style={{ background: SK.tint }}>
-                    <perk.icon className="w-5 h-5" weight="bold" style={{ color: SK.accent }} />
-                  </span>
-                  <div>
-                    <p className="text-[15px] font-bold leading-snug">{perk.title}</p>
-                    <p className="text-[13px] mt-0.5" style={{ color: SK.muted }}>{perk.sub}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* A glimpse of the creator space (same look as the real one) */}
-          <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: true }} custom={2}
-            className="rounded-[32px] p-4 md:p-6 w-full max-w-[460px] mx-auto" style={{ background: SK.tint }} aria-hidden="true">
-            <div className="rounded-[26px] p-4 md:p-5 flex flex-col gap-3" style={{ background: SK.ground, border: `1px solid ${SK.line}` }}>
-              <div className="flex items-center justify-between">
-                <span style={{ fontFamily: DISPLAY_FONT, fontSize: 22, fontWeight: 300 }}>Bonjour <span style={{ fontWeight: 700, color: SK.accent }}>Aminata</span></span>
-                <span className="px-2.5 py-1 rounded-full text-[11px] font-bold" style={{ background: SK.surface, border: `1px solid ${SK.line}` }}>Ce mois-ci</span>
-              </div>
-              <div className="rounded-[22px] p-3.5 flex items-center gap-3.5" style={card}>
-                <div className="relative w-[88px] h-[88px] shrink-0">
-                  <svg width="88" height="88" viewBox="0 0 88 88" className="absolute inset-0">
-                    <circle cx="44" cy="44" r="36" fill="none" stroke={SK.track} strokeWidth="8" />
-                    <circle cx="44" cy="44" r="36" fill="none" stroke={SK.accent} strokeWidth="8" strokeLinecap="round" strokeDasharray="163 226" transform="rotate(-90 44 44)" />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center" style={{ fontFamily: DISPLAY_FONT, fontSize: 24, fontWeight: 700 }}>4 %</div>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                  <span className="text-[12px] font-semibold" style={{ color: SK.muted }}>Commission du mois</span>
-                  <span style={{ fontFamily: DISPLAY_FONT, fontSize: 24, fontWeight: 700, color: SK.accent }}>28 600 FCFA</span>
-                  <span className="text-[12px]" style={{ color: SK.muted }}>18 ventes · 1 243 clics</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2.5 rounded-[18px] py-2 pl-3.5 pr-2" style={card}>
-                <span className="flex-1 truncate text-[13px] font-semibold" style={{ color: SK.muted }}>thewelfarecm.com/r/AMINATA</span>
-                <span className="h-9 px-3.5 rounded-full flex items-center text-[12px] font-bold text-white" style={{ background: SK.accent }}>Copier</span>
-              </div>
-            </div>
-          </motion.div>
+        <div className="max-w-[1120px] mx-auto px-5 md:px-6">
+          <PerksFeature />
         </div>
       </section>
 
