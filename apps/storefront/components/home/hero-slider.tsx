@@ -171,7 +171,7 @@ export function HeroSlider({ banners }: { banners?: HomeBanner[] }) {
                     src={slide.image_url}
                     alt={slide.image_alt || ""}
                     draggable={false}
-                    loading={current === 0 ? "eager" : "lazy"}
+                    loading="eager" // one slide in the page at a time: lazy would only delay it
                     fetchPriority={current === 0 ? "high" : "auto"}
                     className="w-full h-full object-cover object-top select-none"
                   />
