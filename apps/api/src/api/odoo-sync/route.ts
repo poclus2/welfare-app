@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "crypto";
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http";
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils";
+import { syncProductToSearch } from "../../lib/meili-products";
 
 // Odoo -> Medusa stock sync. One Odoo database per shop pushes a full snapshot of its sellable stock
 // every few minutes (see scripts/odoo-sync). Odoo is the source of truth:
@@ -115,11 +116,13 @@ async function syncLocation(
   let notFound = 0;
   const notFoundSample: string[] = [];
   const errors: string[] = [];
+  // products that went out of stock or came back: the search index ranks in-stock products first
+  const availabilityChanged = new Set<string>();
 
   for (const barcodes of chunks(Array.from(qtyByBarcode.keys()), CHUNK)) {
     const { data: variants } = await query.graph({
       entity: "variant",
-      fields: ["id", "barcode", "metadata", "inventory_items.inventory_item_id"],
+      fields: ["id", "product_id", "barcode", "metadata", "inventory_items.inventory_item_id"],
       filters: { barcode: { $in: barcodes } },
       pagination: { take: barcodes.length },
     });
@@ -177,16 +180,30 @@ async function syncLocation(
         unchanged++;
         continue;
       }
+      const wasKnown = metadata.stock_b1 != null || metadata.stock_b2 != null;
+      const wasInStock = toQty(metadata.stock_b1) + toQty(metadata.stock_b2) > 0;
       metadata[key] = qty;
       metadata.stock_total = total;
       try {
         await productService.updateProductVariants(variant.id, { metadata });
         metadataWritten++;
+        if (!wasKnown || wasInStock !== total > 0) availabilityChanged.add(variant.product_id);
       } catch (e: any) {
         console.error(`[Odoo Sync] Metadata error for ${barcode}:`, e.message);
         errors.push(`metadata ${barcode}: ${e.message}`);
       }
     }
+  }
+
+  if (availabilityChanged.size) {
+    // after the answer, one product at a time: a search index briefly behind must not slow the shops' sync
+    const ids = [...availabilityChanged].filter(Boolean);
+    const container = req.scope;
+    setImmediate(async () => {
+      for (const id of ids) {
+        await syncProductToSearch(container, id).catch((e) => console.error(`[Odoo Sync] search index ${id}:`, e?.message));
+      }
+    });
   }
 
   lastSync[locationId] = {

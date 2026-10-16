@@ -95,27 +95,9 @@ module.exports = defineConfig({
           host: process.env.MEILISEARCH_HOST || "http://localhost:7700",
           apiKey: process.env.MEILISEARCH_API_KEY || "meilisearch_super_secret",
         },
-        settings: {
-          products: {
-            indexSettings: {
-              searchableAttributes: ["title", "description", "variant_sku", "subtitle"],
-              displayedAttributes: ["id", "title", "description", "subtitle", "variant_sku", "thumbnail", "handle", "price"],
-            },
-            primaryKey: "id",
-            transformer: (product) => {
-              const brand = product.collection?.title;
-              const formattedTitle = brand ? `${brand} - ${product.title}` : product.title;
-              return {
-                id: product.id,
-                title: formattedTitle,
-                subtitle: product.subtitle,
-                description: product.description,
-                thumbnail: product.thumbnail,
-                handle: product.handle,
-              };
-            },
-          },
-        },
+        // No index settings here: the plugin re-applied these at every start, over the real ones. The products
+        // index (documents, searchable fields, synonyms) is managed by src/lib/meili-products.ts.
+        settings: {},
       },
     },
     {

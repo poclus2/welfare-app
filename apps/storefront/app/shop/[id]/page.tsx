@@ -1,5 +1,6 @@
 import CategoryClient, { CategoryProduct } from "./CategoryClient";
 import { matchesCategory, matchesQuery, productDomain } from "@/lib/shop-filters";
+import { searchProductIds } from "@/lib/meili-search";
 
 // Category pages (/shop/all, /shop/serums...) read the slim catalogue served by the API
 // (GET /store/shop-catalog: cached, ~250 KB, already carries the filter facets) instead of
@@ -105,15 +106,20 @@ export default async function CategoryPage({
     if (inCategory.length > 0) base = inCategory;
   }
 
+  // A search uses the search bar's index and ranking; plain matching only if Meilisearch can't answer
+  const rankedIds = q ? await searchProductIds(q) : null;
+  const rank = rankedIds ? new Map(rankedIds.map((id, i) => [id, i])) : null;
+
   const grouped = !collection_id ? GROUPED_BY_HANDLE[category] : undefined;
-  const listed = base.filter(
+  let listed = base.filter(
     (p) =>
       (!collection_id || p.brand_id === collection_id) &&
-      (!q || matchesQuery(p, q)) &&
+      (!q || (rank ? rank.has(p.id) : matchesQuery(p, q))) &&
       (grouped
         ? p.category_handles.some((h) => grouped.handles.includes(h)) || (!!grouped.title && grouped.title.test(p.title))
         : matchesCategory(category, p))
   );
+  if (rank) listed = listed.sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);
 
   return <CategoryClient category={category} products={listed} />;
 }

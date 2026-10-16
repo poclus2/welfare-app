@@ -22,7 +22,6 @@ import {
   buildFacets,
   matchesConcerns,
   matchesIngredients,
-  matchesQuery,
   matchesSkinTypes,
   relevanceScore,
 } from "@/lib/shop-filters";
@@ -203,7 +202,7 @@ export default function CategoryClient({
   const filteredProducts = useMemo(() => {
     const selected = { skinTypes: selectedSkinTypes, concerns: selectedConcerns, ingredients: selectedIngredients };
     const list = products.filter((p) => {
-      if (query && !matchesQuery(p, query)) return false;
+      // (a search query is already applied and ranked by the page on the server, see lib/meili-search.ts)
       // (the category itself is already applied by the page on the server)
       if (hasFilters && p.domain !== pageDomain) return false;
       return matchesSkinTypes(selectedSkinTypes, p) && matchesConcerns(selectedConcerns, p) && matchesIngredients(selectedIngredients, p);
