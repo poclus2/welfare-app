@@ -7,7 +7,7 @@ import {
   LayoutDashboard, ShoppingBag, Package, Users,
   Store, BarChart2, Tag, Settings, LogOut,
   Bell, Search, ChevronDown, Menu, X, Bot, Truck, FileText, Ticket
-, Layers, Wallet } from "lucide-react";
+, Layers, Wallet, GalleryHorizontal, BellRing } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const NAV_ITEMS = [
@@ -23,6 +23,8 @@ const NAV_ITEMS = [
   { href: "/dashboard/skin-coach", label: "Skin Coach IA", icon: Bot },
   { href: "/dashboard/createurs", label: "Créateurs Partenaires", icon: Tag },
   { href: "/dashboard/promotions", label: "Codes promo", icon: Ticket },
+  { href: "/dashboard/bannieres", label: "Bannières d'accueil", icon: GalleryHorizontal },
+  { href: "/dashboard/sekoria", label: "Lancement Sekoria", icon: BellRing },
   { href: "/dashboard/blog", label: "Blog / Articles", icon: FileText },
   { href: "/dashboard/delivery", label: "Livraison", icon: Truck },
   { href: "/dashboard/settings", label: "Paramètres", icon: Settings },

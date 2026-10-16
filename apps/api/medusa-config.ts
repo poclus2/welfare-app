@@ -115,5 +115,8 @@ module.exports = defineConfig({
     {
       resolve: "./src/modules/otp",
     },
+    {
+      resolve: "./src/modules/site_content",
+    },
   ],
 });
