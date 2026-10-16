@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Scan } from "@phosphor-icons/react";
+import { Scan } from "@phosphor-icons/react";
 import Link from "next/link";
 import { IconIA } from "@/components/ui/icons/IconIA";
 import { useI18n } from "@/lib/i18n-context";
@@ -15,41 +15,50 @@ export function SkinCoach() {
         className="absolute inset-0 bg-cover bg-center opacity-[0.12] pointer-events-none"
         style={{ backgroundImage: "url('/cherry_blossom_bg.webp')" }}
       />
-      <div className="w-full max-w-[1600px] mx-auto px-8 md:px-12 flex flex-col lg:flex-row items-center gap-16 relative z-10">
+      <div className="w-full max-w-[1600px] mx-auto px-5 md:px-12 flex flex-col lg:flex-row items-center gap-16 relative z-10">
         
         {/* Left Text */}
         <div className="flex-1 flex flex-col items-start max-w-xl">
 
           
-          <h2 className="text-[2.5rem] md:text-[3.5rem] leading-[1.1] font-medium tracking-tight text-[#2A2424] mb-6">
-            {t("Rencontrez votre")}<br/>{t("Skin Coach IA")}
+          <h2 className="text-[2rem] md:text-[3.2rem] leading-[1.1] font-medium tracking-tight text-[#2A2424] mb-6 text-balance">
+            {t("Votre routine commence par une meilleure compréhension de votre peau")}
           </h2>
-          
-          <p className="text-[#2A2424]/70 text-lg mb-10 leading-relaxed">
-            {t("Éliminez les doutes. Scannez votre visage, répondez à quelques questions et laissez notre IA concevoir votre routine sur-mesure, en suivant des règles de soin validées par des dermatologues.")}
+
+          <p className="text-[#2A2424]/70 text-lg mb-8 leading-relaxed">
+            {t("Prenez des photos de votre visage, répondez à quelques questions et découvrez une sélection de soins adaptée à vos besoins et à votre budget.")}
           </p>
-          
-          <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-            <Link 
-              href="/skin-coach" 
-              className="w-full sm:w-auto bg-[#2A2424] text-white px-8 py-4 rounded-full text-[15px] font-medium hover:bg-black/80 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 shadow-xl"
-            >
-              <Scan className="w-5 h-5" />
-              {t("Démarrer l'analyse gratuite")}
-            </Link>
-          </div>
-          
-          <div className="mt-8 flex items-center gap-6 border-t border-[#2A2424]/10 pt-8 w-full">
-            <div className="flex flex-col">
-              <span className="text-2xl font-bold text-[#2A2424]">98%</span>
-              <span className="text-sm text-[#2A2424]/60">{t("Précision")}</span>
-            </div>
-            <div className="w-px h-8 bg-[#2A2424]/10"></div>
-            <div className="flex flex-col">
-              <span className="text-2xl font-bold text-[#2A2424]">10k+</span>
-              <span className="text-sm text-[#2A2424]/60">{t("Routines créées")}</span>
-            </div>
-          </div>
+
+          {/* How it works: complements the hero banner, which only invites to start */}
+          <ol className="w-full flex flex-col gap-4 mb-10">
+            {[
+              { title: t("Des photos de votre visage"), text: t("Quelques clichés guidés, de face et de profil, à la lumière du jour.") },
+              { title: t("Quelques questions"), text: t("Votre type de peau, vos sensations, vos préoccupations et vos habitudes.") },
+              { title: t("Une sélection pour vous"), text: t("Une routine expliquée étape par étape, avec des soins choisis selon votre budget.") },
+            ].map((step, i) => (
+              <li key={i} className="flex gap-4 items-start">
+                <span className="w-8 h-8 rounded-full bg-[#F4EAEB] text-[#2A2424] text-sm font-semibold flex items-center justify-center shrink-0">
+                  {i + 1}
+                </span>
+                <div>
+                  <p className="text-[15px] font-semibold text-[#2A2424]">{step.title}</p>
+                  <p className="text-sm text-[#2A2424]/60 leading-relaxed">{step.text}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+
+          <Link
+            href="/skin-coach"
+            className="w-full sm:w-auto bg-[#2A2424] text-white px-8 py-4 rounded-full text-[15px] font-medium hover:bg-black/80 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 shadow-xl"
+          >
+            <Scan className="w-5 h-5" />
+            {t("Commencer mon analyse gratuite")}
+          </Link>
+
+          <p className="mt-6 text-xs text-[#2A2424]/50 leading-relaxed border-t border-[#2A2424]/10 pt-5 w-full">
+            {t("Le Skin Coach AI fournit des conseils cosmétiques. Il ne remplace pas un diagnostic médical : en cas de problème de peau persistant, consultez un professionnel de santé.")}
+          </p>
         </div>
 
         {/* Right Interactive Mockup */}
@@ -68,9 +77,10 @@ export function SkinCoach() {
           >
             <div className="w-full h-full bg-white rounded-[2rem] overflow-hidden relative shadow-inner">
               <img 
-                src="https://images.pexels.com/photos/3373739/pexels-photo-3373739.jpeg?auto=compress&cs=tinysrgb&w=800" 
-                alt="AI Scan" 
-                className="w-full h-[300px] object-cover" 
+                src="/ai_skin_scan_darkskin.webp"
+                alt=""
+                loading="lazy"
+                className="w-full h-[300px] object-cover object-top"
               />
               
               {/* Scan Overlay */}

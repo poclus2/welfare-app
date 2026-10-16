@@ -1,5 +1,5 @@
 import CategoryClient, { CategoryProduct } from "./CategoryClient";
-import { matchesCategory, matchesQuery, productDomain } from "@/lib/shop-filters";
+import { matchesCategory, matchesQuery, normalize, productDomain } from "@/lib/shop-filters";
 import { searchProductIds } from "@/lib/meili-search";
 
 // Category pages (/shop/all, /shop/serums...) read the slim catalogue served by the API
@@ -15,8 +15,16 @@ const GROUPED_BY_HANDLE: Record<string, { handles: string[]; title?: RegExp }> =
   "soins-contour-des-yeux": { handles: ["eye-cream"], title: /yeux|\beye\b|contour/i },
   yeux: { handles: ["eye-cream"], title: /yeux|\beye\b|contour/i },
   // menu entries that gather several Medusa categories
-  "masques-visage": { handles: ["sheet-mask", "wash-off-mask", "sleeping-mask"] },
+  "masques-visage": { handles: ["masques", "sheet-mask", "wash-off-mask", "sleeping-mask"] },
   "soins-levres": { handles: ["lip-care"] },
+  // home page categories, in routine order: products carry a French and/or an English category, take both
+  nettoyants: { handles: ["nettoyants", "cleanser", "cleansing-oil", "cleansing-balm"] },
+  "toners-essences": { handles: ["toners", "toner", "essences", "essence"] },
+  serums: { handles: ["sérums", "serum", "ampoule"] },
+  solaires: { handles: ["solaires", "sunscreen"] },
+  masques: { handles: ["masques", "sheet-mask", "wash-off-mask", "sleeping-mask"] },
+  "soins-corps": { handles: ["body-care", "body-lotion", "body-wash", "body-cream", "body-scrub", "body-exfoliant", "body-oil", "body-mist"] },
+  exfoliants: { handles: ["exfoliants", "exfoliant"] },
   "foot-care": { handles: ["foot-cream", "foot-peeling"] },
 };
 
@@ -64,6 +72,10 @@ export default async function CategoryPage({
   const resolvedSearchParams = await searchParams;
   const q = typeof resolvedSearchParams.q === "string" ? resolvedSearchParams.q : undefined;
   const collection_id = typeof resolvedSearchParams.collection_id === "string" ? resolvedSearchParams.collection_id : undefined;
+  // A brand link without a collection id (home page brand strip): one brand is often spread over several
+  // Medusa collections spelled differently ("Dr Althea", "DR.ALTHEA"...), match them all by name.
+  const brand_name = !collection_id && typeof resolvedSearchParams.brand_name === "string" ? resolvedSearchParams.brand_name : undefined;
+  const brandKey = (s: string) => normalize(s).replace(/[^a-z0-9]/g, "");
 
   let products: (CategoryProduct & { brand_id: string | null; category_handles: string[] })[] = [];
 
@@ -100,7 +112,7 @@ export default async function CategoryPage({
   // Same as before: a regular category narrows to the Medusa category with that handle. If no product
   // belongs to such a category (handle not found), no narrowing - the name matching below decides.
   let base = products;
-  if (!collection_id && category !== "all" && !NO_MEDUSA_CATEGORY.has(category)) {
+  if (!collection_id && category !== "all" && !NO_MEDUSA_CATEGORY.has(category) && !GROUPED_BY_HANDLE[category]) {
     const handle = (CATEGORY_HANDLE_MAP[category] || category).toLowerCase();
     const inCategory = products.filter((p) => p.category_handles.includes(handle));
     if (inCategory.length > 0) base = inCategory;
@@ -114,6 +126,7 @@ export default async function CategoryPage({
   let listed = base.filter(
     (p) =>
       (!collection_id || p.brand_id === collection_id) &&
+      (!brand_name || brandKey(p.brand || "") === brandKey(brand_name)) &&
       (!q || (rank ? rank.has(p.id) : matchesQuery(p, q))) &&
       (grouped
         ? p.category_handles.some((h) => grouped.handles.includes(h)) || (!!grouped.title && grouped.title.test(p.title))

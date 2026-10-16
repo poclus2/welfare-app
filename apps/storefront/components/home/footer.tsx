@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { ArrowRight, Leaf } from "@phosphor-icons/react/dist/ssr";
+import { WhatsappLogo } from "@phosphor-icons/react/dist/ssr";
+
+const SHOP_WHATSAPP = "237640236304"; // same number as the order confirmation page
 
 export function Footer({ dict }: { dict?: any }) {
   const t = dict || {
@@ -20,7 +22,7 @@ export function Footer({ dict }: { dict?: any }) {
 
   return (
     <footer className="w-full bg-[#1A1616] text-[#FDFDFC] pt-24 pb-12 flex flex-col items-center overflow-hidden">
-      <div className="w-full max-w-[1600px] mx-auto px-8 md:px-12">
+      <div className="w-full max-w-[1600px] mx-auto px-5 md:px-12">
         
         {/* Top Section: Newsletter & Brand */}
         <div className="flex flex-col lg:flex-row justify-between items-start gap-16 mb-24 border-b border-white/10 pb-20">
@@ -37,28 +39,22 @@ export function Footer({ dict }: { dict?: any }) {
               </div>
             </Link>
             
+            {/* The newsletter form is gone until it really subscribes someone (it used to do nothing) */}
             <h3 className="text-3xl md:text-4xl font-medium tracking-tight mb-4">
-              {t.joinListTitle}
+              Soins coréens, conseil personnalisé.
             </h3>
             <p className="text-white/60 mb-8 text-lg">
-              {t.joinListDesc}
+              Une question sur un produit, une commande ou votre routine ? Notre équipe vous répond sur WhatsApp.
             </p>
-            
-            <form className="flex flex-col sm:flex-row gap-3 w-full max-w-md">
-              <input 
-                type="email" 
-                placeholder={t.emailPlaceholder}
-                className="flex-1 bg-white/5 border border-white/10 rounded-full px-6 py-4 text-white placeholder:text-white/40 focus:outline-none focus:border-[#E5B6B9] transition-colors"
-                required
-              />
-              <button 
-                type="submit" 
-                className="bg-[#E5B6B9] text-[#1A1616] px-8 py-4 rounded-full font-medium hover:bg-white transition-colors flex items-center justify-center gap-2"
-              >
-                {t.subscribe}
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </form>
+            <a
+              href={`https://wa.me/${SHOP_WHATSAPP}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-[#E5B6B9] text-[#1A1616] px-7 py-4 rounded-full font-medium hover:bg-white transition-colors"
+            >
+              <WhatsappLogo className="w-5 h-5" />
+              Nous écrire sur WhatsApp
+            </a>
           </div>
 
           {/* Links Grid */}
@@ -67,30 +63,26 @@ export function Footer({ dict }: { dict?: any }) {
             {/* Column 1 */}
             <div className="flex flex-col gap-4">
               <h4 className="text-xs font-bold tracking-widest uppercase text-white/40 mb-2">Boutique</h4>
-              <Link href="/shop/serums" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Sérums & Ampoules</Link>
-              <Link href="/shop/moisturizers" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Hydratants</Link>
-              <Link href="/shop/cleansers" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Nettoyants & Toners</Link>
-              <Link href="/shop/sunscreens" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Protections Solaires</Link>
-              <Link href="/shop/masks" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Masques & Traitements</Link>
+              <Link href="/shop/nettoyants" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Nettoyants</Link>
+              <Link href="/shop/serums" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Sérums et ampoules</Link>
+              <Link href="/shop/hydratants" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Hydratants</Link>
+              <Link href="/shop/solaires" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Protections solaires</Link>
+              <Link href="/marques" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Toutes les marques</Link>
             </div>
 
             {/* Column 2 */}
             <div className="flex flex-col gap-4">
               <h4 className="text-xs font-bold tracking-widest uppercase text-white/40 mb-2">{t.about}</h4>
-              <Link href="/about" className="text-white/80 hover:text-[#E5B6B9] transition-colors">{t.ourStory}</Link>
-              <Link href="/journal" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Le Journal</Link>
-              <Link href="/sekoria" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Gamme Sekoria</Link>
-              <Link href="/coach" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Skin Coach IA</Link>
-              <Link href="/contact" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Nous Contacter</Link>
+              <Link href="/skin-coach" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Skin Coach AI</Link>
+              <Link href="/ambassadrices" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Programme créateurs</Link>
+              <Link href="/learning-center" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Le Journal</Link>
             </div>
 
             {/* Column 3 */}
             <div className="flex flex-col gap-4">
               <h4 className="text-xs font-bold tracking-widest uppercase text-white/40 mb-2">{t.help}</h4>
-              <Link href="/faq" className="text-white/80 hover:text-[#E5B6B9] transition-colors">{t.faq}</Link>
-              <Link href="/shipping" className="text-white/80 hover:text-[#E5B6B9] transition-colors">{t.shipping}</Link>
-              <Link href="/track" className="text-white/80 hover:text-[#E5B6B9] transition-colors">{t.trackOrder}</Link>
-              <Link href="/dashboard" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Mon Compte</Link>
+              <a href={`https://wa.me/${SHOP_WHATSAPP}`} target="_blank" rel="noopener noreferrer" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Nous contacter</a>
+              <Link href="/account" className="text-white/80 hover:text-[#E5B6B9] transition-colors">Mon compte</Link>
             </div>
 
           </div>
@@ -102,15 +94,10 @@ export function Footer({ dict }: { dict?: any }) {
             {t.rights.replace("{year}", new Date().getFullYear().toString())}
           </p>
           
-          <div className="flex items-center gap-6">
-            <Link href="#" className="text-white/40 hover:text-white transition-colors text-sm font-medium">IG</Link>
-            <Link href="#" className="text-white/40 hover:text-white transition-colors text-sm font-medium">X</Link>
-            <Link href="#" className="text-white/40 hover:text-white transition-colors text-sm font-medium">TT</Link>
-          </div>
-          
+          {/* Social links: back once the shop gives its official accounts (TikTok, Instagram, Facebook) */}
+
           <div className="flex items-center gap-6 text-sm text-white/40">
             <Link href="/privacy" className="hover:text-white transition-colors">{t.privacy}</Link>
-            <Link href="/terms" className="hover:text-white transition-colors">{t.terms}</Link>
           </div>
         </div>
 

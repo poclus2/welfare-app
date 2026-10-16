@@ -124,3 +124,9 @@
     box-shadow: 0 4px 16px rgba(194, 22, 74, 0.50);
   }
 }
+
+/* Home page brand strip: two copies of the list, slide by one copy then start over */
+@keyframes brand-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}

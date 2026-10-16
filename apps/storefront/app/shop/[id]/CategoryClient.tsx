@@ -35,7 +35,11 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   all: "Explorez notre collection complète de soins K-Beauty authentiques.",
   nettoyants: "Préparez votre peau avec un nettoyage doux et efficace en profondeur.",
   toners: "La première couche d'hydratation pour préparer votre peau aux soins suivants.",
-  serums: "Des actifs concentrés pour cibler vos préoccupations cutanées spécifiques.",
+  "toners-essences": "Toners et essences : la première couche d'hydratation qui prépare la peau aux soins suivants.",
+  hydratants: "Crèmes et émulsions pour hydrater, nourrir et protéger la barrière cutanée.",
+  "soins-contour-des-yeux": "Des soins conçus pour la peau fine et délicate du contour de l'œil.",
+  "soins-corps": "Laits, gels douche, gommages et huiles : vos essentiels du quotidien pour le corps.",
+  serums: "Sérums et ampoules : des actifs concentrés pour cibler vos préoccupations cutanées spécifiques.",
   cremes: "Restaurez et protégez la barrière cutanée de votre peau avec des textures onctueuses.",
   solaires: "Le dernier geste indispensable de votre routine matinale pour une protection optimale.",
   masques: "Des rituels ciblés K-Beauty pour une peau régénérée et repulpée.",
@@ -160,9 +164,18 @@ export default function CategoryClient({
     : t("Découvrez notre sélection de soins d'exception.");
 
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
-  const [selectedSkinTypes, setSelectedSkinTypes] = useState<string[]>([]);
-  const [selectedConcerns, setSelectedConcerns] = useState<string[]>([]);
-  const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
+  // Filters can be preselected by the link (home page banners): ?skin=Sèche, ?concern=..., ?ingredient=...
+  // with the canonical labels of the facets (api/src/lib/shop-facets.ts)
+  const [selectedSkinTypes, setSelectedSkinTypes] = useState<string[]>(() => searchParams.getAll("skin"));
+  const [selectedConcerns, setSelectedConcerns] = useState<string[]>(() => searchParams.getAll("concern"));
+  const [selectedIngredients, setSelectedIngredients] = useState<string[]>(() => searchParams.getAll("ingredient"));
+  const paramsKey = searchParams.toString();
+  useEffect(() => {
+    setSelectedSkinTypes(searchParams.getAll("skin"));
+    setSelectedConcerns(searchParams.getAll("concern"));
+    setSelectedIngredients(searchParams.getAll("ingredient"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramsKey]);
   const [addingId, setAddingId] = useState<string | null>(null);
 
   const { addItem } = useCart();
@@ -253,7 +266,7 @@ export default function CategoryClient({
       <div className="w-full border-b border-[#F4EAEB] sticky top-0 z-30 bg-white/90 backdrop-blur-md">
         <div className="w-full max-w-[1600px] mx-auto px-5 lg:px-12 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar flex-1">
-            {Object.entries(CATEGORY_LABELS).filter(([slug]) => !['face-care', 'body-care', 'hair-care', 'supplements', 'masques-visage', 'soins-levres', 'foot-care'].includes(slug)).map(([slug, label]) => (
+            {Object.entries(CATEGORY_LABELS).filter(([slug]) => !['face-care', 'body-care', 'hair-care', 'supplements', 'masques-visage', 'soins-levres', 'foot-care', 'toners-essences', 'hydratants', 'soins-contour-des-yeux', 'soins-corps'].includes(slug)).map(([slug, label]) => (
               <Link
                 key={slug}
                 href={`/shop/${slug}`}
