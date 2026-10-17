@@ -1,6 +1,7 @@
 "use server";
 
 import { createHash, createHmac, timingSafeEqual } from "crypto";
+import { productDomain } from "@/lib/shop-filters";
 import { decideMedical, exclusionReason, needsInciCheck, readSafetyProfile } from "@/lib/skin-safety";
 import {
   addMissingEssentials,
@@ -138,6 +139,7 @@ type EnrichedProduct = {
   routine_function?: string; // product.metadata.routine_function (admin product form)
   texture?: string; // product.metadata.texture
   fallback?: boolean; // added to complete a manual-selection step left without any product
+  category_handles?: string[]; // Medusa categories, to keep face care only in the automatic search
 };
 
 async function fetchStoreProductsByIds(
@@ -153,7 +155,7 @@ async function fetchStoreProductsByIds(
     // Build query with comma-separated IDs — Medusa store supports id[]
     const query = ids.map((id) => `id[]=${id}`).join("&");
     const res = await fetch(
-      `${medusaUrl}/store/products?${query}&limit=${ids.length}&fields=*variants.prices,+metadata`,
+      `${medusaUrl}/store/products?${query}&limit=${ids.length}&fields=*variants.prices,+metadata,*categories`,
       {
         headers: {
           "x-publishable-api-key": publishableKey,
@@ -164,7 +166,9 @@ async function fetchStoreProductsByIds(
     );
     if (!res.ok) return [];
     const data = await res.json();
-    return (data.products || []).map((p: any) => {
+    // Products the team keeps out of the Skin Coach (baby / kids care, body care sold under a face-care
+    // name...): metadata.skin_coach_excluded, set on the product
+    return (data.products || []).filter((p: any) => p.metadata?.skin_coach_excluded !== true).map((p: any) => {
       let price = 15000;
       if (p.variants && p.variants.length > 0) {
          price = p.variants[0].calculated_price?.calculated_amount || p.variants[0].prices?.[0]?.amount || 15000;
@@ -191,6 +195,7 @@ async function fetchStoreProductsByIds(
         routine_function: typeof p.metadata?.routine_function === "string" ? p.metadata.routine_function : undefined,
         texture: typeof p.metadata?.texture === "string" && p.metadata.texture ? p.metadata.texture : undefined,
         inci: typeof p.metadata?.raw_inci === "string" ? p.metadata.raw_inci : "",
+        category_handles: (p.categories || []).map((c: any) => String(c.handle || "")),
       };
     });
   } catch {
@@ -201,13 +206,6 @@ async function fetchStoreProductsByIds(
 // =========================================================================
 // RAG HELPER : Meilisearch → IDs de produits pertinents
 // =========================================================================
-
-type MeiliProduct = {
-  id: string;
-  title: string;
-  description?: string;
-  category: string;
-};
 
 async function fetchProductCatalogForSkin(
   skinType: string,
@@ -261,45 +259,42 @@ async function fetchProductCatalogForSkin(
     { name: "Solaire", queries: ["solaire", "spf", "sunscreen", "protection solaire"] },
   ];
 
-  const results = await Promise.allSettled(
+  const search = async (q: string): Promise<string[]> => {
+    try {
+      const res = await fetch(`${host}/indexes/products/search`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${searchKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ q, limit: PER_QUERY, attributesToRetrieve: ["id"] }),
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.hits || []).map((hit: any) => String(hit.id));
+    } catch {
+      return [];
+    }
+  };
+
+  // Two searches per category: the category with her skin keywords (products for her skin first), and the
+  // category alone so a step never ends up with a handful of candidates. The skin keywords used to be cut
+  // off ([...category words, ...keywords].slice(0, 3) kept only category words): every client got the same
+  // five products per step, whatever her skin.
+  const PER_QUERY = 12;
+  const MAX_PER_CATEGORY = 15;
+  const results = await Promise.all(
     categories.map(async (cat) => {
-      const query = [...cat.queries, ...skinKeywords].slice(0, 3).join(" ");
-      try {
-        const res = await fetch(`${host}/indexes/products/search`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${searchKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            q: query,
-            limit: 5, // Increased from 3 to have more margin after stock filtering
-            attributesToRetrieve: ["id", "title", "description"],
-          }),
-        });
-        if (!res.ok) return [] as MeiliProduct[];
-        const data = await res.json();
-        return (data.hits || []).map((hit: any) => ({
-          id: hit.id,
-          title: hit.title,
-          description: hit.description,
-          category: cat.name,
-        })) as MeiliProduct[];
-      } catch {
-        return [] as MeiliProduct[];
-      }
+      const [targeted, general] = await Promise.all([
+        skinKeywords.length ? search([cat.queries[0], ...skinKeywords.slice(0, 4)].join(" ")) : Promise.resolve([] as string[]),
+        search(cat.queries.slice(0, 3).join(" ")),
+      ]);
+      return [...new Set([...targeted, ...general])].slice(0, MAX_PER_CATEGORY);
     })
   );
 
   // Collect Meilisearch results grouped by category
   const byCategory: Record<string, string[]> = {};
-  results.forEach((r, i) => {
-    if (r.status === "fulfilled" && r.value.length > 0) {
-      const categoryName = categories[i]?.name;
-      if (categoryName) {
-        byCategory[categoryName] = r.value.map((p) => p.id);
-      }
-    }
+  results.forEach((ids, i) => {
+    const categoryName = categories[i]?.name;
+    if (categoryName && ids.length > 0) byCategory[categoryName] = ids;
   });
 
   // Enrich with stock from Medusa Store API
@@ -311,10 +306,16 @@ async function fetchProductCatalogForSkin(
     })
   );
 
+  // The searches with her skin keywords also find body, foot, hair and lip care ("crème hydratation
+  // nourrissant" -> a body cream, a foot cream): the automatic routine is a face routine
+  const faceOnly = enrichedAll.filter(
+    (p) => productDomain(p.category_handles || [], p.title) === "face" && !(p.category_handles || []).includes("lip-care")
+  );
+
   // Filter by stock threshold
   const filtered = config.enforce_stock_filter
-    ? enrichedAll.filter((p) => p.stock_total >= config.min_stock_threshold)
-    : enrichedAll;
+    ? faceOnly.filter((p) => p.stock_total >= config.min_stock_threshold)
+    : faceOnly;
 
   // Sort by stock descending (highest stock first = preferred by AI)
   filtered.sort((a, b) => b.stock_total - a.stock_total);
@@ -625,7 +626,8 @@ export async function analyzeSkin(
     );
 
     const observations: string[] = qwenResult.clinical_observations || [];
-    const searchSkinType = qwenResult.visual_reasoning || "";
+    // skin type she declared (questionnaire) + what the photos show, for the product search keywords
+    const searchSkinType = `${profile.label || ""} ${qwenResult.visual_reasoning || ""}`;
     // acne first: search for acne products and don't let spot keywords steer the search
     const searchConcerns = acne.acneFirst ? ["acné", ...observations.filter((o) => !SPOT_RE.test(o))] : observations;
     const rawCatalog = await fetchProductCatalogForSkin(searchSkinType, searchConcerns, aiConfig);
