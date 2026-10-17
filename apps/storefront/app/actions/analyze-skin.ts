@@ -452,7 +452,7 @@ type FaceImages = { front: string; left: string; right: string };
 const VISUAL_MODEL = "qwen/qwen3-vl-235b-a22b-instruct";
 // Server env only (never from the browser): lets us switch the routine model, and replay past scans with
 // another model (scripts/replay-skin-scans) before switching
-const ROUTINE_MODEL = process.env.SKIN_COACH_ROUTINE_MODEL || "anthropic/claude-opus-4.8";
+const ROUTINE_MODEL = process.env.SKIN_COACH_ROUTINE_MODEL || "anthropic/claude-sonnet-5.5";
 
 // usage: what the photo analysis cost (not signed: it only feeds the scan's cost log)
 export type SignedVisualAnalysis = { result: any; signature: string; usage?: AiUsage };
