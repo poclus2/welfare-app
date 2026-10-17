@@ -22,7 +22,7 @@ import {
   type RoutineStep as CheckedStep,
   withArticle,
 } from "@/lib/skin-routine";
-import { callOpenRouter, parseJsonAnswer, type AiErrorCode } from "@/lib/openrouter";
+import { callOpenRouter, parseJsonAnswer, type AiErrorCode, type AiUsage } from "@/lib/openrouter";
 import { buildRoutineScript, signScript } from "@/lib/routine-audio";
 import { withoutScores } from "@/lib/coach-message";
 import type { FaceMap } from "@/lib/face-map";
@@ -140,7 +140,31 @@ type EnrichedProduct = {
   texture?: string; // product.metadata.texture
   fallback?: boolean; // added to complete a manual-selection step left without any product
   category_handles?: string[]; // Medusa categories, to keep face care only in the automatic search
+  skin_types?: string[]; // product.metadata.skin_types
 };
+
+// What the routine model needs to choose and explain a product, instead of the whole AI sheet (~3 000
+// characters of markdown each, most of the routine call's cost): its key actives with what they do in a
+// few words, the skin types and concerns it is made for, and whether it is fragrance-free. Safety
+// (allergies, pregnancy, INCI) is settled in code before this point.
+function compactSheet(p: EnrichedProduct): string {
+  const desc = p.description || "";
+  const activesBlock = desc.split(/##\s*Actifs? Principaux/i)[1]?.split(/\n##\s/)[0] || "";
+  const actives = [...activesBlock.matchAll(/\*\*([^*]+)\*\*\s*:?\s*([^\n]*)/g)]
+    .slice(0, 6)
+    .map(([, name = "", role = ""]) => {
+      const short = name.replace(/\s*\([^)]*\)/g, "").replace(/:$/, "").trim();
+      const what = (role.replace(/^[:\s]+/, "").split(/[.;]/)[0] || "").trim().slice(0, 90);
+      return what ? `${short} (${what})` : short;
+    });
+  const parts = [
+    actives.length ? `actifs : ${actives.join(" ; ")}` : `fiche : ${desc.replace(/[#*\n]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 400)}`,
+    p.skin_types?.length ? `peaux : ${p.skin_types.join(", ")}` : "",
+    p.skin_concerns.length ? `besoins : ${p.skin_concerns.slice(0, 5).join(", ")}` : "",
+    /sans parfum|d[ée]pourvue? de parfum|fragrance[- ]free|sans fragrance/i.test(desc) ? "sans parfum" : "",
+  ];
+  return parts.filter(Boolean).join(" | ");
+}
 
 async function fetchStoreProductsByIds(
   ids: string[],
@@ -196,6 +220,7 @@ async function fetchStoreProductsByIds(
         texture: typeof p.metadata?.texture === "string" && p.metadata.texture ? p.metadata.texture : undefined,
         inci: typeof p.metadata?.raw_inci === "string" ? p.metadata.raw_inci : "",
         category_handles: (p.categories || []).map((c: any) => String(c.handle || "")),
+        skin_types: Array.isArray(p.metadata?.skin_types) ? p.metadata.skin_types.map(String) : [],
       };
     });
   } catch {
@@ -425,9 +450,12 @@ FORMAT JSON ATTENDU :
 type FaceImages = { front: string; left: string; right: string };
 
 const VISUAL_MODEL = "qwen/qwen3-vl-235b-a22b-instruct";
-const ROUTINE_MODEL = "anthropic/claude-opus-4.8";
+// Server env only (never from the browser): lets us switch the routine model, and replay past scans with
+// another model (scripts/replay-skin-scans) before switching
+const ROUTINE_MODEL = process.env.SKIN_COACH_ROUTINE_MODEL || "anthropic/claude-opus-4.8";
 
-export type SignedVisualAnalysis = { result: any; signature: string };
+// usage: what the photo analysis cost (not signed: it only feeds the scan's cost log)
+export type SignedVisualAnalysis = { result: any; signature: string; usage?: AiUsage };
 
 // What the customer reads when a step fails; the code is shown with it and logged.
 function aiErrorMessage(code: AiErrorCode, step: "visual" | "routine"): string {
@@ -441,7 +469,7 @@ function aiErrorMessage(code: AiErrorCode, step: "visual" | "routine"): string {
 
 type Failure = { ok: false; code: string; error: string; retryable: boolean };
 
-async function runVisualAnalysis(images: FaceImages): Promise<{ ok: true; result: any } | Failure> {
+async function runVisualAnalysis(images: FaceImages): Promise<{ ok: true; result: any; usage?: AiUsage } | Failure> {
   const ai = await callOpenRouter(
     "visual",
     {
@@ -481,7 +509,7 @@ async function runVisualAnalysis(images: FaceImages): Promise<{ ok: true; result
       retryable: false,
     };
   }
-  return { ok: true, result };
+  return { ok: true, result, usage: ai.usage };
 }
 
 function signVisual(images: FaceImages, result: unknown): string | null {
@@ -531,7 +559,7 @@ export async function analyzeFace(
     const signature = signVisual(images, visual.result);
     // without the secret the early result can't be trusted: analyzeSkin will run the analysis itself
     if (!signature) return { success: false, error: "", code: "EARLY_UNSIGNED", retryable: true };
-    return { success: true, visual: { result: visual.result, signature } };
+    return { success: true, visual: { result: visual.result, signature, usage: visual.usage } };
   } catch (error: any) {
     console.error("[SkinCoach] Erreur dans analyzeFace:", error);
     return failure({ ok: false, code: "VISUAL_UNKNOWN", error: aiErrorMessage("AI_ERROR", "visual"), retryable: true });
@@ -566,6 +594,8 @@ export async function analyzeSkin(
     const log: Record<string, any> = {
       version: "2026-10-12",
       models: { visual: VISUAL_MODEL, routine: ROUTINE_MODEL },
+      // every OpenRouter call of this scan with its real cost (photo analysis, routine, correction)
+      ai_usage: [] as AiUsage[],
       config: { mode: aiConfig.mode, max_routine_steps: aiConfig.max_routine_steps, min_stock_threshold: aiConfig.min_stock_threshold },
     };
 
@@ -574,6 +604,7 @@ export async function analyzeSkin(
     if (earlyVisual && visualIsAuthentic(images, earlyVisual)) {
       qwenResult = earlyVisual.result;
       log.visual_source = "questionnaire";
+      if (earlyVisual.usage) log.ai_usage.push(earlyVisual.usage);
       console.log("[SkinCoach] Visual analysis reused from the questionnaire phase");
     } else {
       if (earlyVisual) console.warn("[SkinCoach] Early visual analysis rejected (signature mismatch): running it again");
@@ -581,6 +612,7 @@ export async function analyzeSkin(
       if (!visual.ok) return failure(visual);
       qwenResult = visual.result;
       log.visual_source = "final";
+      if (visual.usage) log.ai_usage.push(visual.usage);
     }
 
     // =========================================================================
@@ -695,12 +727,12 @@ export async function analyzeSkin(
       acne_first_excluded: excludedProductIds.size,
     };
 
-    // Build catalog text with stock hints and full AI descriptions (for precise AI prioritization)
+    // Build catalog text with stock hints and a compact sheet per product (see compactSheet)
     const miniCatalogText = hasCatalog
       ? productCatalog
           .map(
             (p) =>
-              `[${p.category} · fonction : ${FUNCTION_LABEL[productFunction(p)]}${p.texture ? ` · texture : ${TEXTURE_LABEL[p.texture] || p.texture}` : ""}]${p.fallback ? " (complément automatique, hors sélection de l'équipe)" : ""} ${p.title} (medusa_product_id: "${p.id}", stock: ${p.stock_total}, PRIX: ${p.price || 15000} FCFA)\n  COMPOSITION ET FICHE IA: ${(p.description || "Aucune description").replace(/\n/g, "  ")}\n` +
+              `[${p.category} · fonction : ${FUNCTION_LABEL[productFunction(p)]}${p.texture ? ` · texture : ${TEXTURE_LABEL[p.texture] || p.texture}` : ""}]${p.fallback ? " (complément automatique, hors sélection de l'équipe)" : ""} ${p.title} (medusa_product_id: "${p.id}", stock: ${p.stock_total}, PRIX: ${p.price || 15000} FCFA)\n  FICHE: ${compactSheet(p)}\n` +
               // a free-text allergy can only be checked by the model, so it gets the full ingredient list
               (safety.otherAllergy ? `  INCI COMPLET: ${p.inci || "inconnu"}\n` : "")
           )
@@ -984,13 +1016,16 @@ FORMAT JSON ATTENDU :
     ];
     const claudeRequest = (messages: Record<string, unknown>[]) => ({
       model: ROUTINE_MODEL,
-      max_tokens: 4000,
+      // a full routine with its explanations runs to ~3 000 tokens: 4 000 cut some answers off (unusable
+      // JSON); only the tokens actually written are billed
+      max_tokens: 6000,
       response_format: { type: "json_object" },
       messages,
     });
 
     const ai = await callOpenRouter("routine", claudeRequest(claudeMessages), { timeoutMs: 150_000 });
     if (!ai.ok) return failure({ ok: false, code: `ROUTINE_${ai.code}`, error: aiErrorMessage(ai.code, "routine"), retryable: true });
+    if (ai.usage) log.ai_usage.push(ai.usage);
     let parsed = parseJsonAnswer(ai.content);
     log.routine_answer = ai.content.slice(0, 20_000);
     if (!parsed || typeof parsed !== "object") {
@@ -1031,6 +1066,7 @@ FORMAT JSON ATTENDU :
           ]),
           { timeoutMs: 150_000, attempts: 2 }
         );
+        if (fix.ok && fix.usage) log.ai_usage.push(fix.usage);
         const fixed = fix.ok ? parseJsonAnswer(fix.content) : null;
         log.correction = { problems, answer: fix.ok ? fix.content.slice(0, 20_000) : `error ${fix.code}` } as Record<string, any>;
         if (fixed && typeof fixed === "object") {
@@ -1115,6 +1151,12 @@ FORMAT JSON ATTENDU :
       finalResult.empathetic_message = `${finalResult.empathetic_message || ""}\n\n💡 Pour vos taches : nous commençons par apaiser votre acné, car traiter les taches sur une peau en poussée risque d'aggraver l'inflammation. Une fois votre peau calmée, refaites votre diagnostic pour traiter vos taches.`.trim();
     }
 
+    // Replays (SKIN_COACH_DRY_RUN, server env only): nothing is saved, the audit trail comes back with the result
+    if (process.env.SKIN_COACH_DRY_RUN === "1") {
+      (finalResult as any).__replay_log = { ...log, ai_cost: log.ai_usage.reduce((sum: number, u: AiUsage) => sum + u.cost, 0) };
+      return { success: true, data: finalResult };
+    }
+
     // Silent save to Medusa backend
     try {
       const medusaBackendUrl =
@@ -1151,7 +1193,11 @@ FORMAT JSON ATTENDU :
           notices,
           // the questionnaire as answered (product photos left out) and the audit trail
           responses: userResponses.map((r) => ({ questionId: r.questionId, answer: typeof r.answer === "string" ? r.answer : "[photo de produit]" })),
-          analysis_log: { ...log, duration_ms: Date.now() - startedAt },
+          analysis_log: {
+            ...log,
+            duration_ms: Date.now() - startedAt,
+            ai_cost: Number(log.ai_usage.reduce((sum: number, u: AiUsage) => sum + u.cost, 0).toFixed(5)),
+          },
         }),
       });
       if (saveRes.ok) {

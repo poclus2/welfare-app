@@ -7,7 +7,11 @@
 //   AI_FORMAT   an answer came back but it is not usable JSON
 
 export type AiErrorCode = "AI_CREDITS" | "AI_BUSY" | "AI_TIMEOUT" | "AI_ERROR" | "AI_FORMAT";
-export type AiCallResult = { ok: true; content: string } | { ok: false; code: AiErrorCode; status?: number; detail: string };
+// What a call really cost, as OpenRouter bills it (usage accounting), saved with the scan
+export type AiUsage = { label: string; model: string; prompt_tokens: number; completion_tokens: number; cost: number };
+export type AiCallResult =
+  | { ok: true; content: string; usage?: AiUsage }
+  | { ok: false; code: AiErrorCode; status?: number; detail: string };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -33,7 +37,7 @@ export async function callOpenRouter(
           "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL || "https://thewelfare.com",
           "X-Title": "The Welfare Skin Coach",
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, usage: { include: true } }),
         signal: controller.signal,
       });
       const text = await res.text();
@@ -44,7 +48,18 @@ export async function callOpenRouter(
 
       if (!err) {
         const content = data?.choices?.[0]?.message?.content;
-        if (typeof content === "string" && content.trim()) return { ok: true, content };
+        if (typeof content === "string" && content.trim()) {
+          const u = data?.usage || {};
+          const usage: AiUsage = {
+            label,
+            model: String(data?.model || body.model || ""),
+            prompt_tokens: Number(u.prompt_tokens) || 0,
+            completion_tokens: Number(u.completion_tokens) || 0,
+            cost: Number(u.cost) || 0,
+          };
+          console.log(`[OpenRouter] ${label} ${usage.model}: ${usage.prompt_tokens} in / ${usage.completion_tokens} out, ${usage.cost.toFixed(4)} $`);
+          return { ok: true, content, usage };
+        }
         last = { ok: false, code: "AI_FORMAT", status: res.status, detail: "empty answer" };
         retryAfterMs = 1000; // an empty answer is usually a one-off
       } else {
