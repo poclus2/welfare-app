@@ -15,7 +15,7 @@ type AIConfig = {
 const DEFAULT_CONFIG: AIConfig = {
   mode: "top_stock",
   min_stock_threshold: 1,
-  max_routine_steps: 5,
+  max_routine_steps: 6,
   manual_product_ids: [],
   enforce_stock_filter: true,
 };

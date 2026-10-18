@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
+import { ROUTINE_FUNCTION_OPTIONS } from "@/lib/product-sheet";
 
 type AIConfig = {
   mode: "top_stock" | "manual_selection";
@@ -18,6 +19,7 @@ type Product = {
   thumbnail: string | null;
   status: string;
   variants: { metadata?: { stock_total?: number } }[];
+  metadata?: { routine_function?: string | null } | null;
 };
 
 function getStock(product: Product): number {
@@ -29,7 +31,42 @@ function getStock(product: Product): number {
   );
 }
 
-const STEPS = ["Nettoyant", "Toner / Essence", "Sérum", "Hydratant", "Solaire"];
+// The steps of the manual catalogue, in the client's order (2026-10-18): the oil / balm make-up remover has
+// its own step, apart from the water-based cleansers (evening double cleanse). The keys are stored in the
+// config and read by the storefront as each product's category: never rename them, only the labels.
+// A product goes in the step of its "fonction" (product form): an oil cleanser can't fill a cleanser's place.
+const STEPS = [
+  { key: "Démaquillant", label: "Démaquillant huileux", hint: "Huile ou baume démaquillant, eau micellaire, pads démaquillants", functions: ["demaquillant"] },
+  { key: "Nettoyant", label: "Nettoyant aqueux", hint: "Gel, mousse, lait ou crème nettoyante", functions: ["nettoyant"] },
+  { key: "Toner / Essence", label: "Toner / Essence", hint: "Toner, lotion, essence", functions: ["tonique", "essence"] },
+  { key: "Sérum", label: "Sérum / Ampoule", hint: "Sérum, ampoule, soin ciblé", functions: ["serum", "traitement"] },
+  { key: "Hydratant", label: "Crème hydratante", hint: "Crème, gel-crème, émulsion", functions: ["hydratant"] },
+  { key: "Solaire", label: "Protection solaire", hint: "Crème, fluide ou stick SPF", functions: ["solaire"] },
+] as const;
+type StepKey = (typeof STEPS)[number]["key"];
+const stepOf = (key: string) => STEPS.find((s) => s.key === key)!;
+const FUNCTION_NAME: Record<string, string> = Object.fromEntries(ROUTINE_FUNCTION_OPTIONS.map((o) => [o.value, o.label]));
+const functionOf = (p: Product) => p.metadata?.routine_function || "";
+// the step a product belongs to, from its function (null: function not set, or not a routine step)
+const stepForFunction = (fn: string): StepKey | null => STEPS.find((s) => (s.functions as readonly string[]).includes(fn))?.key ?? null;
+
+// The configs saved before 2026-10-18 have no "Démaquillant" step and may hold removers among the cleansers:
+// once the selected products are loaded, each one that belongs to another step by its function is moved there.
+function sortSelectionByFunction(byStep: Record<string, string[]>, products: Record<string, Product>): { byStep: Record<string, string[]>; moved: string[] } {
+  const next: Record<string, string[]> = Object.fromEntries(STEPS.map((s) => [s.key, [...(byStep[s.key] || [])]]));
+  const moved: string[] = [];
+  for (const s of STEPS) {
+    for (const id of byStep[s.key] || []) {
+      const p = products[id];
+      const target = p ? stepForFunction(functionOf(p)) : null;
+      if (!p || !target || target === s.key) continue;
+      next[s.key] = next[s.key]!.filter((x) => x !== id);
+      if (!next[target]!.includes(id)) next[target]!.push(id);
+      moved.push(`${p.title} → ${stepOf(target).label}`);
+    }
+  }
+  return { byStep: next, moved };
+}
 
 export function SkinCoachSettings({
   initialConfig,
@@ -41,22 +78,17 @@ export function SkinCoachSettings({
   const [config, setConfig] = useState<AIConfig>(() => {
     // Migrate old config if missing manual_products_by_step
     const conf = { ...initialConfig };
-    if (!conf.manual_products_by_step) {
-      conf.manual_products_by_step = {
-        "Nettoyant": [],
-        "Toner / Essence": [],
-        "Sérum": [],
-        "Hydratant": [],
-        "Solaire": []
-      };
-    }
+    conf.manual_products_by_step = Object.fromEntries(STEPS.map((s) => [s.key, [...(initialConfig.manual_products_by_step?.[s.key] || [])]]));
     return conf;
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // products moved to the step of their function when the page opened (saved with the next "Sauvegarder")
+  const [moved, setMoved] = useState<string[]>([]);
 
-  const [activeStep, setActiveStep] = useState(STEPS[0]);
+  const [activeStep, setActiveStep] = useState<StepKey>(STEPS[0].key);
+  const active = stepOf(activeStep);
 
   // Product search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -85,6 +117,12 @@ export function SkinCoachSettings({
         const dict: Record<string, Product> = {};
         (data.products || []).forEach((p: Product) => dict[p.id] = p);
         setLoadedProductsDict(dict);
+        // the selection as saved (this runs once, when the page opens)
+        const sorted = sortSelectionByFunction(config.manual_products_by_step || {}, dict);
+        if (sorted.moved.length) {
+          setMoved(sorted.moved);
+          setConfig((c) => ({ ...c, manual_products_by_step: sorted.byStep }));
+        }
       })
       .catch(() => {})
       .finally(() => setLoadingSelected(false));
@@ -121,6 +159,14 @@ export function SkinCoachSettings({
     return () => clearTimeout(t);
   }, [searchQuery, searchProducts]);
 
+  // A product filed under another step by its function can't be added here (its function is changed in the
+  // product form). A product without a function can, the team knows what it is.
+  const wrongStep = (p: Product) => {
+    const target = stepForFunction(functionOf(p));
+    if (functionOf(p) && !target) return `Classé « ${FUNCTION_NAME[functionOf(p)] || functionOf(p)} » : pas une étape de routine`;
+    return target && target !== activeStep ? `Classé « ${FUNCTION_NAME[functionOf(p)] || functionOf(p)} » : étape ${stepOf(target).label}` : null;
+  };
+
   function toggleProduct(product: Product) {
     setConfig((c) => {
       const stepMap = { ...(c.manual_products_by_step || {}) };
@@ -130,7 +176,7 @@ export function SkinCoachSettings({
       if (isSelected) {
         stepMap[activeStep] = arr.filter(id => id !== product.id);
       } else {
-        if (arr.length >= 10) return c; // max 10 per step
+        if (arr.length >= 10 || wrongStep(product)) return c; // max 10 per step, only products of this step
         stepMap[activeStep] = [...arr, product.id];
       }
       return { ...c, manual_products_by_step: stepMap };
@@ -308,7 +354,7 @@ export function SkinCoachSettings({
               className="w-full accent-[#2A2424]"
             />
             <p className="text-xs text-[#2A2424]/40 mt-1">
-              Selon la philosophie Skinimalisme (3 recommandé, 5 max standard).
+              Plafond général. Le budget choisi fixe ensuite la routine : Essentiel 3 produits, Intermédiaire 4 (+ démaquillant si besoin et budget), Premium jusqu&apos;à 6. Réglez 6 pour permettre la routine Premium complète.
             </p>
           </div>
         </div>
@@ -328,28 +374,39 @@ export function SkinCoachSettings({
 
           {/* Steps Tabs */}
           <div className="flex flex-wrap gap-2 mb-5 pb-2 border-b border-[#EDE0E0]">
-            {STEPS.map(step => (
+            {STEPS.map((step, i) => (
               <button
-                key={step}
-                onClick={() => setActiveStep(step)}
+                key={step.key}
+                onClick={() => setActiveStep(step.key)}
                 className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-                  activeStep === step 
-                    ? "bg-[#2A2424] text-white" 
+                  activeStep === step.key
+                    ? "bg-[#2A2424] text-white"
                     : "bg-[#F5F0EB] text-[#2A2424]/60 hover:text-[#2A2424]"
                 }`}
               >
-                {step} 
+                {i + 1}. {step.label}
                 <span className="ml-1 opacity-70">
-                  ({(config.manual_products_by_step?.[step] || []).length})
+                  ({(config.manual_products_by_step?.[step.key] || []).length})
                 </span>
               </button>
             ))}
           </div>
 
+          {moved.length > 0 && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+              <p className="font-bold mb-1">
+                {moved.length} produit{moved.length > 1 ? "s" : ""} rangé{moved.length > 1 ? "s" : ""} dans l&apos;étape de sa fonction. Sauvegardez pour l&apos;enregistrer.
+              </p>
+              <ul className="list-disc pl-4 space-y-0.5">
+                {moved.map((m) => <li key={m}>{m}</li>)}
+              </ul>
+            </div>
+          )}
+
           <div className="mb-2 flex justify-between items-end">
             <div>
-              <h3 className="text-sm font-bold text-[#2A2424]">Étape : {activeStep}</h3>
-              <p className="text-xs text-[#2A2424]/40">Max 10 produits pour cette étape.</p>
+              <h3 className="text-sm font-bold text-[#2A2424]">Étape : {active.label}</h3>
+              <p className="text-xs text-[#2A2424]/40">{active.hint}. Max 10 produits pour cette étape.</p>
             </div>
             <span className="text-xs font-bold bg-[#F5F0EB] text-[#2A2424] px-2.5 py-1 rounded-full">
               {(config.manual_products_by_step?.[activeStep] || []).length} / 10 produits
@@ -428,7 +485,7 @@ export function SkinCoachSettings({
           <div className="relative mb-3 mt-3">
             <input
               type="text"
-              placeholder={`Rechercher un produit pour l'étape ${activeStep}...`}
+              placeholder={`Rechercher un produit pour l'étape ${active.label}...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full px-4 py-2.5 bg-[#F5F0EB] border border-[#EDE0E0] rounded-xl text-sm text-[#2A2424] placeholder:text-[#2A2424]/30 outline-none focus:border-[#2A2424]/30"
@@ -447,11 +504,13 @@ export function SkinCoachSettings({
                 const stepArr = config.manual_products_by_step?.[activeStep] || [];
                 const isSelected = stepArr.includes(p.id);
                 const stock = getStock(p);
+                const notHere = isSelected ? null : wrongStep(p);
                 return (
                   <button
                     key={p.id}
                     onClick={() => toggleProduct(p)}
-                    disabled={!isSelected && stepArr.length >= 10}
+                    disabled={!isSelected && (stepArr.length >= 10 || !!notHere)}
+                    title={notHere || undefined}
                     className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
                       isSelected
                         ? "border-[#2A2424] bg-[#2A2424]/5"
@@ -478,9 +537,14 @@ export function SkinCoachSettings({
                       >
                         {stock > 0 ? `Stock : ${stock}` : "Rupture de stock"}
                       </p>
+                      {notHere ? (
+                        <p className="text-[11px] mt-0.5 text-[#2A2424]/50">{notHere}</p>
+                      ) : !functionOf(p) ? (
+                        <p className="text-[11px] mt-0.5 text-amber-700">Fonction non renseignée dans la fiche produit</p>
+                      ) : null}
                     </div>
                     <span className="text-lg shrink-0">
-                      {isSelected ? "✓" : "+"}
+                      {isSelected ? "✓" : notHere ? "–" : "+"}
                     </span>
                   </button>
                 );
@@ -509,9 +573,9 @@ export function SkinCoachSettings({
             ? `MODE : Top Stock (automatique)\nSeuil de stock minimum : ${config.min_stock_threshold} unité(s)\nFiltre anti-rupture : ${config.enforce_stock_filter ? "Activé ✓" : "Désactivé"}\nÉtapes max de routine : ${config.max_routine_steps}\n\n→ L'IA cherchera les produits les plus pertinents en stock,\n  triés par quantité décroissante.\n  Les produits en rupture seront exclus automatiquement.`
             : `MODE : Sélection manuelle par étape\n` + 
               STEPS.map(step => {
-                const ids = config.manual_products_by_step?.[step] || [];
-                if (ids.length === 0) return `[${step}] : Aucun produit`;
-                return `[${step}] : \n` + ids.map(id => {
+                const ids = config.manual_products_by_step?.[step.key] || [];
+                if (ids.length === 0) return `[${step.label}] : Aucun produit`;
+                return `[${step.label}] : \n` + ids.map(id => {
                   const p = loadedProductsDict[id];
                   return `  • ${p ? p.title : id} (stock: ${p ? getStock(p) : '?'})`;
                 }).join('\n');

@@ -17,6 +17,7 @@ const QUESTION_LABEL: Record<string, string> = {
   q_current_routine: "Routine actuelle",
   q_routine_details: "Produits utilisés",
   q_sun_exposure: "Exposition au soleil",
+  q_makeup: "Maquillage",
   q_budget: "Budget",
   q_followup_acne: "Précision (boutons)",
   q_followup_spots: "Précision (imperfections)",
@@ -96,6 +97,9 @@ export function ScanAudit({ scan }: { scan: any }) {
               <p className="text-xs text-[#2A2424]/40">Ce que le code a vérifié, exclu ou corrigé</p>
             </div>
           </div>
+          <Row label="À valider" value={log.review?.needed ? <span className="font-bold text-rose-700">{list(log.review.reasons)}</span> : null} />
+          <Row label="Routine" value={log.routine_plan ? `${({ essential: "essentielle", intermediate: "intermédiaire", premium: "avancée" } as Record<string, string>)[log.routine_plan.tier] || log.routine_plan.tier} · ${log.routine_plan.max_steps} étapes max · démaquillant : ${({ needed: "conseillé", offered: "possible", no: "non" } as Record<string, string>)[log.routine_plan.remover] || log.routine_plan.remover}${log.routine_plan.comfort_toner ? " · toner de confort" : ""}` : null} />
+          <Row label="Soin ciblé" value={log.goal_target ? `${log.goal_target.candidates?.length || 0} candidat(s)${log.goal_target.in_routine?.length ? ` · retenu : ${list(log.goal_target.in_routine)}` : " · aucun retenu"}` : null} />
           <Row label="Modèles" value={log.models ? `${log.models.visual} · ${log.models.routine}` : null} />
           <Row label="Analyse photo" value={log.visual_source === "questionnaire" ? "faite pendant le questionnaire" : log.visual_source === "final" ? "faite à la fin" : null} />
           <Row label="Profil de peau" value={log.profile?.label} />

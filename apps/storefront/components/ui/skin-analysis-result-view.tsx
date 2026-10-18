@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { SkinAnalysisResult } from "@/app/actions/analyze-skin";
-import { ShoppingBag, ArrowCounterClockwise, CaretRight, Package, Plus, CheckCircle, FilePdf, CircleNotch, LockKey, FirstAidKit, Info, WhatsappLogo } from "@phosphor-icons/react";
+import { ShoppingBag, ArrowCounterClockwise, CaretRight, Package, Plus, CheckCircle, FilePdf, CircleNotch, LockKey, FirstAidKit, Info, WhatsappLogo, Moon } from "@phosphor-icons/react";
 import { ADVISOR_WHATSAPP } from "@/lib/contact";
 import Link from "next/link";
 import posthog from "posthog-js";
@@ -242,7 +242,7 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
         routine: routine.map((s) => {
           const p = s.medusa_product_id ? products[s.medusa_product_id] : null;
           return {
-            stepName: s.step_name,
+            stepName: s.evening_only && !/soir/i.test(s.step_name) ? `${s.step_name} (le soir)` : s.step_name,
             productTitle: p?.title || s.product_name || "Produit recommandé",
             brand: p?.brand,
             price: p?.amount != null ? plainSpaces(fmtPrice(p.amount, p.currency)) : undefined,
@@ -477,6 +477,11 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
                     {step.already_owned && (
                       <span className="self-start inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold" style={{ background: SK.tint, color: SK.ink }}>
                         <CheckCircle className="w-3.5 h-3.5" weight="fill" style={{ color: SK.accent }} /> Déjà dans votre routine
+                      </span>
+                    )}
+                    {step.evening_only && (
+                      <span className="self-start inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold" style={{ background: SK.ground, border: `1px solid ${SK.line}`, color: SK.ink }}>
+                        <Moon className="w-3.5 h-3.5" weight="fill" style={{ color: SK.accent }} /> Le soir, avant le nettoyant (double nettoyage)
                       </span>
                     )}
                     {stepProduct?.brand && (

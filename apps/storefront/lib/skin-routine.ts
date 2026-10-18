@@ -66,14 +66,65 @@ const FUNCTION_FROM_METADATA: Record<string, ProductFunction> = {
 };
 const NOT_FACE_CARE = new Set(["levres", "corps", "accessoire"]);
 
-const FIRST_CLEANSE = /huile (nettoyante|demaquillante|lavante)|cleansing (oil|balm)|oil cleanser|baume (nettoyant|demaquillant)/;
+// Make-up removers (first step of the evening double cleanse): oil, balm, micellar water, remover pads, milk
+const FIRST_CLEANSE = /huile (nettoyante|demaquillante|lavante)|cleansing (oil|balm|water|milk)|oil cleanser|baume (nettoyant|demaquillant)|micellaire|micellar|eau demaquillante|lait demaquillant|make-?up remov|(pads?|disques?|cotons?) demaquillants?|demaquillants? (pads?|disques?)/;
 const CLEANSER = /nettoy|cleans|foam|mousse|wash|demaquill|gel lavant/;
 const SUNSCREEN = /\bspf|\bsun\b|sunscreen|solaire|\buv\b/;
 const NOT_MOISTURIZER = /toner|tonique|essence|serum|ampoule|mist|brume|\beye|yeux|contour|\blip|levre|mask|masque|\bpads?\b|patch|gommage|scrub|peeling|\bbody\b|corps|\bhand|mains|\bfoot\b|pieds/;
 const MOISTURIZER = /cream|creme|emulsion|moistur|hydrat|baume|balm|lotion|\bgel\b/;
 
-const isFirstCleanse = (p: { title: string; routine_function?: string }) =>
-  p.routine_function === "demaquillant" || (!p.routine_function && FIRST_CLEANSE.test(normalizeInci(p.title || "")));
+const isFirstCleanse = (p: { title: string; routine_function?: string; category?: string }) =>
+  p.routine_function === "demaquillant" ||
+  (!p.routine_function && (p.category === "Démaquillant" || FIRST_CLEANSE.test(normalizeInci(p.title || ""))));
+// the evening make-up remover of a double cleanse
+export const isMakeupRemover = isFirstCleanse;
+
+const TONER = /toner|tonique|\blotion\b|essence|brume|mist/;
+const isToner = (p: CatalogEntry) =>
+  p.routine_function === "tonique" || p.routine_function === "essence" ||
+  (!p.routine_function && productFunction(p) === "other" && TONER.test(normalizeInci(p.title || "")));
+
+// ─── Budget tiers, double cleanse and priorities (client's rules, 2026-10-18) ──────────────────────────────
+// Essentiel: the 3 essentials. Intermédiaire: + a treatment for her goal (~4 products). Premium (50k+): up to
+// 6, with an evening make-up remover, a toner if useful and a targeted serum. Order of priority when steps or
+// budget are short: safety (catalog filtered), essentials, targeted treatment, comfort, optional steps. The
+// make-up remover is never automatic: it follows her make-up habits (and sun protection), and when she wears
+// make-up every day it comes right after the targeted treatment, if the budget allows.
+
+export type BudgetTier = "essential" | "intermediate" | "premium";
+export const TIER_LABEL: Record<BudgetTier, string> = { essential: "Essentielle", intermediate: "Intermédiaire", premium: "Avancée" };
+const TIER_STEPS: Record<BudgetTier, number> = { essential: 3, intermediate: 4, premium: 6 };
+
+export function budgetTier(answer: string): BudgetTier {
+  if (/premium|50k/i.test(answer)) return "premium";
+  if (/essentiel|25k/i.test(answer)) return "essential";
+  return "intermediate";
+}
+
+export type MakeupHabit = "daily" | "sometimes" | "rarely" | "never" | "unknown";
+export function readMakeup(answer: string): MakeupHabit {
+  if (/tous les jours/i.test(answer)) return "daily";
+  if (/de temps/i.test(answer)) return "sometimes";
+  if (/rarement/i.test(answer)) return "rarely";
+  if (/jamais/i.test(answer)) return "never";
+  return "unknown";
+}
+
+// "needed": daily make-up, the remover ranks right after the targeted treatment; "offered": an optional step
+// (occasional make-up, or a lot of sunscreen to take off); "no": removers are left out of the catalog.
+export type RemoverNeed = "needed" | "offered" | "no";
+export function removerNeed(makeup: MakeupHabit, tier: BudgetTier, sunHigh: boolean): RemoverNeed {
+  if (makeup === "daily") return "needed";
+  if (makeup === "sometimes") return tier === "premium" || sunHigh ? "offered" : "no";
+  return tier === "premium" && sunHigh ? "offered" : "no";
+}
+
+// Steps of her routine: the tier's count, one more for the remover she needs every day (if the budget allows),
+// never above the admin's ceiling. An essentials-only routine (doctor's opinion) keeps the 3 essentials.
+export function maxStepsFor(tier: BudgetTier, remover: RemoverNeed, adminMax: number): number {
+  const steps = TIER_STEPS[tier] + (remover === "needed" && tier !== "premium" ? 1 : 0);
+  return Math.max(ESSENTIAL_FUNCTIONS.length, Math.min(adminMax, steps));
+}
 
 // Lips, body, accessories: not part of a face routine
 export function isFaceCare(p: { routine_function?: string }): boolean {
@@ -126,6 +177,10 @@ export type RoutineCheck = {
   missing: ProductFunction[]; // essential functions not covered although the catalog has a compatible product
   unavailable: ProductFunction[]; // essential functions with no compatible product in the catalog at all
   textureIssue: string | null; // the moisturizer's texture does not suit her skin (sentence for the model)
+  // no treatment for her goal although a compatible one fits her steps and budget (sentence for the model)
+  missingTarget: string | null;
+  // daily make-up and no make-up remover although one fits after the targeted treatment (sentence for the model)
+  missingRemover: string | null;
   total: number;
   budgetMax: number;
   overBudget: boolean; // total above the budget + tolerance
@@ -139,7 +194,21 @@ export type CheckOptions = {
   budgetMax: number;
   essentialsOnly: boolean;
   profile?: SkinProfile;
+  // treatments made for her main goal: kept before the other extra steps (toner, essence) when steps or budget are short
+  targetedIds?: Set<string>;
+  goalLabel?: string; // her main goal in words, for the correction asked when no such treatment was chosen
+  remover?: RemoverNeed; // evening make-up remover (double cleanse), from her make-up habits
+  comfortToner?: boolean; // a hydrating toner adds comfort (double cleanse and a skin that feels tight)
 };
+
+// Rank of an extra step when steps or budget are short (the lowest goes first): targeted treatment 3, make-up
+// remover she needs every day 2, comfort toner 1, anything else 0
+function extraRank(p: CatalogEntry, opts: Pick<CheckOptions, "targetedIds" | "remover" | "comfortToner">): number {
+  if (opts.targetedIds?.has(p.id)) return 3;
+  if (isFirstCleanse(p)) return opts.remover === "needed" ? 2 : 0;
+  if (opts.comfortToner && isToner(p)) return 1;
+  return 0;
+}
 
 // what the routine costs her: a product she already has counts for nothing in her budget
 const priceOf = (p: CatalogEntry | undefined) => (p?.owned ? 0 : p?.price && p.price > 0 ? p.price : 15000);
@@ -194,11 +263,16 @@ export function checkRoutine(input: RoutineStep[], catalog: CatalogEntry[], opts
 
   kept.sort((a, b) => orderOf(a.product) - orderOf(b.product));
 
-  // Too many steps / over budget: optional steps go first, most expensive first. Essentials are never dropped.
+  // Too many steps / over budget: extra steps go first, in reverse order of priority (optional, comfort toner,
+  // make-up remover, targeted treatment), most expensive first. Essentials are never dropped.
   const ceiling = opts.budgetMax + BUDGET_TOLERANCE;
   const total = () => kept.reduce((sum, k) => sum + priceOf(k.product), 0);
+  const rank = (k: { product: CatalogEntry }) => extraRank(k.product, opts);
+  const isTargeted = (k: { product: CatalogEntry }) => !!opts.targetedIds?.has(k.product.id);
   const dropMostExpensiveOptional = (why: string) => {
-    const optional = kept.filter((k) => k.fn === "other").sort((a, b) => priceOf(b.product) - priceOf(a.product))[0];
+    const optional = kept
+      .filter((k) => k.fn === "other")
+      .sort((a, b) => rank(a) - rank(b) || priceOf(b.product) - priceOf(a.product))[0];
     if (!optional) return false;
     kept = kept.filter((k) => k !== optional);
     dropped.push(`${optional.product.title}: ${why}`);
@@ -221,12 +295,44 @@ export function checkRoutine(input: RoutineStep[], catalog: CatalogEntry[], opts
   const minEssentials = cheapestEssentials(catalog, opts)?.total ?? 0;
   const finalTotal = total();
 
+  // Her goal has a compatible treatment in the catalog that the model left out: asked once, never forced.
+  // Room for it: a free step, or the place of a toner / essence; within the budget either way. Not asked for
+  // a sensitive skin (tolerance first) nor for an essentials-only routine (doctor's opinion).
+  let missingTarget: string | null = null;
+  const targets = catalog
+    .filter((p) => opts.targetedIds?.has(p.id) && usable(p, opts))
+    .sort((a, b) => priceOf(a) - priceOf(b));
+  if (targets.length && !opts.essentialsOnly && !opts.profile?.sensitive && !kept.some((k) => isTargeted(k))) {
+    // the extra step of lowest priority (a toner, an essence, a make-up remover…) can give its place
+    const replaceable = kept.filter((k) => k.fn === "other").sort((a, b) => rank(a) - rank(b) || priceOf(b.product) - priceOf(a.product))[0];
+    const room = kept.length < opts.maxSteps ? 0 : replaceable ? priceOf(replaceable.product) : null;
+    if (room !== null && finalTotal - room + priceOf(targets[0]) <= ceiling) {
+      missingTarget =
+        `Son objectif principal est ${/^[aeiouyhâéè]/i.test(opts.goalLabel || "a") ? "d'" : "de "}${opts.goalLabel || "agir sur sa préoccupation"} : ta routine ne contient aucun soin ciblé, alors que le catalogue en propose de compatibles avec son profil et son budget (${targets.slice(0, 4).map((p) => p.title).join(" ; ")}). ` +
+        `Ajoute le plus pertinent${kept.length < opts.maxSteps ? "" : `, à la place de ${replaceable!.product.title} qui est moins utile pour son objectif`}, et explique son rôle. Si tu as une vraie raison de tolérance de ne pas en mettre, garde ta routine et explique-la dans 'empathetic_message'.`;
+    }
+  }
+
+  // She wears make-up every day and the routine has no make-up remover although one fits after the targeted
+  // treatment (free step and budget): asked once, like the targeted treatment.
+  let missingRemover: string | null = null;
+  if (opts.remover === "needed" && !opts.essentialsOnly && !kept.some((k) => isFirstCleanse(k.product))) {
+    const removers = catalog.filter((p) => isFirstCleanse(p) && usable(p, opts)).sort((a, b) => priceOf(a) - priceOf(b));
+    if (removers.length && kept.length < opts.maxSteps && finalTotal + priceOf(removers[0]) <= ceiling) {
+      missingRemover =
+        `Elle se maquille presque tous les jours : ajoute un démaquillant pour le double nettoyage du soir (${removers.slice(0, 4).map((p) => p.title).join(" ; ")}), ` +
+        `avant le nettoyant. Le soin ciblé pour son objectif reste prioritaire : ne le retire pas pour le démaquillant.`;
+    }
+  }
+
   return {
     steps: kept.map((k, i) => ({ ...k.step, step_number: i + 1 })),
     dropped,
     missing,
     unavailable,
     textureIssue,
+    missingTarget,
+    missingRemover,
     total: finalTotal,
     budgetMax: opts.budgetMax,
     overBudget: finalTotal > ceiling,
@@ -240,6 +346,8 @@ export function routineProblems(check: RoutineCheck): string[] {
     (fn) => `Il manque ${withArticle(fn, "un")} : c'est une fonction essentielle de toute routine quotidienne${fn === "moisturizer" ? " (un toner ou une essence ne remplace pas un hydratant)" : ""}. Ajoute ce soin en le choisissant dans le catalogue.`
   );
   if (check.textureIssue) problems.push(check.textureIssue);
+  if (check.missingTarget) problems.push(check.missingTarget);
+  if (check.missingRemover) problems.push(check.missingRemover);
   if (check.overBudget && check.cheaperPossible) {
     problems.push(
       `Le total (${fmt(check.total)} FCFA) dépasse le budget de la cliente (jusqu'à ${fmt(check.budgetMax)} FCFA). Choisis des références moins chères pour les étapes essentielles, et retire d'abord les soins complémentaires : ne retire jamais le nettoyant, l'hydratant ou la protection solaire.`
@@ -256,6 +364,78 @@ const textureRank = (p: CatalogEntry, profile?: SkinProfile) => {
   if (!profile || productFunction(p) !== "moisturizer") return 1;
   return { preferred: 2, ok: 1, unknown: 1, avoid: 0 }[textureFit(p, profile)];
 };
+
+// ─── Targeted treatment for her main goal (client's rule, 2026-10-18) ─────────────────────────────────────
+// The essentials (cleanse, moisturize, protect) are not enough to work on her goal: a serum / treatment with
+// an active made for it comes before a merely hydrating toner when steps or budget are short. Never compulsory:
+// tolerance, allergies, exclusions and availability come first (the catalog is already filtered for safety).
+
+export type GoalTarget = { key: "spots" | "acne" | "aging" | "glow"; label: string; actives: { name: string; re: RegExp }[]; searches: string[] };
+
+export const GOAL_TARGETS: (GoalTarget & { goal: RegExp })[] = [
+  {
+    key: "spots",
+    goal: /tache|pigment/i,
+    label: "atténuer les taches",
+    actives: [
+      { name: "niacinamide", re: /niacinamide/ },
+      { name: "acide azélaïque", re: /azela/ },
+      { name: "acide tranexamique", re: /tranexam/ },
+    ],
+    searches: ["sérum niacinamide", "acide azélaïque", "acide tranexamique taches"],
+  },
+  {
+    key: "acne",
+    goal: /acn|imperfection/i,
+    label: "traiter les imperfections",
+    actives: [
+      { name: "acide salicylique (BHA)", re: /salicyl|\bbha\b/ },
+      { name: "niacinamide", re: /niacinamide/ },
+      { name: "acide azélaïque", re: /azela/ },
+    ],
+    searches: ["sérum acide salicylique BHA", "sérum niacinamide imperfections", "acide azélaïque"],
+  },
+  {
+    key: "aging",
+    goal: /[aâ]ge|ferme/i,
+    label: "agir sur les signes de l'âge",
+    actives: [
+      { name: "rétinol / rétinal", re: /retin(ol|al)|retinyl/ },
+      { name: "peptides", re: /peptide/ },
+      { name: "bakuchiol", re: /bakuchiol/ },
+    ],
+    searches: ["sérum rétinol", "sérum peptides anti-âge", "bakuchiol"],
+  },
+  {
+    key: "glow",
+    goal: /hydrat|glow|[ée]clat/i,
+    label: "hydrater en profondeur et donner de l'éclat",
+    actives: [
+      { name: "acide hyaluronique", re: /hyaluron/ },
+      { name: "vitamine C", re: /ascorb|vitamin[e]? c\b/ },
+      { name: "niacinamide", re: /niacinamide/ },
+    ],
+    searches: ["sérum acide hyaluronique", "sérum vitamine C éclat"],
+  },
+];
+
+export function goalTargetFor(goal: string): GoalTarget | null {
+  return GOAL_TARGETS.find((t) => t.goal.test(goal)) || null;
+}
+
+// Not a daily treatment step: masks, patches, eye care, first cleanse, exfoliating scrubs
+const NOT_DAILY_TREATMENT = /mask|masque|patch|\beye|yeux|contour|scrub|gommage|peeling|pads?\b/;
+const NOT_DAILY_FUNCTION = new Set(["masque", "contour_yeux", "demaquillant", "exfoliant"]);
+
+// The active of her goal this product is made with (from its name, its key actives and its INCI), or null.
+// Only leave-on extra steps count: a cleanser or a moisturizer with niacinamide stays an essential.
+export function goalActiveOf(p: CatalogEntry & { description?: string }, target: GoalTarget): string | null {
+  if (productFunction(p) !== "other" || isFirstCleanse(p) || NOT_DAILY_FUNCTION.has(p.routine_function || "")) return null;
+  const title = normalizeInci(p.title || "");
+  if (NOT_DAILY_TREATMENT.test(title)) return null;
+  const text = normalizeInci(`${p.title} ${p.description || ""} ${p.inci || ""}`);
+  return target.actives.find((a) => a.re.test(text))?.name || null;
+}
 
 // The cheapest complete set of essentials in the catalog (null when a function has no compatible product)
 export function cheapestEssentials(

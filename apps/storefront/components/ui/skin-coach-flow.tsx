@@ -225,9 +225,21 @@ const DECISION_TREE: QuestionNode[] = [
     text: "À quelle fréquence êtes-vous exposée au soleil dans la journée ?",
     type: "choice",
     options: [
-      { label: "Très peu (surtout en intérieur)", nextQuestionId: "q_budget" },
-      { label: "Modérément (trajets, balades)", nextQuestionId: "q_budget" },
-      { label: "Beaucoup (travail/sport en extérieur)", nextQuestionId: "q_budget" }
+      { label: "Très peu (surtout en intérieur)", nextQuestionId: "q_makeup" },
+      { label: "Modérément (trajets, balades)", nextQuestionId: "q_makeup" },
+      { label: "Beaucoup (travail/sport en extérieur)", nextQuestionId: "q_makeup" }
+    ]
+  },
+  {
+    // decides the evening double cleanse with a make-up remover (lib/skin-routine.ts, client's rule 2026-10-18)
+    id: "q_makeup",
+    text: "Vous maquillez-vous régulièrement ?",
+    type: "choice",
+    options: [
+      { label: "Oui, presque tous les jours", nextQuestionId: "q_budget" },
+      { label: "Oui, de temps en temps", nextQuestionId: "q_budget" },
+      { label: "Rarement", nextQuestionId: "q_budget" },
+      { label: "Jamais", nextQuestionId: "q_budget" }
     ]
   },
   {
@@ -265,7 +277,7 @@ const AIAvatar = () => (
 const ANALYSIS_STEPS = ["Lecture de vos 3 photos", "Sébum et pores", "Hydratation et barrière", "Imperfections et taches", "Choix des produits en stock"];
 
 // ─── Progress steps ──────────────────────────────────────────────────────────
-const TOTAL_STEPS = 12;
+const TOTAL_STEPS = 13;
 
 // ─── Component ──────────────────────────────────────────────────────────────
 

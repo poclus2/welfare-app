@@ -10,8 +10,16 @@ import {
   candidatesFor,
   checkRoutine,
   cheapestEssentials,
+  budgetTier,
   fitEssentials,
+  goalActiveOf,
+  goalTargetFor,
   isFaceCare,
+  isMakeupRemover,
+  maxStepsFor,
+  readMakeup,
+  removerNeed,
+  TIER_LABEL,
   ESSENTIAL_FUNCTIONS,
   fmt,
   FUNCTION_LABEL,
@@ -41,6 +49,7 @@ export type RoutineStep = {
   medusa_product_id?: string;
   product_name?: string;
   already_owned?: boolean; // bought in the last months (logged-in scan): she keeps using it
+  evening_only?: boolean; // make-up remover of the evening double cleanse
 
   // Legacy fields kept for backward compat
   category?: string;
@@ -93,7 +102,7 @@ type AIConfig = {
 const DEFAULT_AI_CONFIG: AIConfig = {
   mode: "top_stock",
   min_stock_threshold: 1,
-  max_routine_steps: 5,
+  max_routine_steps: 6,
   manual_product_ids: [],
   enforce_stock_filter: true,
 };
@@ -275,7 +284,12 @@ async function fetchOwnedProducts(customerToken: string): Promise<EnrichedProduc
 async function fetchProductCatalogForSkin(
   skinType: string,
   concerns: string[],
-  config: AIConfig
+  config: AIConfig,
+  // searches for treatments made for her main goal (sérum niacinamide, acide azélaïque…): the category searches
+  // alone rarely bring them (client feedback 2026-10-18: no spot serum offered for a spots goal)
+  goalSearches: string[] = [],
+  // evening make-up removers (double cleanse): searched only when her habits call for one
+  withRemovers = false
 ): Promise<EnrichedProduct[]> {
   const host = process.env.MEILISEARCH_HOST;
   const searchKey = process.env.MEILISEARCH_SEARCH_KEY;
@@ -322,6 +336,7 @@ async function fetchProductCatalogForSkin(
     { name: "Sérum", queries: ["sérum", "serum", "ampoule", "concentré"] },
     { name: "Hydratant", queries: ["crème", "hydratant", "moisturizer", "gel crème"] },
     { name: "Solaire", queries: ["solaire", "spf", "sunscreen", "protection solaire"] },
+    ...(withRemovers ? [{ name: "Démaquillant", queries: ["démaquillant", "huile démaquillante", "cleansing balm", "eau micellaire"] }] : []),
   ];
 
   const search = async (q: string): Promise<string[]> => {
@@ -361,6 +376,12 @@ async function fetchProductCatalogForSkin(
     const categoryName = categories[i]?.name;
     if (categoryName && ids.length > 0) byCategory[categoryName] = ids;
   });
+  if (goalSearches.length) {
+    const found = (await Promise.all(goalSearches.map((q) => search(q)))).flat();
+    const already = new Set(Object.values(byCategory).flat());
+    const ids = [...new Set(found)].filter((id) => !already.has(id)).slice(0, MAX_PER_CATEGORY);
+    if (ids.length) byCategory["Soin ciblé"] = ids;
+  }
 
   // Enrich with stock from Medusa Store API
   const enrichedAll: EnrichedProduct[] = [];
@@ -709,9 +730,18 @@ export async function analyzeSkin(
     log.medical = medical;
     log.dark_spots = dark;
     log.profile = profile;
-    const maxSteps = medical.referral ? ESSENTIAL_FUNCTIONS.length : aiConfig.max_routine_steps;
     const budgetAnswer = userResponses.find((r) => typeof r.answer === "string" && r.answer.includes("FCFA"));
-    const maxBudget = budgetMax(typeof budgetAnswer?.answer === "string" ? budgetAnswer.answer : "");
+    const budgetText = typeof budgetAnswer?.answer === "string" ? budgetAnswer.answer : "";
+    const maxBudget = budgetMax(budgetText);
+    // Routine tier from her budget, evening make-up remover from her make-up habits and sun protection, comfort
+    // toner after a double cleanse for a skin that feels tight (client's rules, 2026-10-18; lib/skin-routine.ts)
+    const tier = budgetTier(budgetText);
+    const makeup = readMakeup(answerFor(userResponses, "q_makeup"));
+    const sunHigh = /beaucoup/i.test(answerFor(userResponses, "q_sun_exposure"));
+    const remover = medical.referral ? "no" : removerNeed(makeup, tier, sunHigh);
+    const comfortToner = remover !== "no" && /tiraille/i.test(answerFor(userResponses, "q_post_wash"));
+    const maxSteps = medical.referral ? ESSENTIAL_FUNCTIONS.length : maxStepsFor(tier, remover, aiConfig.max_routine_steps);
+    log.routine_plan = { tier, makeup, sun_high: sunHigh, remover, comfort_toner: comfortToner, max_steps: maxSteps };
 
     // =========================================================================
     // APPEL 1.5 : RAG — Catalogue filtré selon la config Admin
@@ -726,7 +756,14 @@ export async function analyzeSkin(
     const searchSkinType = `${profile.label || ""} ${qwenResult.visual_reasoning || ""}`;
     // acne first: search for acne products and don't let spot keywords steer the search
     const searchConcerns = acne.acneFirst ? ["acné", ...observations.filter((o) => !SPOT_RE.test(o))] : observations;
-    const rawCatalog = await fetchProductCatalogForSkin(searchSkinType, searchConcerns, aiConfig);
+    // Treatment for her main goal (client's rule, 2026-10-18), told apart from the essentials. Acne first: the
+    // goal treated is the acne. No push for spots when depigmenting actives are ruled out (her safety first).
+    const goalTarget = medical.referral
+      ? null
+      : goalTargetFor(acne.acneFirst ? "acné" : acne.goal);
+    // an Essentielle routine keeps the 3 essentials: no targeted treatment pushed in that budget
+    const pushTarget = !!goalTarget && tier !== "essential" && !(goalTarget.key === "spots" && safety.noDepigmenting);
+    const rawCatalog = await fetchProductCatalogForSkin(searchSkinType, searchConcerns, aiConfig, pushTarget ? goalTarget!.searches : [], remover !== "no");
 
     // Products she must not be offered are removed before the model sees the catalog:
     // - acne first: spot treatments;
@@ -737,6 +774,7 @@ export async function analyzeSkin(
     const filterCatalog = (products: EnrichedProduct[]) =>
       products.filter((p) => {
         if (!isFaceCare(p)) return false; // lips, body, accessories
+        if (remover === "no" && isMakeupRemover(p)) return false; // no double cleanse for her
         if (acne.acneFirst && isSpotTreatment(p)) {
           excludedProductIds.add(p.id);
           return false;
@@ -753,10 +791,11 @@ export async function analyzeSkin(
     // The team's selection stays preferred (see the prompt).
     if (aiConfig.mode === "manual_selection" && aiConfig.manual_products_by_step) {
       const emptySteps = Object.entries(aiConfig.manual_products_by_step)
-        .filter(([step, ids]) => ids.length > 0 && !productCatalog.some((p) => p.category === step))
+        // no double cleanse for her: an empty make-up remover step is not completed
+        .filter(([step, ids]) => ids.length > 0 && !(step === "Démaquillant" && remover === "no") && !productCatalog.some((p) => p.category === step))
         .map(([step]) => step);
       if (emptySteps.length) {
-        const topStock = await fetchProductCatalogForSkin(searchSkinType, searchConcerns, { ...aiConfig, mode: "top_stock" });
+        const topStock = await fetchProductCatalogForSkin(searchSkinType, searchConcerns, { ...aiConfig, mode: "top_stock" }, [], emptySteps.includes("Démaquillant"));
         const extra = filterCatalog(
           topStock.filter((p) => emptySteps.includes(p.category) && !productCatalog.some((q) => q.id === p.id))
         ).map((p) => ({ ...p, fallback: true }));
@@ -786,6 +825,19 @@ export async function analyzeSkin(
     if (ownedAll.length) {
       log.owned = { kept: ownedKept.map((p) => p.title), dropped: ownedDropped, other: ownedAll.length - ownedKept.length - ownedDropped.length };
       console.log(`[SkinCoach] Current routine: ${ownedKept.length} face product(s) bought kept as candidates, ${ownedDropped.length} excluded`);
+    }
+
+    // Treatments of the (already filtered) catalog made with an active of her goal
+    const goalTreatments = pushTarget
+      ? productCatalog.flatMap((p) => {
+          const active = goalActiveOf(p, goalTarget!);
+          return active ? [{ p, active }] : [];
+        })
+      : [];
+    const targetedIds = new Set(goalTreatments.map((t) => t.p.id));
+    if (goalTarget) {
+      log.goal_target = { goal: goalTarget.key, pushed: pushTarget, candidates: goalTreatments.map((t) => `${t.p.title} (${t.active})`) };
+      console.log(`[SkinCoach] Goal treatment (${goalTarget.key}): ${goalTreatments.length} candidate(s)${pushTarget ? "" : ", not pushed (depigmenting ruled out)"}`);
     }
 
     if (excludedProductIds.size) {
@@ -862,7 +914,7 @@ CONSTRUCTION DE LA ROUTINE, DANS CET ORDRE :
 1. Sécurité : les produits incompatibles avec ses allergies, sa situation ou son traitement ont déjà été retirés ; ne cherche jamais à contourner une exclusion.
 2. Besoins de la peau (observés sur les photos ET déclarés) et objectif de la cliente.
 3. FONCTIONS ESSENTIELLES, obligatoires dans toute routine quotidienne : un nettoyant doux, un hydratant sans rinçage (crème, gel-crème ou émulsion, dont la texture convient à son type de peau et à ses différentes zones) et une protection solaire. Un toner, une essence ou un sérum ne remplacent JAMAIS l'hydratant.
-4. Soins complémentaires (toner, essence, sérum, traitement) seulement s'ils apportent un bénéfice justifié pour elle, et sans cumuler les actifs irritants (tiens compte de la routine qu'elle utilise déjà). Un budget élevé ne signifie pas plus de produits.
+4. Soins complémentaires (toner, essence, sérum, traitement) seulement s'ils apportent un bénéfice justifié pour elle, en commençant par le soin ciblé pour son objectif principal (voir le PLAN DE ROUTINE), et sans cumuler les actifs irritants (tiens compte de la routine qu'elle utilise déjà). Un budget élevé ne signifie pas plus de produits.
 5. Budget : ${budgetLine}. Pour le respecter, retire d'abord les soins complémentaires, puis choisis des références moins chères pour les fonctions essentielles. Ne retire JAMAIS le nettoyant, l'hydratant ou la protection solaire : si même les références les moins chères dépassent le budget, garde-les quand même (un message l'expliquera à la cliente).
 - En cas d'hésitation entre deux produits équivalents qui respectent le budget, préfère celui qui a le stock le plus élevé.
 - Si le mode est "Sélection éditoriale manuelle", ces produits ont été choisis par notre équipe : leur recommandation est FORTEMENT encouragée. Les produits marqués "complément automatique" ne sont là que parce qu'aucun produit de la sélection n'est disponible pour leur étape : utilise-les seulement pour cette étape.
@@ -932,19 +984,52 @@ ${safetyLines.join("\n")}`
     const extras =
       extraConcern && hasCatalog && !medical.referral
         ? productCatalog
-            .filter((p) => productFunction(p) === "other" && (p.skin_concerns || []).some((c) => extraConcern.test(c)))
+            .filter((p) => productFunction(p) === "other" && !targetedIds.has(p.id) && (p.skin_concerns || []).some((c) => extraConcern.test(c)))
             .map((p) => p.title)
             .slice(0, 8)
         : [];
     const essentialsOverBudget = !!cheapest && Number.isFinite(maxBudget) && cheapest.total > maxBudget + BUDGET_TOLERANCE;
+    // Treatment for her goal, told apart from the essentials (client's rule, 2026-10-18)
+    const targetLines = pushTarget
+      ? `- SOIN CIBLÉ POUR SON OBJECTIF (${goalTarget!.label}), distinct des fonctions essentielles : ${
+          goalTreatments.length
+            ? `candidats compatibles avec son profil : ${goalTreatments.map((t) => `${t.p.title} (actif : ${t.active}, ${t.p.owned ? "déjà acheté" : `${fmt(t.p.price || 15000)} FCFA`})`).join(" ; ")}`
+            : "aucun soin ciblé compatible n'est disponible aujourd'hui"
+        }.
+  Règle de la marque : quand l'un d'eux convient, recommande-le en priorité parmi les soins complémentaires, avant un toner ou une essence simplement hydratants. Si le nombre d'étapes ou le budget est limité, le soin ciblé passe avant le toner. Avec un budget confortable, toner et soin ciblé peuvent aller ensemble si leurs actifs sont compatibles${profile.sensitive ? "" : " (elle n'a pas déclaré de peau sensible)"} ; jamais deux actifs irritants l'un sur l'autre.
+  ${profile.sensitive ? "Peau sensible : au plus un soin ciblé, le plus doux (par exemple niacinamide à concentration modérée ou acide azélaïque), à introduire progressivement ; tu peux t'en passer si sa tolérance l'exige, et tu l'expliques." : "Préfère une concentration modérée quand elle est indiquée (par exemple niacinamide jusqu'à 10 %)."}
+  Ce n'est jamais une obligation : la tolérance, les allergies, les exclusions et la disponibilité priment toujours. Dans 'explanation_for_client', explique ce que ce soin apporte à son objectif et comment l'utiliser.`
+      : "";
+    // Routine tier, double cleanse, comfort and priorities (client's rules, 2026-10-18)
+    const removerAfterTarget = remover === "needed" && tier !== "premium";
+    const tierDesc = {
+      essential: `les 3 fonctions essentielles uniquement : nettoyant doux à base d'eau, crème hydratante, protection solaire${removerAfterTarget ? ", plus un démaquillant pour le soir si son budget le permet" : ""}`,
+      intermediate: `les 3 fonctions essentielles et un soin ciblé pour son objectif (un sérum, ou un toner dont l'actif et la concentration sont pertinents)${removerAfterTarget ? " ; le démaquillant vient ensuite si le budget le permet, jamais à la place du soin ciblé" : ""}`,
+      premium: "selon ses besoins : démaquillant le soir si utile, nettoyant à base d'eau, toner ou essence si utile, sérum ciblé, crème hydratante, protection solaire",
+    }[tier];
+    const removerKinds = profile.sensitive
+      ? "un baume ou une huile démaquillante douce, ou une eau micellaire ; pas de pads exfoliants sur sa peau sensible"
+      : `une huile ou un baume démaquillant, une eau micellaire ou des pads démaquillants${profile.type === "grasse" || profile.type === "mixte" ? " (une huile qui s'émulsionne à l'eau convient aussi aux peaux grasses)" : ""}`;
+    const removerLine = {
+      needed: `elle se maquille presque tous les jours : propose ${removerKinds}, à utiliser le soir avant le nettoyant (double nettoyage), si le budget le permet après le soin ciblé.`,
+      offered: `elle se maquille ${makeup === "sometimes" ? "de temps en temps" : "peu ou pas"}${sunHigh ? " et s'expose beaucoup au soleil (protection solaire à bien retirer le soir)" : ""} : un démaquillant (${removerKinds}) est possible si le budget le permet, présenté comme utile les soirs maquillés ou après une forte protection solaire ; il n'est pas indispensable.`,
+      no: "pas de démaquillant pour elle : ses habitudes ne le justifient pas (les démaquillants ont été retirés du catalogue).",
+    }[remover];
+    const tierLines = `- ROUTINE ${TIER_LABEL[tier].toUpperCase()} (budget « ${budgetText || "non précisé"} ») : ${tierDesc}. ${maxSteps} étapes au maximum.
+- ORDRE DE PRIORITÉ : sécurité (déjà assurée par le catalogue), fonctions essentielles, soin ciblé pour son objectif, confort, étapes facultatives. Quand il faut choisir, respecte cet ordre.
+- DOUBLE NETTOYAGE : ${removerLine}${remover !== "no" ? " Nomme cette étape « Démaquillant (soir) »." : ""}
+${comfortToner ? "- CONFORT : sa peau tiraille après le nettoyage ; après un double nettoyage, un toner hydratant améliore son confort, s'il reste une étape et du budget après le soin ciblé." : ""}
+- AVANT DE RÉPONDRE : vérifie que ta routine répond bien à son objectif principal (« ${acne.goal} »).`;
     const planBlock = hasCatalog
       ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PLAN DE ROUTINE (établi par notre contrôle, à respecter)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${tierLines}
 - Fonctions essentielles, dans cet ordre : nettoyant, hydratant, protection solaire.
 - Hydratant pour sa ${profile.label} : texture conseillée ${textures.preferred.map((t) => TEXTURE_LABEL[t]).join(", ")} ; à éviter : ${textures.avoid.map((t) => TEXTURE_LABEL[t]).join(", ")}${profile.dryZones ? " ; pas de crème matifiante ou « oil control » sur des joues qui tiraillent" : ""}. Quand la texture d'un produit n'est pas indiquée, déduis-la de sa fiche.
 ${cheapest ? `- Combinaison essentielle la moins chère disponible : ${fmt(cheapest.total)} FCFA${essentialsOverBudget ? " : c'est au-dessus de son budget, propose quand même les 3 essentiels, en choisissant les moins chers" : ""}.` : ""}
-- Soin complémentaire possible pour son objectif : ${extras.length ? extras.join(" ; ") : "aucun soin ciblé disponible, n'en ajoute pas"}. Seulement si le budget le permet et si c'est justifié pour elle.`
+${targetLines}
+- ${pushTarget ? "Autres soins complémentaires possibles" : "Soin complémentaire possible pour son objectif"} : ${extras.length ? extras.join(" ; ") : pushTarget ? "aucun autre" : "aucun soin ciblé disponible, n'en ajoute pas"}. Seulement si le budget le permet et si c'est justifié pour elle.`
       : "";
 
     // ---- What the photos show, what she declared, what is uncertain (client feedback: keep them apart) ----
@@ -1052,9 +1137,9 @@ TA MISSION (4 points obligatoires)
 RÈGLES D'EXPERTISE K-BEAUTY — THE WELFARE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🌿 SKINIMALISME (${maxSteps} étapes MAXIMUM) :
-   Le tableau "routine_steps" doit contenir MAXIMUM ${maxSteps} éléments.
-   Les 3 fonctions essentielles d'abord ; un soin complémentaire seulement s'il apporte un bénéfice justifié.
+🌿 SKINIMALISME (${maxSteps} étapes MAXIMUM, routine ${TIER_LABEL[tier].toLowerCase()}) :
+   Le tableau "routine_steps" doit contenir MAXIMUM ${maxSteps} éléments, dans l'ordre d'utilisation (démaquillant du soir d'abord, protection solaire en dernier).
+   Les 3 fonctions essentielles d'abord ; un soin complémentaire seulement s'il apporte un bénéfice justifié, le soin ciblé pour son objectif avant un toner simplement hydratant.
 
 🚨 SIGNES PRÉOCCUPANTS :
    Si tu observes d'autres signes préoccupants (rosacée, dermatite, irritation importante…), reste sur les fonctions essentielles et conseille dans 'empathetic_message' l'avis d'un dermatologue, sans poser de diagnostic. Ne joue pas au médecin.
@@ -1137,14 +1222,16 @@ FORMAT JSON ATTENDU :
     // =========================================================================
     const notices: SkinNotice[] = [];
     let routineSteps: CheckedStep[];
+    // why an advisor should look at this routine (no compatible solution, safety contradiction…)
+    const reviewReasons: string[] = [];
     if (hasCatalog) {
-      const checkOpts = { safety, excludedIds: excludedProductIds, maxSteps, budgetMax: maxBudget, essentialsOnly: medical.referral, profile };
+      const checkOpts = { safety, excludedIds: excludedProductIds, maxSteps, budgetMax: maxBudget, essentialsOnly: medical.referral, profile, targetedIds, goalLabel: goalTarget?.label, remover, comfortToner };
       const logCheck = (label: string, c: RoutineCheck) =>
         console.log(
           `[SkinCoach] Routine check (${label}): ${c.steps.length} step(s), total ${c.total} FCFA, budget ${Number.isFinite(c.budgetMax) ? c.budgetMax : "none"}, missing [${c.missing.join(", ")}], unavailable [${c.unavailable.join(", ")}]${c.dropped.length ? `, dropped: ${c.dropped.join(" | ")}` : ""}`
         );
       let check = checkRoutine(parsed.routine_steps || parsed.kbeauty_routine || [], productCatalog, checkOpts);
-      log.check_model = { dropped: check.dropped, missing: check.missing, unavailable: check.unavailable, texture: check.textureIssue, total: check.total };
+      log.check_model = { dropped: check.dropped, missing: check.missing, unavailable: check.unavailable, texture: check.textureIssue, goal_treatment_missing: !!check.missingTarget, remover_missing: !!check.missingRemover, total: check.total };
       logCheck("model", check);
       if (check.dropped.some((d) => d.includes("BLOQUÉ"))) {
         console.error("[SkinCoach] Routine check: the model chose a product the safety filter should have removed");
@@ -1207,9 +1294,12 @@ FORMAT JSON ATTENDU :
       });
       routineSteps.forEach((s, i) => {
         s.step_number = i + 1;
-        if (productCatalog.find((c) => c.id === s.medusa_product_id)?.owned) s.already_owned = true;
+        const product = productCatalog.find((c) => c.id === s.medusa_product_id);
+        if (product?.owned) s.already_owned = true;
+        if (product && isMakeupRemover(product)) s.evening_only = true; // double cleanse: in the evening
       });
       if (ownedKept.length) log.owned.in_routine = routineSteps.filter((s) => s.already_owned).map((s) => s.product_name);
+      if (log.goal_target) log.goal_target.in_routine = routineSteps.filter((s) => targetedIds.has(s.medusa_product_id || "")).map((s) => s.product_name);
 
       const total = routineTotal(routineSteps, productCatalog);
       if (Number.isFinite(maxBudget) && total > maxBudget + BUDGET_TOLERANCE) {
@@ -1224,9 +1314,21 @@ FORMAT JSON ATTENDU :
           text: `Nous n'avons pas actuellement ${withArticle(fn, "de")} compatible avec vos réponses. Demandez conseil en boutique pour compléter votre routine.`,
         });
       }
+      if (check.unavailable.length) reviewReasons.push(`aucun produit compatible pour : ${check.unavailable.map((fn) => FUNCTION_LABEL[fn]).join(", ")}`);
+      if ((log.check_model?.dropped || []).some((d: string) => d.includes("BLOQUÉ"))) reviewReasons.push("l'IA avait choisi un produit exclu pour sa sécurité (retiré par le contrôle)");
+      if (log.final_gate_blocked?.length) reviewReasons.push(`produit bloqué au contrôle final de sécurité : ${log.final_gate_blocked.join(" ; ")}`);
+      if (check.missingTarget) reviewReasons.push("un soin ciblé compatible avec son objectif n'a pas été retenu par l'IA");
+      if (check.missingRemover) reviewReasons.push("pas de démaquillant malgré un maquillage presque quotidien");
     } else {
       routineSteps = (parsed.routine_steps || parsed.kbeauty_routine || []).slice(0, maxSteps);
+      reviewReasons.push("catalogue indisponible : routine générique, sans produit de la boutique");
     }
+    if (pushTarget && goalTreatments.length === 0) reviewReasons.push("aucun soin ciblé compatible avec son objectif dans le catalogue");
+    if (safety.otherAllergy) reviewReasons.push(`allergie déclarée en texte libre (« ${safety.otherAllergy} ») : vérifier la composition des produits`);
+    if (medical.referral) reviewReasons.push("avis dermatologique conseillé (routine réduite aux essentiels)");
+    // Flagged for an advisor's review (client's rule, 2026-10-18); she still sees her routine at once
+    log.review = { needed: reviewReasons.length > 0, reasons: reviewReasons };
+    if (reviewReasons.length) console.log(`[SkinCoach] Flagged for review: ${reviewReasons.join(" | ")}`);
 
     if (medical.referral) {
       notices.unshift({

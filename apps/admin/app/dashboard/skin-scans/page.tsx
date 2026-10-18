@@ -141,6 +141,9 @@ export default async function SkinScansPage() {
                         <span className="text-[11px] font-bold px-2 py-1 rounded-lg bg-violet-50 text-violet-700">Corrigée</span>
                       ) : scan.review_status === "validated" ? (
                         <span className="text-[11px] font-bold px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700">Validée</span>
+                      ) : scan.review_flags?.length ? (
+                        // flagged by the Skin Coach: no compatible solution or a safety contradiction
+                        <span title={scan.review_flags.join(" · ")} className="text-[11px] font-bold px-2 py-1 rounded-lg bg-rose-50 text-rose-700">À valider · signalée</span>
                       ) : (
                         <span className="text-[11px] font-bold px-2 py-1 rounded-lg bg-amber-50 text-amber-700">À revoir</span>
                       )}
