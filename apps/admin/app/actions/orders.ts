@@ -4,6 +4,8 @@ import { cookies } from "next/headers";
 import { fetchAdmin } from "@/lib/medusa-admin";
 import { revalidatePath } from "next/cache";
 
+const SHOP_URL = (process.env.NEXT_PUBLIC_SHOP_URL || "https://thewelfarecm.com").replace(/\/+$/, "");
+
 async function getToken() {
   const cookieStore = await cookies();
   const token = cookieStore.get("admin_token")?.value;
@@ -76,8 +78,9 @@ export async function createShipmentAction(orderId: string, fulfillmentId: strin
         items: [], // usually all items in fulfillment
         labels: trackingNumber ? [{ 
           tracking_number: trackingNumber, 
-          tracking_url: `https://thewelfare.store/track/${trackingNumber}`,
-          label_url: `https://thewelfare.store`
+          // the shop has no tracking page: customers follow their orders in their account
+          tracking_url: `${SHOP_URL}/account`,
+          label_url: SHOP_URL
         }] : []
       }) 
     });

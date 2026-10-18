@@ -9,6 +9,8 @@ import { ScanAudit } from "./ScanAudit";
 
 export const dynamic = "force-dynamic";
 
+const SHOP_URL = (process.env.NEXT_PUBLIC_SHOP_URL || "https://thewelfarecm.com").replace(/\/+$/, "");
+
 function MetricBar({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div className="space-y-1.5">
@@ -237,7 +239,7 @@ export default async function SkinScanDetailsPage({ params }: { params: Promise<
                               <div className="mt-2 mb-2 p-2.5 bg-white rounded-lg border border-emerald-100/50 flex justify-between items-center shadow-sm">
                                 <span className="text-sm font-medium text-emerald-900">{rec.product_name}</span>
                                 {rec.medusa_product_id && (
-                                  <a href={`https://thewelfare.store/shop/product/${rec.medusa_product_id}`} target="_blank" rel="noopener noreferrer" className="text-[10px] uppercase font-bold text-emerald-600 hover:underline shrink-0 ml-2">
+                                  <a href={`${SHOP_URL}/shop/product/${rec.medusa_product_id}`} target="_blank" rel="noopener noreferrer" className="text-[10px] uppercase font-bold text-emerald-600 hover:underline shrink-0 ml-2">
                                     Voir produit
                                   </a>
                                 )}
