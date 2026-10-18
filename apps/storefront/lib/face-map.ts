@@ -33,4 +33,29 @@ export function faceMapFromLandmarks(landmarks: { x: number; y: number }[], mirr
   };
 }
 
+// Part of the video frame kept for a photo (normalized 0-1, unmirrored): the face plus a margin for the
+// hairline, ears and jaw. The analysis then gets the face at the camera's full resolution instead of a
+// small face in the middle of the room (scan 2026-10-18: cheek pimples 2-4 px wide, missed).
+export type FrameCrop = { x0: number; y0: number; x1: number; y1: number };
+
+export function faceCrop(landmarks: { x: number; y: number }[], frameW: number, frameH: number): FrameCrop {
+  const xs = landmarks.map((l) => l.x * frameW);
+  const ys = landmarks.map((l) => l.y * frameH);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const w = x1 - x0, h = y1 - y0;
+  const clamp = (v: number, max: number) => Math.min(max, Math.max(0, v));
+  return {
+    x0: clamp(x0 - 0.3 * w, frameW) / frameW,
+    x1: clamp(x1 + 0.3 * w, frameW) / frameW,
+    y0: clamp(y0 - 0.35 * h, frameH) / frameH,
+    y1: clamp(y1 + 0.15 * h, frameH) / frameH,
+  };
+}
+
+// Landmarks of the frame, moved into the cropped photo's coordinates
+export function landmarksInCrop(landmarks: { x: number; y: number }[], crop: FrameCrop) {
+  const w = crop.x1 - crop.x0, h = crop.y1 - crop.y0;
+  return landmarks.map((l) => ({ x: (l.x - crop.x0) / w, y: (l.y - crop.y0) / h }));
+}
+
 const round = (n: number) => Math.round(n * 10000) / 10000;

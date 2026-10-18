@@ -6,8 +6,35 @@ import { motion, AnimatePresence } from "framer-motion";
 import { FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import { ArrowLeft, ArrowRight, Sun, Eyeglasses, X, Check } from "@phosphor-icons/react";
 import { IconIA } from "@/components/ui/icons/IconIA";
-import { faceMapFromLandmarks, type FaceMap } from "@/lib/face-map";
+import { faceCrop, faceMapFromLandmarks, landmarksInCrop, type FaceMap, type FrameCrop } from "@/lib/face-map";
 import { DISPLAY_FONT, SK } from "@/components/ui/skin-coach/theme";
+
+// The camera's best resolution (browsers default to 640x480 without it). Constant: react-webcam reopens
+// the camera when the constraints object changes.
+const VIDEO_CONSTRAINTS = { facingMode: "user", width: { ideal: 1920 }, height: { ideal: 1080 } };
+// Longest side of a photo sent to the analysis, and its JPEG quality: enough for small pimples to show
+const PHOTO_MAX_SIDE = 1280;
+const PHOTO_QUALITY = 0.88;
+
+// The cropped part of the current video frame, mirrored like the preview, at the camera's resolution.
+// react-webcam's getScreenshot sizes the photo on the on-screen width (428 px on a phone), so it isn't used.
+function grabPhoto(video: HTMLVideoElement, crop: FrameCrop): string | null {
+  const vw = video.videoWidth, vh = video.videoHeight;
+  if (!vw || !vh) return null;
+  const sx = crop.x0 * vw, sy = crop.y0 * vh, sw = (crop.x1 - crop.x0) * vw, sh = (crop.y1 - crop.y0) * vh;
+  const scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(sw, sh));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(sw * scale);
+  canvas.height = Math.round(sh * scale);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.translate(canvas.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", PHOTO_QUALITY);
+}
+
+const FULL_FRAME: FrameCrop = { x0: 0, y0: 0, x1: 1, y1: 1 };
 
 export type CaptureResult = {
   front: string;
@@ -81,13 +108,15 @@ export default function SmartCameraCapture({ onComplete, onCancel, onConsent }: 
   }, []);
 
   const captureImage = useCallback((key: keyof CaptureResult) => {
-    if (webcamRef.current) {
-      const imageSrc = webcamRef.current.getScreenshot();
-      if (imageSrc) {
-        setCaptures((prev) => ({ ...prev, [key]: imageSrc }));
-        if (key === "front" && lastLandmarksRef.current) {
-          frontMapRef.current = faceMapFromLandmarks(lastLandmarksRef.current, true);
-        }
+    const video = webcamRef.current?.video;
+    if (!video) return;
+    const landmarks = lastLandmarksRef.current;
+    const crop = landmarks ? faceCrop(landmarks, video.videoWidth, video.videoHeight) : FULL_FRAME;
+    const imageSrc = grabPhoto(video, crop);
+    if (imageSrc) {
+      setCaptures((prev) => ({ ...prev, [key]: imageSrc }));
+      if (key === "front" && landmarks) {
+        frontMapRef.current = faceMapFromLandmarks(landmarksInCrop(landmarks, crop), true);
       }
     }
   }, []);
@@ -404,9 +433,7 @@ export default function SmartCameraCapture({ onComplete, onCancel, onConsent }: 
             <Webcam
               audio={false}
               ref={webcamRef}
-              screenshotFormat="image/jpeg"
-              screenshotQuality={0.5}
-              videoConstraints={{ facingMode: "user" }}
+              videoConstraints={VIDEO_CONSTRAINTS}
               mirrored={true}
               className="absolute inset-0 w-full h-full object-cover object-center"
             />

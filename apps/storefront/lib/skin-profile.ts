@@ -92,6 +92,42 @@ export function textureFit(
 // and below which the photos show no real active acne
 export const ACNE_SCAN_THRESHOLD = 30;
 export const ACNE_SCAN_LOW = 15;
+
+// The photo model counts the lesions zone by zone; the acne score comes from these counts with a fixed grid
+// (the model's own 0-100 guess had no scale: 0-25 on every scan, even with visible pimples, 2026-10-18).
+// Grades follow the usual global acne grading (clear, almost clear, mild, moderate, severe) and land on
+// the thresholds above: grade 1 from 15 (ACNE_SCAN_LOW), grade 2 from 30 (active acne), grade 4 from 75
+// (at or above SEVERE_ACNE_SCORE in skin-safety: dermatologist referral).
+export const ACNE_ZONES = ["forehead", "nose", "cheek_left_view", "cheek_right_view", "chin_jaw"] as const;
+export type AcneZoneCount = { comedones?: unknown; papules_pustules?: unknown; nodules_cysts?: unknown };
+export type AcneGrading = {
+  grade: 0 | 1 | 2 | 3 | 4;
+  score: number;
+  totals: { comedones: number; inflammatory: number; nodules: number };
+};
+
+const count = (v: unknown) => {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0;
+};
+
+// null when the model gave no usable counts (the model's own percentage is then kept)
+export function acneGradingFromCounts(counts: unknown): AcneGrading | null {
+  if (!counts || typeof counts !== "object") return null;
+  const zones = ACNE_ZONES.map((z) => (counts as Record<string, AcneZoneCount | undefined>)[z]).filter(
+    (z): z is AcneZoneCount => !!z && typeof z === "object"
+  );
+  if (zones.length === 0) return null;
+  const C = zones.reduce((s, z) => s + count(z.comedones), 0);
+  const I = zones.reduce((s, z) => s + count(z.papules_pustules), 0);
+  const N = zones.reduce((s, z) => s + count(z.nodules_cysts), 0);
+  const totals = { comedones: C, inflammatory: I, nodules: N };
+  if (N >= 2 || I > 30) return { grade: 4, score: Math.min(95, 75 + Math.round((Math.max(0, I - 30) + 3 * N) / 2)), totals };
+  if (N === 1 || I > 10 || C > 30) return { grade: 3, score: 50 + Math.min(19, Math.max(I - 10, Math.round((C - 30) / 3), 0)), totals };
+  if (I > 2 || C > 10) return { grade: 2, score: 30 + Math.min(19, Math.max(2 * (I - 2), Math.round((C - 10) / 2), 0)), totals };
+  if (I > 0 || C > 2) return { grade: 1, score: 15 + Math.min(14, 4 * I + C), totals };
+  return { grade: 0, score: 2 * C, totals };
+}
 // dark_spots_percentage (0-100) at or above which the photos show spots worth asking about.
 // First value, to adjust on real scans (dark skin: shadows and natural shade differences are not spots).
 export const DARK_SCAN_THRESHOLD = 35;

@@ -26,7 +26,7 @@ import { callOpenRouter, parseJsonAnswer, type AiErrorCode, type AiUsage } from 
 import { buildRoutineScript, signScript } from "@/lib/routine-audio";
 import { withoutScores } from "@/lib/coach-message";
 import type { FaceMap } from "@/lib/face-map";
-import { ACNE_SCAN_LOW, ACNE_SCAN_THRESHOLD, answerOf, FOLLOWUP_QUESTIONS, moisturizerTextures, readAcne, readDarkSpots, readSkinProfile, TEXTURE_LABEL } from "@/lib/skin-profile";
+import { acneGradingFromCounts, ACNE_SCAN_LOW, ACNE_SCAN_THRESHOLD, answerOf, FOLLOWUP_QUESTIONS, moisturizerTextures, readAcne, readDarkSpots, readSkinProfile, TEXTURE_LABEL } from "@/lib/skin-profile";
 
 export type UserResponse = {
   questionId: string;
@@ -424,9 +424,24 @@ SIGNAUX D'ALERTE ('medical_flags') : tu ne poses aucun diagnostic médical, tu s
 - other_lesion : plaie, lésion suintante ou croûteuse, grain de beauté irrégulier.
 TACHES ('dark_spots_percentage') : étendue et contraste des taches et des zones plus foncées que le reste du visage (marques laissées par des boutons, taches pigmentaires, plaques). La couleur naturelle de la peau, les ombres, les reflets et les cernes ne comptent pas : sur une peau foncée, des variations de teinte uniformes sont normales. En cas de doute (lumière, flou), donne une note basse.
 Sur les peaux foncées, les lésions inflammatoires paraissent brunes ou violacées plutôt que rouges : ne les ignore pas. Si les photos ne permettent pas de conclure (flou, lumière), mets false et explique-le dans 'notes'.
+COMPTAGE DE L'ACNÉ ('acne_count') : avant toute note, inspecte chaque zone et COMPTE les lésions une par une. La note d'acné est calculée à partir de ces nombres, pas de ton impression générale.
+- Compte chaque zone une seule fois, sur la vue où elle se voit le mieux : front et nez sur la vue de face, 'cheek_left_view' = la joue visible sur le profil gauche, 'cheek_right_view' = la joue visible sur le profil droit, 'chin_jaw' = menton et mâchoire (toutes vues).
+- comedones : points noirs, et comédons fermés = petites bosses en relief de la couleur de la peau ou un peu plus foncées, sans rougeur. Regarde le relief et les reflets de la peau : une joue « granuleuse » ou couverte de petites bosses n'est PAS une texture homogène, ce sont des comédons fermés à compter.
+- papules_pustules : boutons inflammatoires, bombés, rouges, bruns ou violacés sur peau foncée, avec ou sans tête blanche.
+- nodules_cysts : gros boutons profonds, larges et gonflés.
+- Les cicatrices plates et les marques brunes laissées par d'anciens boutons ne se comptent pas ici (elles vont dans les taches).
+- Au-delà de 20 lésions dans une zone, donne une estimation. Une zone nette = 0. Si une zone n'est pas visible ou est floue, mets 0 et dis-le dans 'notes'.
+- Décris aussi dans 'visual_reasoning', zone par zone, les lésions que tu as comptées.
 FORMAT JSON ATTENDU :
 {
   "visual_reasoning": "...",
+  "acne_count": {
+    "forehead": { "comedones": 0, "papules_pustules": 0, "nodules_cysts": 0 },
+    "nose": { "comedones": 0, "papules_pustules": 0, "nodules_cysts": 0 },
+    "cheek_left_view": { "comedones": 0, "papules_pustules": 0, "nodules_cysts": 0 },
+    "cheek_right_view": { "comedones": 0, "papules_pustules": 0, "nodules_cysts": 0 },
+    "chin_jaw": { "comedones": 0, "papules_pustules": 0, "nodules_cysts": 0 }
+  },
   "clinical_observations": ["...", "..."],
   "melanin_phototype": "...",
   "estimated_skin_age": 0,
@@ -508,6 +523,13 @@ async function runVisualAnalysis(images: FaceImages): Promise<{ ok: true; result
       error: "Veuillez retirer vos lunettes pour que l'IA puisse analyser précisément votre peau, puis reprenez les photos.",
       retryable: false,
     };
+  }
+  // The acne score comes from the lesion counts and a fixed grid; the model's own guess is kept for the audit
+  const grading = acneGradingFromCounts(result.acne_count);
+  if (grading) {
+    result.metrics = result.metrics && typeof result.metrics === "object" ? result.metrics : {};
+    result.acne_grading = { ...grading, model_percentage: result.metrics.acne_severity_percentage ?? null };
+    result.metrics.acne_severity_percentage = grading.score;
   }
   return { ok: true, result, usage: ai.usage };
 }
