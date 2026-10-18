@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     // subscriber — reading it here avoids expanding *products (full product objects)
     // on every page load just to compute a count.
     const data = await fetchAdmin<{ collections: any[]; count: number }>(
-      `/collections?limit=${limit}&fields=*,metadata`,
+      `/collections?limit=${limit}`,
       token
     );
 

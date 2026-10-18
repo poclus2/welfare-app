@@ -97,8 +97,8 @@ export function CollectionsClient() {
   };
 
   const filteredCollections = collections.filter(c => 
-    c.title.toLowerCase().includes(search.toLowerCase()) || 
-    (c.handle && c.handle.toLowerCase().includes(search.toLowerCase()))
+    ((c?.title || "").toLowerCase().includes(search.toLowerCase())) || 
+    (c?.handle && c.handle.toLowerCase().includes(search.toLowerCase()))
   );
 
   return (
@@ -156,15 +156,15 @@ export function CollectionsClient() {
               <tbody className="divide-y divide-gray-50">
                 {filteredCollections.map(col => (
                   <tr key={col.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="p-4 font-medium text-sm text-gray-900">{col.title}</td>
-                    <td className="p-4 text-sm text-gray-500">{col.handle}</td>
+                    <td className="p-4 font-medium text-sm text-gray-900">{col.title || "—"}</td>
+                    <td className="p-4 text-sm text-gray-500">{col.handle || "—"}</td>
                     <td className="p-4 text-sm text-gray-500">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                         {col.metadata?.product_count ?? 0}
                       </span>
                     </td>
                     <td className="p-4 text-sm text-gray-500">
-                      {new Date(col.created_at).toLocaleDateString('fr-FR')}
+                      {col.created_at ? new Date(col.created_at).toLocaleDateString('fr-FR') : "—"}
                     </td>
                     <td className="p-4">
                       <div className="flex items-center justify-end gap-2">
