@@ -9,8 +9,9 @@ stock of that shop from PostgreSQL and pushes it to the Welfare API (/odoo-sync)
     odoo_sync.exe --dry-run        read Odoo, print what would be sent, send nothing (use to check the config)
     odoo_sync.exe --config X.ini   use another config file (default: config.ini next to the program)
 
-What is sent per barcode: the AVAILABLE quantity = on-hand - reserved, over the configured stock
-location AND its sub-locations, never below 0. Every active product with a barcode is sent, including
+What is sent per barcode, over the configured stock location AND its sub-locations, never below 0:
+the on-hand quantity ([stock] quantity = physique, what Odoo shows as "En stock") or the AVAILABLE
+quantity = on-hand - reserved ([stock] quantity = disponible, the default). Every active product with a barcode is sent, including
 those at 0, so a product that sells out is set back to 0 online.
 """
 import argparse
@@ -52,10 +53,12 @@ def setup_logging():
     log.setLevel(logging.INFO)
     file_handler = RotatingFileHandler(os.path.join(BASE_DIR, "odoo_sync.log"), maxBytes=1_000_000, backupCount=3, encoding="utf-8")
     file_handler.setFormatter(fmt)
-    console = logging.StreamHandler()
-    console.setFormatter(fmt)
     log.addHandler(file_handler)
-    log.addHandler(console)
+    # The windowless build (odoo_sync_auto.exe, started with Windows) has no console: the log file only
+    if sys.stderr is not None:
+        console = logging.StreamHandler()
+        console.setFormatter(fmt)
+        log.addHandler(console)
 
 
 def load_config(path):
@@ -73,7 +76,18 @@ def connect(cfg):
     )
 
 
-def read_stock(conn, location_name):
+def quantity_mode(cfg):
+    """[stock] quantity = physique (on hand, what Odoo shows as "En stock") or disponible (on hand minus
+    what Odoo has reserved for pending outgoing transfers). Default: disponible."""
+    raw = cfg["stock"].get("quantity", "disponible").strip().lower()
+    if raw in ("physique", "physical", "on_hand", "en_stock"):
+        return "on_hand"
+    if raw not in ("disponible", "available"):
+        log.warning("[stock] quantity = '%s' not understood: 'disponible' used (choose physique or disponible)", raw)
+    return "available"
+
+
+def read_stock(conn, location_name, mode="available"):
     """Returns [{barcode, quantity}] or None if the stock location doesn't exist in this database."""
     with conn.cursor() as cur:
         cur.execute("SELECT 1 FROM stock_location WHERE complete_name = %s AND active", (location_name,))
@@ -89,7 +103,8 @@ def read_stock(conn, location_name):
     for barcode, on_hand, available in rows:
         if float(on_hand) < 0:
             negative += 1
-        stock.append({"barcode": str(barcode).strip(), "quantity": max(0, int(float(available)))})
+        qty = on_hand if mode == "on_hand" else available
+        stock.append({"barcode": str(barcode).strip(), "quantity": max(0, int(float(qty)))})
     if negative:
         log.warning("%d products have a NEGATIVE on-hand quantity in Odoo (sent as 0) - fix them in Odoo inventory.", negative)
     return stock
@@ -126,7 +141,8 @@ def sync_once(cfg, dry_run=False):
         log.error("Cannot connect to the Odoo database: %s", e)
         return False
     try:
-        stock = read_stock(conn, cfg["stock"]["location_name"])
+        mode = quantity_mode(cfg)
+        stock = read_stock(conn, cfg["stock"]["location_name"], mode)
         if dry_run:
             with conn.cursor() as cur:
                 cur.execute("SELECT datname FROM pg_database WHERE NOT datistemplate ORDER BY 1")
@@ -142,8 +158,9 @@ def sync_once(cfg, dry_run=False):
         return False
 
     in_stock = sum(1 for s in stock if s["quantity"] > 0)
-    log.info("Read %d products from Odoo (%d in stock, %d at 0). Database: %s, location: %s",
-             len(stock), in_stock, len(stock) - in_stock, cfg["odoo_db"]["name"], cfg["stock"]["location_name"])
+    log.info("Read %d products from Odoo (%d in stock, %d at 0). Database: %s, location: %s, quantity: %s",
+             len(stock), in_stock, len(stock) - in_stock, cfg["odoo_db"]["name"], cfg["stock"]["location_name"],
+             "physique (en stock)" if mode == "on_hand" else "disponible (en stock - réservé)")
     if dry_run:
         log.info("Dry run - sample: %s", stock[:5])
         return True
@@ -172,6 +189,21 @@ def sync_once(cfg, dry_run=False):
     return ok
 
 
+_instance_lock = None
+
+
+def first_instance():
+    """False when the sync loop already runs on this PC (the windowless build can't be seen, so a
+    second start - double-click plus Windows startup - must not run a second loop)."""
+    global _instance_lock
+    if os.name != "nt":
+        return True
+    import ctypes
+    kernel32 = ctypes.windll.kernel32
+    _instance_lock = kernel32.CreateMutexW(None, False, "WelfareOdooSyncLoop")
+    return kernel32.GetLastError() != 183  # ERROR_ALREADY_EXISTS
+
+
 def main():
     parser = argparse.ArgumentParser(description="Odoo -> Welfare stock sync")
     parser.add_argument("--config", default=os.path.join(BASE_DIR, "config.ini"))
@@ -186,6 +218,10 @@ def main():
 
     if args.once or args.dry_run:
         sys.exit(0 if sync_once(cfg, dry_run=args.dry_run) else 1)
+
+    if not first_instance():
+        log.info("odoo_sync is already running on this PC: this copy stops")
+        return
 
     while True:
         try:

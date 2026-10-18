@@ -27,8 +27,10 @@ Depuis ce dossier, sur un PC avec Python 3.10+ (celui d'Odoo convient) :
 ```
 pip install psycopg2-binary requests pyinstaller
 pyinstaller --onefile --name odoo_sync odoo_sync.py
+pyinstaller --onefile --noconsole --name odoo_sync_auto odoo_sync.py
 ```
-L'exe est dans `dist\odoo_sync.exe`.
+Les exe sont dans `dist\` : `odoo_sync.exe` (avec fenêtre, pour `--dry-run` / `--once`) et `odoo_sync_auto.exe`
+(sans fenêtre, à mettre au démarrage du PC ; journal dans `odoo_sync.log` uniquement, une seule copie tourne à la fois).
 
 ## Vérifier que ça marche côté site
 ```
