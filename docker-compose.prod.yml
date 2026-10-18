@@ -74,7 +74,7 @@ services:
       dockerfile: apps/storefront/Dockerfile
       args:
         NEXT_PUBLIC_MEDUSA_BACKEND_URL: https://api.thewelfarecm.com
-        NEXT_PUBLIC_MEILISEARCH_HOST: https://thewelfare.store/meili
+        NEXT_PUBLIC_MEILISEARCH_HOST: https://api.thewelfarecm.com/search
         NEXT_PUBLIC_MEILISEARCH_API_KEY: ${MEILISEARCH_API_KEY:-meilisearch_master_key}
         NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${MEDUSA_PUBLISHABLE_KEY:-pk_a444d1be79f71d0d6530d64a99c9639cf892b40452874ecefa30ff900404e489}
     container_name: welfare-storefront
@@ -99,6 +99,8 @@ services:
     build:
       context: .
       dockerfile: apps/admin/Dockerfile
+      args:
+        NEXT_PUBLIC_MEDUSA_BACKEND_URL: https://api.thewelfarecm.com
     container_name: welfare-admin
     depends_on:
       - medusa-api

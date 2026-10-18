@@ -15,6 +15,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/admin/node_modules ./apps/admin/node_modules
 COPY . .
 WORKDIR /app/apps/admin
+
+ARG NEXT_PUBLIC_MEDUSA_BACKEND_URL
+ENV NEXT_PUBLIC_MEDUSA_BACKEND_URL=$NEXT_PUBLIC_MEDUSA_BACKEND_URL
+
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm run build
 
