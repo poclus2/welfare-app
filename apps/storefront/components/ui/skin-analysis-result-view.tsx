@@ -269,8 +269,7 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
       const p = s.medusa_product_id ? products[s.medusa_product_id] : null;
       return `${i + 1}. ${s.step_name} : ${p?.title || s.product_name || "produit recommandé"}`;
     }),
-  ].join("
-");
+  ].join("\n");
   const advisorUrl = `https://wa.me/${ADVISOR_WHATSAPP}?text=${encodeURIComponent(advisorText)}`;
 
   const step = routine[Math.min(selectedStep, routine.length - 1)];
