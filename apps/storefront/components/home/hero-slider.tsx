@@ -35,7 +35,7 @@ const FALLBACK: HomeBanner[] = [
   },
 ];
 
-const AUTO_PLAY_MS = 3000;
+const AUTO_PLAY_MS = 2000;
 const DESKTOP_QUERY = "(min-width: 768px)"; // Tailwind md, where the layout puts the texts next to the visual
 const tint = (color: string | null) => `color-mix(in srgb, ${color || "#EAD4D5"} 32%, #FBF8F6)`;
 

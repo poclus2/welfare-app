@@ -423,7 +423,13 @@ export default function SkinCoachFlow() {
       const early = earlyVisualRef.current ? await earlyVisualRef.current : null;
       // glasses already seen by the early analysis: no need to ask the server again
       if (early && !early.success && early.code === "GLASSES") return showFailure(early);
-      const result = await analyzeSkin(photos, finalResponses, photoConsent, early?.success ? early.visual : undefined, faceMapRef.current);
+      // logged in: her login (stored by the Medusa SDK) lets the server read her orders, so the routine
+      // builds on the face care she already bought
+      let customerToken: string | null = null;
+      try {
+        customerToken = window.localStorage.getItem("medusa_auth_token");
+      } catch {}
+      const result = await analyzeSkin(photos, finalResponses, photoConsent, early?.success ? early.visual : undefined, faceMapRef.current, customerToken);
       if (result.success) {
         posthog.capture("skin_coach_analysis_succeeded", { scan_id: result.data.scan_id, early_visual: !!early?.success });
         rememberPendingScan(result.data.scan_id); // attached to the account as soon as she is logged in

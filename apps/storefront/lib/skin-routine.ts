@@ -42,6 +42,8 @@ export type CatalogEntry = {
   inci: string;
   stock_total: number;
   fallback?: boolean;
+  // she bought it in the last months (logged-in scan): it costs her nothing to keep it in the routine
+  owned?: boolean;
   routine_function?: string; // product.metadata.routine_function, set in the admin (apps/admin/lib/product-sheet.ts)
   texture?: string; // product.metadata.texture
   skin_concerns?: string[];
@@ -139,7 +141,8 @@ export type CheckOptions = {
   profile?: SkinProfile;
 };
 
-const priceOf = (p: CatalogEntry | undefined) => (p?.price && p.price > 0 ? p.price : 15000);
+// what the routine costs her: a product she already has counts for nothing in her budget
+const priceOf = (p: CatalogEntry | undefined) => (p?.owned ? 0 : p?.price && p.price > 0 ? p.price : 15000);
 
 const usable = (p: CatalogEntry, opts: { safety: SafetyProfile; excludedIds: Set<string> }) =>
   isFaceCare(p) && !opts.excludedIds.has(p.id) && !exclusionReason(p, opts.safety);

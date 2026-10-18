@@ -2,7 +2,8 @@
 
 import { motion } from "framer-motion";
 import { SkinAnalysisResult } from "@/app/actions/analyze-skin";
-import { ShoppingBag, ArrowCounterClockwise, CaretRight, Package, Plus, CheckCircle, FilePdf, CircleNotch, LockKey, FirstAidKit, Info } from "@phosphor-icons/react";
+import { ShoppingBag, ArrowCounterClockwise, CaretRight, Package, Plus, CheckCircle, FilePdf, CircleNotch, LockKey, FirstAidKit, Info, WhatsappLogo } from "@phosphor-icons/react";
+import { ADVISOR_WHATSAPP } from "@/lib/contact";
 import Link from "next/link";
 import posthog from "posthog-js";
 import { useRouter } from "next/navigation";
@@ -189,7 +190,9 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
     await cart.addItem(variantId, 1, undefined, undefined, undefined, lineMetadata);
   };
 
+  // "Ajouter la routine" and its total: what she needs to buy, not the products she already has
   const routineProducts = routine
+    .filter((s) => !s.already_owned)
     .map((s) => (s.medusa_product_id ? products[s.medusa_product_id] : null))
     .filter((p): p is ProductInfo => !!p && !!p.variantId);
   const total = routineProducts.reduce((sum, p) => sum + (p.amount || 0), 0);
@@ -255,6 +258,20 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
       setPdfState("error");
     }
   };
+
+  // Advisor's opinion on WhatsApp (client request, 2026-10-18): the message carries the diagnostic's
+  // reference, so the advisor opens it in the admin (Skin Scans), and the proposed routine.
+  const advisorText = [
+    "Bonjour, j'aimerais l'avis d'une conseillère sur la routine proposée par le Skin Coach.",
+    ...(thisScanId ? [`Diagnostic n° ${thisScanId}`] : []),
+    "",
+    ...routine.map((s, i) => {
+      const p = s.medusa_product_id ? products[s.medusa_product_id] : null;
+      return `${i + 1}. ${s.step_name} : ${p?.title || s.product_name || "produit recommandé"}`;
+    }),
+  ].join("
+");
+  const advisorUrl = `https://wa.me/${ADVISOR_WHATSAPP}?text=${encodeURIComponent(advisorText)}`;
 
   const step = routine[Math.min(selectedStep, routine.length - 1)];
   const stepProduct = step?.medusa_product_id ? products[step.medusa_product_id] : null;
@@ -458,6 +475,11 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
                     </span>
                   </div>
                   <div className="px-5 pt-[18px] pb-5 flex flex-col gap-2.5">
+                    {step.already_owned && (
+                      <span className="self-start inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold" style={{ background: SK.tint, color: SK.ink }}>
+                        <CheckCircle className="w-3.5 h-3.5" weight="fill" style={{ color: SK.accent }} /> Déjà dans votre routine
+                      </span>
+                    )}
                     {stepProduct?.brand && (
                       <p className="text-[12px] font-bold uppercase tracking-[0.08em]" style={{ color: SK.muted }}>{stepProduct.brand}</p>
                     )}
@@ -522,6 +544,29 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
               </>
             ) : null}
           </motion.div>
+
+          {/* ─── ADVISOR ON WHATSAPP ─── */}
+          {!locked && routine.length > 0 && (
+            <div className="rounded-[26px] p-5 flex flex-col gap-3 print:hidden" style={{ background: SK.surface, border: `1px solid ${SK.lineSoft}` }}>
+              <p style={{ fontFamily: DISPLAY_FONT, fontSize: 22, lineHeight: 1.15, fontWeight: 300, margin: 0 }}>
+                Un doute sur <span style={{ fontWeight: 700 }}>votre routine ?</span>
+              </p>
+              <p className="text-[14px] leading-relaxed" style={{ color: SK.muted }}>
+                Une conseillère The Welfare relit votre diagnostic et vous répond sur WhatsApp.
+              </p>
+              <a
+                href={advisorUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => posthog.capture("skin_coach_advisor_whatsapp", { scan_id: thisScanId })}
+                className="h-[52px] rounded-full flex items-center justify-center gap-2 text-[15px] font-bold active:scale-[0.98] transition-transform"
+                style={{ border: `1px solid ${SK.ink}`, color: SK.ink }}
+              >
+                <WhatsappLogo className="w-5 h-5" weight="fill" style={{ color: "#25D366" }} />
+                Demander l&apos;avis d&apos;une conseillère
+              </a>
+            </div>
+          )}
 
           {/* ─── MEDICAL DISCLAIMER ─── */}
           <p className="text-[12px] leading-relaxed text-center px-2" style={{ color: SK.muted }}>
@@ -594,6 +639,8 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
                 >
                   {allAdded ? (
                     <><CheckCircle className="w-5 h-5" /> Routine ajoutée</>
+                  ) : routine.every((s) => !s.medusa_product_id || s.already_owned) ? (
+                    <><CheckCircle className="w-5 h-5" /> Vous avez déjà tout</>
                   ) : addingAll ? (
                     <>Ajout en cours…</>
                   ) : (

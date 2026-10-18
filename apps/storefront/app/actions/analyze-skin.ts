@@ -40,6 +40,8 @@ export type RoutineStep = {
   explanation_for_client: string;
   medusa_product_id?: string;
   product_name?: string;
+  already_owned?: boolean; // bought in the last months (logged-in scan): she keeps using it
+
   // Legacy fields kept for backward compat
   category?: string;
   target_concern?: string;
@@ -139,6 +141,8 @@ type EnrichedProduct = {
   routine_function?: string; // product.metadata.routine_function (admin product form)
   texture?: string; // product.metadata.texture
   fallback?: boolean; // added to complete a manual-selection step left without any product
+  owned?: boolean; // she bought it in the last months (see fetchOwnedFaceCare)
+  bought_at?: string; // date of her last order of it
   category_handles?: string[]; // Medusa categories, to keep face care only in the automatic search
   skin_types?: string[]; // product.metadata.skin_types
 };
@@ -223,6 +227,42 @@ async function fetchStoreProductsByIds(
         skin_types: Array.isArray(p.metadata?.skin_types) ? p.metadata.skin_types.map(String) : [],
       };
     });
+  } catch {
+    return [];
+  }
+}
+
+// Her current routine (client request, 2026-10-18): the products of her paid orders of the last 6 months,
+// read with her own login (the browser passes its Medusa token). Face care is kept by the caller. Nothing
+// when she is not logged in or the orders can't be read: the scan goes on as for a new customer.
+const OWNED_MONTHS = 6;
+const PAID_STATUSES = new Set(["captured", "partially_captured", "partially_refunded", "authorized", "partially_authorized"]);
+
+async function fetchOwnedProducts(customerToken: string): Promise<EnrichedProduct[]> {
+  const medusaUrl = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000";
+  try {
+    const res = await fetch(
+      `${medusaUrl}/store/orders?fields=id,created_at,status,payment_status,*items&order=-created_at&limit=50`,
+      {
+        headers: {
+          Authorization: `Bearer ${customerToken}`,
+          "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "",
+        },
+        cache: "no-store",
+      }
+    );
+    if (!res.ok) return [];
+    const since = Date.now() - OWNED_MONTHS * 30.5 * 24 * 3600 * 1000;
+    const boughtAt = new Map<string, string>(); // product id -> last order date (orders come newest first)
+    for (const o of (await res.json()).orders || []) {
+      if (o.status === "canceled" || new Date(o.created_at).getTime() < since) continue;
+      if (!PAID_STATUSES.has(o.payment_status) && o.status !== "completed") continue;
+      for (const item of o.items || []) {
+        if (item.product_id && !boughtAt.has(item.product_id)) boughtAt.set(item.product_id, o.created_at);
+      }
+    }
+    const products = await fetchStoreProductsByIds([...boughtAt.keys()], "Déjà achetée");
+    return products.map((p) => ({ ...p, owned: true, bought_at: boughtAt.get(p.id) }));
   } catch {
     return [];
   }
@@ -599,7 +639,9 @@ export async function analyzeSkin(
   earlyVisual?: SignedVisualAnalysis,
   // where the face is on the front photo: saved with the photos (and purged with them), so she sees the
   // analysis filter again when she reopens the diagnostic. The API validates it.
-  faceMap?: FaceMap | null
+  faceMap?: FaceMap | null,
+  // her Medusa login when she is logged in: the routine then builds on the face care she already bought
+  customerToken?: string | null
 ): Promise<{ success: true; data: SkinAnalysisResult } | ActionFailure> {
   try {
     const invalid = checkInputs(images, photoConsent);
@@ -724,6 +766,28 @@ export async function analyzeSkin(
       }
     }
 
+    // Her current routine: the face care she bought joins the catalog whatever its stock (she has it at
+    // home) and costs nothing in her budget; the products the safety rules now exclude are only reported
+    const ownedKept: EnrichedProduct[] = [];
+    const ownedDropped: { title: string; reason: string }[] = [];
+    const ownedAll = typeof customerToken === "string" && customerToken ? await fetchOwnedProducts(customerToken) : [];
+    for (const p of ownedAll) {
+      if (productDomain(p.category_handles || [], p.title) !== "face" || (p.category_handles || []).includes("lip-care") || !isFaceCare(p)) continue;
+      const reason = acne.acneFirst && isSpotTreatment(p) ? "l'acné passe d'abord, pas de soin anti-taches pour le moment" : exclusionReason(p, safety);
+      if (reason) {
+        ownedDropped.push({ title: p.title, reason });
+        continue;
+      }
+      const inCatalog = productCatalog.find((c) => c.id === p.id);
+      if (inCatalog) Object.assign(inCatalog, { owned: true, bought_at: p.bought_at });
+      else productCatalog.push(p);
+      ownedKept.push(inCatalog || p);
+    }
+    if (ownedAll.length) {
+      log.owned = { kept: ownedKept.map((p) => p.title), dropped: ownedDropped, other: ownedAll.length - ownedKept.length - ownedDropped.length };
+      console.log(`[SkinCoach] Current routine: ${ownedKept.length} face product(s) bought kept as candidates, ${ownedDropped.length} excluded`);
+    }
+
     if (excludedProductIds.size) {
       console.log(`[SkinCoach] Acne-first: ${excludedProductIds.size} spot-treatment products excluded from the catalog`);
     }
@@ -754,7 +818,7 @@ export async function analyzeSkin(
       ? productCatalog
           .map(
             (p) =>
-              `[${p.category} · fonction : ${FUNCTION_LABEL[productFunction(p)]}${p.texture ? ` · texture : ${TEXTURE_LABEL[p.texture] || p.texture}` : ""}]${p.fallback ? " (complément automatique, hors sélection de l'équipe)" : ""} ${p.title} (medusa_product_id: "${p.id}", stock: ${p.stock_total}, PRIX: ${p.price || 15000} FCFA)\n  FICHE: ${compactSheet(p)}\n` +
+              `[${p.category} · fonction : ${FUNCTION_LABEL[productFunction(p)]}${p.texture ? ` · texture : ${TEXTURE_LABEL[p.texture] || p.texture}` : ""}]${p.fallback ? " (complément automatique, hors sélection de l'équipe)" : ""}${p.owned ? " (DÉJÀ ACHETÉ PAR ELLE)" : ""} ${p.title} (medusa_product_id: "${p.id}", stock: ${p.stock_total}, PRIX: ${p.owned ? `0 FCFA pour elle, elle l'a déjà (prix boutique ${p.price || 15000} FCFA)` : `${p.price || 15000} FCFA`})\n  FICHE: ${compactSheet(p)}\n` +
               // a free-text allergy can only be checked by the model, so it gets the full ingredient list
               (safety.otherAllergy ? `  INCI COMPLET: ${p.inci || "inconnu"}\n` : "")
           )
@@ -917,6 +981,17 @@ ${acne.acneProne ? "- Peau sujette aux poussées : rien d'actif aujourd'hui. Rou
 ${acne.uncertain ? `- Incertain : ${acne.uncertain}. Présente-le comme une hypothèse, sans conclure.` : ""}
 CONSIGNE : dans 'empathetic_message', distingue clairement ce que montrent les photos, ce qu'elle a déclaré et ce qui reste incertain. Ne confirme jamais une acné active que les photos ne montrent pas sans sa confirmation, et tiens compte des imperfections visibles même si elle ne les a pas mentionnées. Une photo peut tromper (lumière, ombres) : quand elle a répondu à une précision, sa réponse l'emporte, et le ton n'est jamais accusateur.`;
 
+    // ---- Her current routine (logged-in scan): keep what she bought unless there is a reason (client's rule) ----
+    const ownedBlock =
+      ownedKept.length || ownedDropped.length
+        ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SA ROUTINE ACTUELLE (soins visage achetés chez The Welfare ces ${OWNED_MONTHS} derniers mois)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${ownedKept.map((p) => `- ${p.title} (fonction : ${FUNCTION_LABEL[productFunction(p)]}${p.bought_at ? `, acheté le ${new Date(p.bought_at).toLocaleDateString("fr-FR")}` : ""})`).join("\n")}
+${ownedDropped.map((d) => `- ${d.title} : retiré par notre contrôle (${d.reason}).`).join("\n")}
+RÈGLE DE LA MARQUE : garde chaque produit qu'elle possède déjà et qui convient toujours à sa peau d'aujourd'hui. Ne le remplace que si l'état actuel de sa peau, son objectif ou sa sécurité le justifie, et explique alors pourquoi dans 'explanation_for_client'. Quand tu le gardes, dis-lui qu'elle peut continuer à l'utiliser. Ne lui propose pas un deuxième produit pour une fonction qu'un produit gardé couvre déjà. Ces informations priment sur sa réponse à la question sur sa routine actuelle.${ownedDropped.length ? "\nPour les produits retirés par notre contrôle : dans 'empathetic_message', conseille-lui avec douceur de ne plus les utiliser pour le moment, sans l'inquiéter." : ""}`
+        : "";
+
     const medicalBlock = medical.referral
       ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🩺 AVIS DERMATOLOGIQUE RECOMMANDÉ (décidé par notre contrôle, non négociable)
@@ -941,6 +1016,8 @@ ${userChatJson}
 ${catalogConstraint}
 
 ${planBlock}
+
+${ownedBlock}
 
 ${synthesisBlock}
 
@@ -1128,7 +1205,11 @@ FORMAT JSON ATTENDU :
         if (reason) (log.final_gate_blocked ||= []).push(`${s.product_name}: ${reason}`);
         return !reason;
       });
-      routineSteps.forEach((s, i) => { s.step_number = i + 1; });
+      routineSteps.forEach((s, i) => {
+        s.step_number = i + 1;
+        if (productCatalog.find((c) => c.id === s.medusa_product_id)?.owned) s.already_owned = true;
+      });
+      if (ownedKept.length) log.owned.in_routine = routineSteps.filter((s) => s.already_owned).map((s) => s.product_name);
 
       const total = routineTotal(routineSteps, productCatalog);
       if (Number.isFinite(maxBudget) && total > maxBudget + BUDGET_TOLERANCE) {
