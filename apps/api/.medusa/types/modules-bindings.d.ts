@@ -31,6 +31,7 @@ import type SearchAnalytics from '../../src/modules/search_analytics'
 import type AmbassadorApplication from '../../src/modules/ambassador_application'
 import type CreatorPartner from '../../src/modules/creator_partner'
 import type Otp from '../../src/modules/otp'
+import type SiteContent from '../../src/modules/site_content'
 
 declare module '@medusajs/framework/types' {
   interface ModuleImplementations {
@@ -66,6 +67,7 @@ declare module '@medusajs/framework/types' {
     'search_analytics': InstanceType<(typeof SearchAnalytics)['service']>,
     'ambassador_application': InstanceType<(typeof AmbassadorApplication)['service']>,
     'creator_partner': InstanceType<(typeof CreatorPartner)['service']>,
-    'otp': InstanceType<(typeof Otp)['service']>
+    'otp': InstanceType<(typeof Otp)['service']>,
+    'site_content': InstanceType<(typeof SiteContent)['service']>
   }
 }
