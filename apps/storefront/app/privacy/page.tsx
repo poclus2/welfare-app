@@ -109,7 +109,7 @@ export default function PrivacyPage() {
         <Section title="5. Combien de temps nous les gardons">
           <List
             items={[
-              <><strong>Photos du visage (Skin Coach)</strong> : supprimées automatiquement 2 heures après le scan si le diagnostic n'est pas enregistré dans un compte, et au bout de 6 mois s'il l'est. Le diagnostic lui-même (type de peau, scores, routine) reste consultable dans votre compte.</>,
+              <><strong>Photos du visage (Skin Coach)</strong> : supprimées automatiquement au plus tard 7 jours après le scan si le diagnostic n'est pas enregistré dans un compte, et au bout de 6 mois s'il l'est. Elles sont consultées par l'équipe et par la conseillère The Welfare à qui votre diagnostic est confié, pour relire la routine proposée. Le diagnostic lui-même (type de peau, scores, routine) reste consultable dans votre compte.</>,
               <><strong>Repères du visage (Skin Coach)</strong> : sur la photo de face, la position de quelques points du visage (front, nez, joues…) est calculée sur votre téléphone pour afficher l'analyse sur votre photo. Elle est conservée avec vos photos et supprimée en même temps qu'elles.</>,
               <><strong>Photos de vos produits et réponses au questionnaire</strong> : utilisées le temps de l'analyse, elles ne sont pas conservées par nos soins.</>,
               <><strong>Compte</strong> : tant que votre compte existe. Vous pouvez demander sa suppression à tout moment.</>,

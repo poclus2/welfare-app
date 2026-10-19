@@ -9,6 +9,8 @@ export default defineMiddlewares({
       bodyParser: {
         sizeLimit: "25mb",
       },
+      // the storefront forwards the customer's login when she has one, to keep her usual skin advisor
+      middlewares: [authenticate("customer", ["bearer"], { allowUnauthenticated: true })],
     },
     {
       matcher: "/store/skin-scans",
@@ -29,6 +31,11 @@ export default defineMiddlewares({
     {
       matcher: "/store/skin-scans/:id/claim",
       method: ["POST"],
+      middlewares: [authenticate("customer", ["session", "bearer"])],
+    },
+    {
+      matcher: "/store/skin-scans/:id/advisor",
+      method: ["GET"],
       middlewares: [authenticate("customer", ["session", "bearer"])],
     },
     {

@@ -58,7 +58,7 @@ export function ChatWidget() {
   };
 
   // The Skin Coach has its own assistant, and the bubble would cover its send button / bottom bar
-  if (pathname?.startsWith("/skin-coach")) return null;
+  if (pathname?.startsWith("/skin-coach") || pathname?.startsWith("/conseillere")) return null;
 
   return (
     <>

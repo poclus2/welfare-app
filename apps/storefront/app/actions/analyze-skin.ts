@@ -74,6 +74,7 @@ export type SkinAnalysisResult = {
   melanin_phototype?: string;
   empathetic_message: string;
   scan_id?: string; // id of the saved diagnostic, used to attach it to the customer's history
+  advisor?: { name: string; whatsapp: string }; // the skin advisor the scan was given to (her WhatsApp button)
   kbeauty_routine: RoutineStep[];
   // what the "Écouter ma routine" button reads, signed by the server (lib/routine-audio.ts)
   audio?: { script: string; sig: string };
@@ -1375,6 +1376,8 @@ FORMAT JSON ATTENDU :
           "x-publishable-api-key":
             process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "",
           "x-skin-scan-token": process.env.SKIN_SCAN_TOKEN || "",
+          // logged in: lets the API give the scan to her usual skin advisor (the scan still waits for her claim)
+          ...(typeof customerToken === "string" && customerToken ? { Authorization: "Bearer " + customerToken } : {}),
         },
         body: JSON.stringify({
           final_skin_type: finalResult.final_skin_type,
@@ -1408,6 +1411,7 @@ FORMAT JSON ATTENDU :
       if (saveRes.ok) {
         const saved = await saveRes.json().catch(() => null);
         if (saved?.scan?.id) finalResult.scan_id = saved.scan.id;
+        if (saved?.advisor?.whatsapp) finalResult.advisor = saved.advisor;
       } else {
         console.error(`[SkinCoach] Diagnostic non enregistré (HTTP ${saveRes.status}) — SKIN_SCAN_TOKEN configuré des deux côtés ?`);
       }

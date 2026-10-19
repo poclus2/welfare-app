@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "crypto"
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { SKIN_SCAN_MODULE } from "../../../modules/skin_scan"
+import { assignScan, pickAdvisor, publicAdvisor } from "../../../lib/skin-advisors"
 
 // Skin diagnostics.
 //
@@ -8,7 +9,8 @@ import { SKIN_SCAN_MODULE } from "../../../modules/skin_scan"
 //       customer's face photos, so it must not be callable by the public: it needs the shared server
 //       token (SKIN_SCAN_TOKEN, known only to the storefront server and this API). It never trusts a
 //       customer_id from the body — a scan is created unattached, and the logged-in customer attaches
-//       it to herself afterwards with POST /store/skin-scans/:id/claim.
+//       it to herself afterwards with POST /store/skin-scans/:id/claim. The scan is given to a skin advisor
+//       (lib/skin-advisors.ts): when the storefront forwards the customer's login, her usual advisor.
 // GET   lists the logged-in customer's own scans (without the photos).
 
 const MAX_IMAGE_CHARS = 8_000_000 // ~6 MB of base64 per photo
@@ -100,7 +102,14 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     notices: Array.isArray(body.notices) ? json(body.notices.slice(0, 10)) : null,
   })
 
-  res.status(200).json({ scan: { id: scan.id } })
+  // the customer's login only picks her usual advisor; the scan itself stays unattached until she claims it
+  const advisor = await pickAdvisor(skinScanService, (req as any).auth_context?.actor_id).catch((e: any) => {
+    console.error("[skin-scans] No advisor picked:", e?.message || e)
+    return null
+  })
+  if (advisor) await assignScan(skinScanService, scan.id, advisor)
+
+  res.status(200).json({ scan: { id: scan.id }, advisor: publicAdvisor(advisor) })
 }
 
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
@@ -118,5 +127,5 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
   // the photos stay on the server: they are heavy and the customer's history doesn't show them; the audit
   // trail is for the team only
-  res.status(200).json({ scans: scans.map(({ images, analysis_log, reviewed_by, ...rest }: any) => rest) })
+  res.status(200).json({ scans: scans.map(({ images, analysis_log, reviewed_by, advisor_notified_at, ...rest }: any) => rest) })
 }

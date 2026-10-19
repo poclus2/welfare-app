@@ -16,6 +16,7 @@ import { FaceScanFrame, type FaceMarker } from "@/components/ui/skin-coach/face-
 import { DISPLAY_FONT, SK } from "@/components/ui/skin-coach/theme";
 import { RoutineAudioPlayer } from "@/components/ui/skin-coach/routine-audio-player";
 import { withoutScores } from "@/lib/coach-message";
+import { faceMarkersOf, metricDefsOf, ringOf } from "@/lib/skin-levels";
 
 interface Props {
   result: SkinAnalysisResult;
@@ -24,22 +25,7 @@ interface Props {
   locked?: boolean;
 }
 
-// The photo analysis gives estimates, not measurements (client feedback, 2026-10-12): each indicator is shown
-// as a level, without a number, and there is no overall score nor skin age.
-type Tone = 0 | 1 | 2; // 0 = little of it, 2 = a lot of it
-
-function toneOf(value: number): Tone {
-  return value < 33 ? 0 : value < 66 ? 1 : 2;
-}
-
-type MetricDef = { key: string; label: string; hint: string; value: number | undefined; good?: boolean };
-
-// level shown in the ring: for "bad" indicators the ring fills with the amount, for hydration with how good it is
-function ringOf(m: MetricDef): { thirds: 1 | 2 | 3; label: string } {
-  const tone = toneOf(Number(m.value));
-  if (m.good) return [{ thirds: 1, label: "À renforcer" }, { thirds: 2, label: "Moyenne" }, { thirds: 3, label: "Bonne" }][tone] as { thirds: 1 | 2 | 3; label: string };
-  return [{ thirds: 1, label: "Faible" }, { thirds: 2, label: "Modéré" }, { thirds: 3, label: "Marqué" }][tone] as { thirds: 1 | 2 | 3; label: string };
-}
+// The photo analysis gives estimates, not measurements: each indicator is shown as a level (lib/skin-levels.ts)
 
 // "Peau Mixte à tendance déshydratée" → light "Peau mixte", bold "à tendance déshydratée"
 function splitSkinType(type: string): [string, string] {
@@ -147,24 +133,10 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
   const products = useRoutineProducts(productIds);
 
   const metrics = result.metrics;
-  const metricDefs: MetricDef[] = metrics
-    ? [
-        { key: "sebum", label: "Sébum", hint: "Brillance de la peau", value: metrics.sebum_level_percentage },
-        { key: "hydration", label: "Hydratation", hint: "Confort et barrière", value: metrics.hydration_barrier_percentage, good: true },
-        { key: "acne", label: "Imperfections", hint: "Boutons et points noirs", value: metrics.acne_severity_percentage },
-        { key: "pores", label: "Pores", hint: "Visibilité des pores", value: metrics.pore_visibility_percentage },
-        { key: "eyes", label: "Contour des yeux", hint: "Cernes et fatigue", value: metrics.eye_contour_fatigue_percentage },
-      ].filter((m) => Number.isFinite(Number(m.value)))
-    : [];
+  const metricDefs = metricDefsOf(metrics);
 
   // zones drawn on her photo, with the same levels as the rings below
-  const faceMarkers: FaceMarker[] = metrics
-    ? [
-        { zone: "forehead" as const, title: "Zone T", text: ["Peu de brillance", "Brillance modérée", "Brillance marquée"][toneOf(metrics.sebum_level_percentage)]! },
-        { zone: "nose" as const, title: "Nez", text: ["Pores discrets", "Pores visibles", "Pores très visibles"][toneOf(metrics.pore_visibility_percentage)]! },
-        { zone: "cheekA" as const, title: "Joues", text: ["Hydratation à renforcer", "Hydratation moyenne", "Bonne hydratation"][toneOf(metrics.hydration_barrier_percentage)]! },
-      ]
-    : [];
+  const faceMarkers: FaceMarker[] = faceMarkersOf(metrics);
 
   const [skinLight, skinBold] = splitSkinType(result.final_skin_type);
   const concerns = Array.from(new Set(routine.map((s) => s.target_concern).filter(Boolean))) as string[];
@@ -259,18 +231,31 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
     }
   };
 
-  // Advisor's opinion on WhatsApp (client request, 2026-10-18): the message carries the diagnostic's
-  // reference, so the advisor opens it in the admin (Skin Scans), and the proposed routine.
+  // Advisor's opinion on WhatsApp (client request, 2026-10-18): the scan was given to an advisor, who already
+  // has it in her space (/conseillere), so the message only carries its reference. Her number comes with the
+  // analysis, then from the server once the scan is in her account (it may go to her usual advisor then);
+  // the shop's number when no advisor is active.
+  const [advisorWhatsapp, setAdvisorWhatsapp] = useState(result.advisor?.whatsapp || ADVISOR_WHATSAPP);
+  useEffect(() => {
+    if (locked || !thisScanId) return;
+    let cancelled = false;
+    const load = async (attempt: number) => {
+      try {
+        const data: any = await sdk.client.fetch(`/store/skin-scans/${thisScanId}/advisor`, { method: "GET" });
+        if (!cancelled && data?.advisor?.whatsapp) setAdvisorWhatsapp(data.advisor.whatsapp);
+      } catch {
+        // not attached to her account yet: once more after the claim
+        if (!cancelled && attempt === 0) setTimeout(() => load(1), 3000);
+      }
+    };
+    load(0);
+    return () => { cancelled = true; };
+  }, [locked, thisScanId]);
   const advisorText = [
     "Bonjour, j'aimerais l'avis d'une conseillère sur la routine proposée par le Skin Coach.",
     ...(thisScanId ? [`Diagnostic n° ${thisScanId}`] : []),
-    "",
-    ...routine.map((s, i) => {
-      const p = s.medusa_product_id ? products[s.medusa_product_id] : null;
-      return `${i + 1}. ${s.step_name} : ${p?.title || s.product_name || "produit recommandé"}`;
-    }),
   ].join("\n");
-  const advisorUrl = `https://wa.me/${ADVISOR_WHATSAPP}?text=${encodeURIComponent(advisorText)}`;
+  const advisorUrl = `https://wa.me/${advisorWhatsapp}?text=${encodeURIComponent(advisorText)}`;
 
   const step = routine[Math.min(selectedStep, routine.length - 1)];
   const stepProduct = step?.medusa_product_id ? products[step.medusa_product_id] : null;

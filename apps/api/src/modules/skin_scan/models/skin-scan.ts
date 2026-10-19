@@ -24,4 +24,7 @@ export const SkinScan = model.define("skin_scan", {
   review_corrections: model.json().nullable(), // [{ step_name, from, to, reason }]
   reviewed_by: model.text().nullable(),
   reviewed_at: model.dateTime().nullable(),
+  // The advisor this scan was given to (models/skin-advisor.ts) and when she was told on WhatsApp
+  advisor_id: model.text().nullable(),
+  advisor_notified_at: model.dateTime().nullable(),
 })

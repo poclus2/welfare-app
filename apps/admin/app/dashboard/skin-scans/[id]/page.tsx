@@ -6,6 +6,7 @@ import { ScanImageGallery } from "./ScanImageGallery";
 import { PrintButton } from "./PrintButton";
 import { ScanReview } from "./ScanReview";
 import { ScanAudit } from "./ScanAudit";
+import { ScanAdvisor } from "./ScanAdvisor";
 
 export const dynamic = "force-dynamic";
 
@@ -55,13 +56,13 @@ export default async function SkinScanDetailsPage({ params }: { params: Promise<
 
   if (!token) return null;
 
-  const data = await fetchAdmin<{ skin_scan: any }>(
-    `/skin-scans/${id}`,
-    token
-  ).catch((e) => {
-    console.error("Failed to fetch skin scan details", e);
-    return null;
-  });
+  const [data, advisorsData] = await Promise.all([
+    fetchAdmin<{ skin_scan: any }>(`/skin-scans/${id}`, token).catch((e) => {
+      console.error("Failed to fetch skin scan details", e);
+      return null;
+    }),
+    fetchAdmin<{ advisors: { id: string; name: string; active: boolean }[] }>(`/skin-advisors`, token).catch(() => ({ advisors: [] })),
+  ]);
 
   const scan = data?.skin_scan;
 
@@ -295,6 +296,12 @@ export default async function SkinScanDetailsPage({ params }: { params: Promise<
 
         {/* RIGHT: Metrics sidebar */}
         <div className="space-y-6">
+          <ScanAdvisor
+            scanId={scan.id}
+            advisor={scan.advisor || null}
+            notifiedAt={scan.advisor_notified_at || null}
+            advisors={advisorsData.advisors.map((a) => ({ id: a.id, name: a.name, active: a.active }))}
+          />
           
           {/* Skin Metrics */}
           {metrics && (

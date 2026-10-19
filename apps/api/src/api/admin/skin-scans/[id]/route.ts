@@ -9,7 +9,11 @@ export async function GET(
   
   try {
     const scan = await skinScanService.retrieveSkinScan(req.params.id)
-    res.status(200).json({ skin_scan: scan })
+    // the advisor it was given to (lib/skin-advisors.ts)
+    const advisor = scan.advisor_id
+      ? await skinScanService.retrieveSkinAdvisor(scan.advisor_id, { select: ["id", "name", "whatsapp", "active"] }).catch(() => null)
+      : null
+    res.status(200).json({ skin_scan: { ...scan, advisor } })
   } catch (err) {
     res.status(404).json({ message: "Not found" })
   }

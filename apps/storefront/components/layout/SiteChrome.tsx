@@ -11,7 +11,8 @@ const CHROME_HIDDEN_ROUTES = ["/account/login", "/account/register"];
 export function SiteChrome() {
   const pathname = usePathname();
 
-  if (CHROME_HIDDEN_ROUTES.includes(pathname)) {
+  // the skin advisors' space (/conseillere) is a work tool, not a shop page
+  if (CHROME_HIDDEN_ROUTES.includes(pathname) || pathname?.startsWith("/conseillere")) {
     return null;
   }
 

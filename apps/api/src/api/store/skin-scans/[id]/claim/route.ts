@@ -1,5 +1,6 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { SKIN_SCAN_MODULE } from "../../../../../modules/skin_scan"
+import { keepUsualAdvisor } from "../../../../../lib/skin-advisors"
 
 // POST /store/skin-scans/:id/claim — the logged-in customer attaches the diagnostic she has just
 // run to her own history. Only an unattached scan, created in the last 2 hours, can be claimed, so
@@ -33,5 +34,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   }
 
   await skinScanService.updateSkinScans({ id, customer_id: customerId })
+  // already followed by an advisor: this scan goes to her too
+  await keepUsualAdvisor(skinScanService, scan, customerId).catch((e: any) => console.error("[skin-scans] Usual advisor not kept:", e?.message || e))
   res.status(200).json({ claimed: true })
 }

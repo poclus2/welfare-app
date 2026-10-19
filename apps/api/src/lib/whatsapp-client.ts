@@ -38,7 +38,7 @@ export function toE164(phone: string): string {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-async function postToZindua(phone: string, code: string): Promise<void> {
+async function postToZindua(phone: string, template: string, variables: Record<string, string>): Promise<void> {
   // Zindua protects its WhatsApp line: two sends less than ~1 s apart get a 429 ("Wait 1s"). If it still
   // happens, wait what it asks for and try again (at most 2 retries).
   for (let attempt = 0; ; attempt++) {
@@ -48,8 +48,8 @@ async function postToZindua(phone: string, code: string): Promise<void> {
       body: JSON.stringify({
         to: toE164(phone),
         channel: "whatsapp",
-        template: ZINDUA_TEMPLATE,
-        variables: { code },
+        template,
+        variables,
         lang: "fr",
       }),
       signal: AbortSignal.timeout(15000),
@@ -76,12 +76,12 @@ const ZINDUA_MIN_GAP_MS = 1100
 let zinduaQueue: Promise<unknown> = Promise.resolve()
 let lastZinduaSend = 0
 
-function sendViaZindua(phone: string, code: string): Promise<void> {
+function sendViaZindua(phone: string, template: string, variables: Record<string, string>): Promise<void> {
   const run = zinduaQueue.then(async () => {
     const wait = lastZinduaSend + ZINDUA_MIN_GAP_MS - Date.now()
     if (wait > 0) await sleep(wait)
     try {
-      await postToZindua(phone, code)
+      await postToZindua(phone, template, variables)
     } finally {
       lastZinduaSend = Date.now()
     }
@@ -97,7 +97,7 @@ export async function sendWhatsappOtp(phone: string, code: string): Promise<void
   }
 
   if (ZINDUA_API_KEY) {
-    return sendViaZindua(phone, code)
+    return sendViaZindua(phone, ZINDUA_TEMPLATE, { code })
   }
 
   if (!PHONE_NUMBER_ID || !ACCESS_TOKEN) {
@@ -142,4 +142,20 @@ export async function sendWhatsappOtp(phone: string, code: string): Promise<void
     const body = await res.text().catch(() => "")
     throw new Error(`WhatsApp Cloud API error (${res.status}): ${body}`)
   }
+}
+
+// Any other WhatsApp message (a template created in the Zindua dashboard, plain text with {{variables}}),
+// e.g. the advisor told about a new scan. Only through Zindua: the direct Meta API would need a template
+// approved by Meta for each one. Resolves to false when nothing could be sent (not configured).
+export async function sendWhatsappTemplate(phone: string, template: string, variables: Record<string, string>): Promise<boolean> {
+  if (DEBUG_LOG) {
+    console.log(`[whatsapp-client] DEBUG — would send template "${template}" to ${phone}:`, variables)
+    return true
+  }
+  if (!ZINDUA_API_KEY) {
+    console.warn(`[whatsapp-client] ZINDUA_API_KEY is not set: template "${template}" not sent to ${phone}`)
+    return false
+  }
+  await sendViaZindua(phone, template, variables)
+  return true
 }

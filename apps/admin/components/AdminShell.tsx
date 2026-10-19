@@ -7,7 +7,7 @@ import {
   LayoutDashboard, ShoppingBag, Package, Users,
   Store, BarChart2, Tag, Settings, LogOut,
   Bell, Search, ChevronDown, Menu, X, Bot, Truck, FileText, Ticket
-, Layers, Wallet, GalleryHorizontal, BellRing } from "lucide-react";
+, Layers, Wallet, GalleryHorizontal, BellRing, UserCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const NAV_ITEMS = [
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/stores", label: "Magasins", icon: Store },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart2 },
   { href: "/dashboard/skin-scans", label: "Skin Scans", icon: Search },
+  { href: "/dashboard/conseilleres", label: "Conseillères", icon: UserCheck },
   { href: "/dashboard/skin-coach", label: "Skin Coach IA", icon: Bot },
   { href: "/dashboard/createurs", label: "Créateurs Partenaires", icon: Tag },
   { href: "/dashboard/promotions", label: "Codes promo", icon: Ticket },
