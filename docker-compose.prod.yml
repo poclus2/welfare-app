@@ -28,7 +28,7 @@ services:
     volumes:
       - welfare-meili-data:/meili_data
     ports:
-      - "7700:7700" # Exposes 7700 to host for Nginx to route to
+      - "127.0.0.1:7700:7700" # local only: Nginx routes /search to it, the internet never reaches it directly
     restart: unless-stopped
 
   medusa-api:
@@ -75,7 +75,9 @@ services:
       args:
         NEXT_PUBLIC_MEDUSA_BACKEND_URL: https://api.thewelfarecm.com
         NEXT_PUBLIC_MEILISEARCH_HOST: https://api.thewelfarecm.com/search
-        NEXT_PUBLIC_MEILISEARCH_API_KEY: ${MEILISEARCH_API_KEY:-meilisearch_master_key}
+        # Baked into the browser bundle: a key restricted to `search` on the products index, NEVER the master key
+        # (which would let anyone rewrite or delete the indexes). See scripts/meili-search-key.sh.
+        NEXT_PUBLIC_MEILISEARCH_API_KEY: ${MEILISEARCH_SEARCH_KEY:?set MEILISEARCH_SEARCH_KEY to a search-only Meilisearch key}
         NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${MEDUSA_PUBLISHABLE_KEY:-pk_a444d1be79f71d0d6530d64a99c9639cf892b40452874ecefa30ff900404e489}
     container_name: welfare-storefront
     depends_on:
@@ -87,7 +89,7 @@ services:
       - NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=${MEDUSA_PUBLISHABLE_KEY:-pk_a444d1be79f71d0d6530d64a99c9639cf892b40452874ecefa30ff900404e489}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - MEILISEARCH_HOST=http://meilisearch:7700
-      - MEILISEARCH_SEARCH_KEY=${MEILISEARCH_API_KEY:-meilisearch_master_key}
+      - MEILISEARCH_SEARCH_KEY=${MEILISEARCH_SEARCH_KEY:?set MEILISEARCH_SEARCH_KEY to a search-only Meilisearch key}
       - ADMIN_BLOG_KEY=${ADMIN_BLOG_KEY}
     volumes:
       - welfare-blog-data:/app/apps/storefront/data

@@ -8,6 +8,7 @@ import {
   normalizeCameroonMsisdn,
   operatorMismatchMessage,
   requestDeposit,
+  signDepositForCart,
 } from "../../../../modules/pawapay/client"
 
 /**
@@ -91,7 +92,8 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       })
     }
 
-    return res.json({ depositId, status: result.status, amount })
+    // deposit_token goes back into the payment session: it ties this deposit to this cart only
+    return res.json({ depositId, deposit_token: signDepositForCart(depositId, cart.id), status: result.status, amount })
   } catch (e: any) {
     console.error("[PawaPay] Deposit request failed:", e.message)
     return res.status(502).json({ message: "Impossible de contacter PawaPay. Veuillez réessayer." })

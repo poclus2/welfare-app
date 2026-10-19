@@ -1,6 +1,8 @@
 // Minimal PawaPay v1 client shared by the payment provider and the store routes.
 // Docs: https://docs.pawapay.io/v1/api-reference/deposits/request-deposit
 
+import { createHash, createHmac, timingSafeEqual } from "crypto"
+
 const PAWAPAY_BASE_URL = process.env.PAWAPAY_BASE_URL || "https://api.pawapay.cloud"
 
 export const PAWAPAY_FEE_RATE = 0.03 // Surcharge applied to Mobile Money payments (mirrors the storefront)
@@ -27,6 +29,23 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 export function isValidDepositId(id: unknown): id is string {
   return typeof id === "string" && UUID_RE.test(id)
+}
+
+// ─── Deposit ↔ cart binding ─────────────────────────────────────────────────────────────────────
+// The depositId reaches the payment session from the browser. Without a binding, one COMPLETED deposit
+// could pay any number of other carts (each one only checks "COMPLETED and enough"). POST
+// /store/pawapay/deposit signs the deposit with the cart it was created for, and completing a cart
+// refuses a deposit whose signature names another cart (middleware on /store/carts/:id/complete).
+const depositKey = () => createHash("sha256").update(`pawapay-deposit:${getToken()}`).digest()
+
+export function signDepositForCart(depositId: string, cartId: string): string {
+  return createHmac("sha256", depositKey()).update(`${depositId}:${cartId}`).digest("hex")
+}
+
+export function depositTokenMatches(depositId: unknown, cartId: string, token: unknown): boolean {
+  if (!isValidDepositId(depositId) || typeof token !== "string" || !/^[0-9a-f]{64}$/.test(token)) return false
+  const expected = Buffer.from(signDepositForCart(depositId, cartId), "hex")
+  return timingSafeEqual(Buffer.from(token, "hex"), expected)
 }
 
 /**

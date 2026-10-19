@@ -1,7 +1,38 @@
-import { authenticate, defineMiddlewares } from "@medusajs/framework/http"
+import { authenticate, defineMiddlewares, MedusaNextFunction, MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { depositTokenMatches } from "../modules/pawapay/client"
+
+// A Mobile Money cart only completes with a deposit created for THIS cart (see signDepositForCart):
+// otherwise one paid deposit could be replayed to pay other carts.
+async function requireDepositOfThisCart(req: MedusaRequest, res: MedusaResponse, next: MedusaNextFunction) {
+  try {
+    const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+    const { data } = await query.graph({
+      entity: "cart",
+      fields: ["id", "payment_collection.payment_sessions.provider_id", "payment_collection.payment_sessions.data"],
+      filters: { id: req.params.id },
+    })
+    const sessions: any[] = (data[0] as any)?.payment_collection?.payment_sessions || []
+    const forged = sessions.some(
+      (s) => s?.provider_id === "pp_pawapay_pawapay" && !depositTokenMatches(s.data?.depositId, req.params.id, s.data?.deposit_token)
+    )
+    if (forged) {
+      res.status(400).json({ type: "invalid_data", message: "Ce paiement Mobile Money ne correspond pas à ce panier." })
+      return
+    }
+    next()
+  } catch (e) {
+    next(e)
+  }
+}
 
 export default defineMiddlewares({
   routes: [
+    {
+      matcher: "/store/carts/:id/complete",
+      method: ["POST"],
+      middlewares: [requireDepositOfThisCart],
+    },
     {
       // 3 face photos as base64 (the storefront server action posts them): big, but capped
       matcher: "/store/skin-scans",

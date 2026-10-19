@@ -393,12 +393,14 @@ useEffect(() => {
       // 3. Mobile Money: send the push to the customer's phone and wait for them to confirm it.
       // The order is only created once PawaPay reports the deposit as COMPLETED.
       let depositId: string | null = null;
+      let depositToken: string | null = null;
       if (paymentMode === "pawapay") {
-        const deposit = await sdk.client.fetch<{ depositId: string; amount: number }>("/store/pawapay/deposit", {
+        const deposit = await sdk.client.fetch<{ depositId: string; deposit_token: string; amount: number }>("/store/pawapay/deposit", {
           method: "POST",
           body: { cart_id: cartId, phone: momoLocal, correspondent: mobileNetwork },
         });
         depositId = deposit.depositId;
+        depositToken = deposit.deposit_token;
         setPaymentWait(`${t("Validez le paiement sur votre téléphone")} (${formatPrice(deposit.amount)} FCFA)`);
 
         const deadline = Date.now() + 3 * 60 * 1000;
@@ -427,7 +429,7 @@ useEffect(() => {
       await sdk.store.payment.initiatePaymentSession(cart as any, {
           provider_id: paymentMode === "pawapay" ? "pp_pawapay_pawapay" : "pp_system_default",
           data: paymentMode === "pawapay"
-            ? { depositId, correspondent: mobileNetwork }
+            ? { depositId, deposit_token: depositToken, correspondent: mobileNetwork }
             : {},
         });
 
