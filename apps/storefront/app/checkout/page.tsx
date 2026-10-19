@@ -69,7 +69,7 @@ const STORES = [
   {
     id: "hippodrome" as StoreLocation,
     name: "The Welfare Hippodrome",
-    address: "Route de l'Hippodrome, Douala",
+    address: "Route de l'Hippodrome, Yaoundé",
     hours: "Lun - Sam, 9h - 20h",
   },
   {
@@ -405,7 +405,7 @@ export default function CheckoutPage() {
           last_name: identity.lastName,
           phone: identity.phone,
           address_1: delivery.mode === "domicile" ? delivery.address : "Retrait en magasin : " + delivery.store,
-          city: delivery.mode === "domicile" ? delivery.city : "Douala",
+          city: delivery.mode === "domicile" ? delivery.city : "Yaoundé",
           country_code: "cm",
         },
         metadata: {
@@ -651,7 +651,7 @@ export default function CheckoutPage() {
                         onClick={() => setDelivery({ ...delivery, mode: "retrait" })}
                         icon={<Storefront className="w-5 h-5" />}
                         title={t("Retrait en boutique")}
-                        text={<><span className="font-bold" style={{ color: GOOD_GREEN }}>{t("Gratuit")}</span>{" · "}{t("Douala ou Yaoundé")}</>}
+                        text={<><span className="font-bold" style={{ color: GOOD_GREEN }}>{t("Gratuit")}</span>{" · "}{t("Yaoundé")}</>}
                       />
                     </div>
 
