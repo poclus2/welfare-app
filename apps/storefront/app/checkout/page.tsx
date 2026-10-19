@@ -1,19 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { MANUAL_PAYMENT, ussdHref } from "@/lib/manual-payment";
 import { useCart } from "@/lib/cart-context";
 import { useI18n } from "@/lib/i18n-context";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { sdk } from "@/lib/medusa";
-import Link from "next/link";
 import { PromoCodeField } from "@/components/cart/PromoCodeField";
+import { DISPLAY_FONT, Eyebrow, SK, SectionTitle } from "@/components/account/account-ui";
 import {
-  ArrowLeft, ShieldCheck, Truck, Package,
-  CaretRight, CaretLeft, User, Phone, MapPin, Envelope, CircleNotch,
-  Storefront, House, Check, Clock, CreditCard, DeviceMobile, Money, MapTrifold as MapIcon, ShoppingBag,
+  ArrowLeft, ArrowRight, CaretDown, CircleNotch, Clock, Check, House, Storefront, DeviceMobile, Phone,
+  Package, ShieldCheck, WarningCircle, Lock,
 } from "@phosphor-icons/react";
+
+// Checkout, in the Skin Coach look of the customer space (prototype "Espace client" validated by the owner,
+// 2026-10-15): pink-white ground, white cards, magenta as the only accent, Urbanist headlines, pill buttons.
+// On the phone the summary comes first, folded, so the total is visible before the forms.
 
 function formatPrice(amount: number) {
   return new Intl.NumberFormat("fr-FR").format(Math.round(amount));
@@ -59,67 +62,110 @@ interface DeliveryForm {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const LIVRAISON_FEE = 1500;
+const ERROR_RED = "#B3261E";
+const GOOD_GREEN = "#0B6B45";
 
 const STORES = [
   {
     id: "hippodrome" as StoreLocation,
     name: "The Welfare Hippodrome",
     address: "Route de l'Hippodrome, Douala",
-    icon: null,
     hours: "Lun - Sam, 9h - 20h",
   },
   {
     id: "playce" as StoreLocation,
     name: "The Welfare Playce",
     address: "Playce, Yaoundé",
-    icon: null,
     hours: "Lun - Dim, 10h - 21h",
   },
 ];
 
 const CAMEROON_CITIES = [
-  "Yaoundé", "Douala", "Bafoussam", "Bamenda", "Garoua", 
-  "Maroua", "Ngaoundéré", "Bertoua", "Ebolowa", "Kribi", 
+  "Yaoundé", "Douala", "Bafoussam", "Bamenda", "Garoua",
+  "Maroua", "Ngaoundéré", "Bertoua", "Ebolowa", "Kribi",
   "Limbe", "Buea", "Kumba", "Nkongsamba", "Edéa"
 ];
 
-// ─── Step indicator ────────────────────────────────────────────────────────────
-function StepIndicator({ step }: { step: 1 | 2 }) {
-  const { t } = useI18n();
-  const steps = [
-    { num: 1, label: t("Identité") },
-    { num: 2, label: t("Livraison") },
-  ];
+// ─── UI pieces (declared outside the page: defined inside, inputs lose focus on every keystroke) ─────
+const fieldClass = "w-full h-[48px] rounded-[14px] px-3.5 text-[15px] outline-none focus:ring-2 appearance-none";
+const fieldStyle = (error?: string) => ({
+  border: `1px solid ${error ? ERROR_RED : SK.line}`,
+  background: SK.surface,
+  color: SK.ink,
+  ["--tw-ring-color" as any]: SK.accent,
+});
+
+function Field({ id, label, hint, error, children }: { id: string; label: string; hint?: string; error?: string; children: ReactNode }) {
   return (
-    <div className="flex items-center gap-0 mb-8">
-      {steps.map((s, i) => (
-        <div key={s.num} className="flex items-center">
-          <div className="flex items-center gap-2">
-            <div
-              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
-                step > s.num
-                  ? "bg-emerald-500 text-white"
-                  : step === s.num
-                  ? "bg-[#2A2424] text-white"
-                  : "bg-[#EDE0E0] text-[#2A2424]/40"
-              }`}
-            >
-              {step > s.num ? <Check className="w-3.5 h-3.5" /> : s.num}
-            </div>
-            <span
-              className={`text-sm font-semibold transition-colors ${
-                step >= s.num ? "text-[#2A2424]" : "text-[#2A2424]/40"
-              }`}
-            >
-              {s.label}
-            </span>
-          </div>
-          {i < steps.length - 1 && (
-            <div className={`mx-4 h-px w-12 transition-colors ${step > 1 ? "bg-emerald-400" : "bg-[#EDE0E0]"}`} />
-          )}
-        </div>
-      ))}
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-[12px] font-bold" style={{ color: SK.muted }}>
+        {label} {hint && <span className="font-medium">{hint}</span>}
+      </label>
+      {children}
+      {error && <p id={`${id}-error`} className="text-[12px] font-semibold" style={{ color: ERROR_RED }}>{error}</p>}
     </div>
+  );
+}
+
+function CardBlock({ title, children, className = "" }: { title?: string; children: ReactNode; className?: string }) {
+  return (
+    <section className={`rounded-[26px] p-[18px] sm:p-5 flex flex-col gap-4 ${className}`} style={{ background: SK.surface, border: `1px solid ${SK.lineSoft}` }}>
+      {title && <p className="text-[12px] font-bold uppercase tracking-[0.06em]" style={{ color: SK.muted }}>{title}</p>}
+      {children}
+    </section>
+  );
+}
+
+// a choice (delivery mode, shop, payment): pale pink and a magenta ring when selected
+function Choice({ selected, onClick, icon, title, text }: {
+  selected: boolean; onClick: () => void; icon: ReactNode; title: string; text?: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className="w-full flex items-center gap-3 rounded-[20px] p-3.5 text-left transition-colors"
+      style={{ background: selected ? SK.tint : SK.surface, border: `${selected ? 2 : 1}px solid ${selected ? SK.accent : SK.line}`, margin: selected ? 0 : 1 }}
+    >
+      <span className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ background: selected ? SK.accent : SK.tint, color: selected ? "#FFFFFF" : SK.accent }}>
+        {icon}
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-[15px] font-bold" style={{ color: SK.ink }}>{title}</span>
+        {text && <span className="block text-[13px] leading-snug mt-0.5" style={{ color: SK.muted }}>{text}</span>}
+      </span>
+      <span
+        className="w-[22px] h-[22px] rounded-full flex items-center justify-center shrink-0"
+        style={{ background: selected ? SK.accent : SK.surface, border: selected ? "none" : `2px solid ${SK.line}` }}
+        aria-hidden="true"
+      >
+        {selected && <Check weight="bold" className="w-3 h-3 text-white" />}
+      </span>
+    </button>
+  );
+}
+
+function Stepper({ step }: { step: 1 | 2 }) {
+  const { t } = useI18n();
+  const steps = [t("Vos informations"), t("Livraison & paiement")];
+  return (
+    <ol className="grid grid-cols-2 gap-2" aria-label={t("Étapes de la commande")}>
+      {steps.map((label, i) => {
+        const n = i + 1;
+        const done = step > n;
+        const current = step === n;
+        return (
+          <li key={label} aria-current={current ? "step" : undefined} className="flex flex-col gap-2">
+            <span className="h-1.5 rounded-full" style={{ background: done || current ? SK.accent : SK.track }} />
+            <span className="flex items-center gap-1.5 text-[13px] font-bold" style={{ color: done || current ? SK.ink : SK.muted }}>
+              {done ? <Check weight="bold" className="w-3.5 h-3.5" style={{ color: SK.accent }} /> : <span style={{ color: current ? SK.accent : SK.muted }}>{n}.</span>}
+              {label}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
@@ -131,6 +177,8 @@ export default function CheckoutPage() {
   const [step, setStep] = useState<1 | 2>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [paymentWait, setPaymentWait] = useState("");
+  const [formError, setFormError] = useState("");
+  const [summaryOpen, setSummaryOpen] = useState(false); // phone only: the summary starts folded
   const [mobileNetwork, setMobileNetwork] = useState("MTN_MOMO_CMR");
   // Number charged by the Mobile Money push — may differ from the contact/WhatsApp number
   const [momoPhone, setMomoPhone] = useState("");
@@ -139,7 +187,7 @@ export default function CheckoutPage() {
 
   const [paymentMode, setPaymentMode] = useState<"pawapay" | "manuel">("pawapay");
   const [shippingOptions, setShippingOptions] = useState<any[]>([]);
-  const [selectedShippingOptionId, setSelectedShippingOptionId] = useState<string | null>(null);
+  const [selectedShippingOptionId] = useState<string | null>(null);
 
   const [identity, setIdentity] = useState<IdentityForm>({
     firstName: "", lastName: "", email: "", phone: "",
@@ -157,7 +205,6 @@ export default function CheckoutPage() {
   const [settingsData, setSettingsData] = useState<any>(null);
   const [deliveryNeighborhood, setDeliveryNeighborhood] = useState("");
 
-  
   useEffect(() => {
     sdk.store.customer.retrieve()
       .then(({ customer }) => {
@@ -175,7 +222,7 @@ export default function CheckoutPage() {
       .catch(() => {});
   }, []);
 
-useEffect(() => {
+  useEffect(() => {
     const loadDeliveryData = async () => {
       try {
         const [citiesRes, pointsRes, settingsRes] = await Promise.all([
@@ -206,11 +253,9 @@ useEffect(() => {
     }
   }
 
-  
-
   // Get current shipping option price
   const currentShippingOption = shippingOptions.find(o => o.id === selectedShippingOptionId);
-  
+
   let livraisonFee = 0;
   if (currentShippingOption) {
     livraisonFee = Number(currentShippingOption.amount || 0);
@@ -235,6 +280,7 @@ useEffect(() => {
   const activeLivraisonFee = step === 1 ? 0 : effectiveLivraisonFee;
   const paymentFee = (paymentMode === "pawapay" && step === 2) ? Math.round((discountedSubtotal + activeLivraisonFee) * 0.03) : 0;
   const total = discountedSubtotal + Number(activeLivraisonFee || 0) + Number(paymentFee || 0);
+  const itemCount = items.reduce((n, i) => n + (Number(i.quantity) || 1), 0);
 
   // Fetch shipping options for the cart
   const fetchOptions = async () => {
@@ -250,6 +296,7 @@ useEffect(() => {
 
   useEffect(() => {
     fetchOptions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cartId]);
 
   // Redirect if cart empty
@@ -259,6 +306,12 @@ useEffect(() => {
     }
   }, [items, router, isLoading]);
 
+  const goToStep = (s: 1 | 2) => {
+    setFormError("");
+    setStep(s);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   // ── Validation ──────────────────────────────────────────────────────────────
   const validateIdentity = () => {
     const e: Partial<IdentityForm> = {};
@@ -267,7 +320,9 @@ useEffect(() => {
     if (!identity.email.trim() || !/\S+@\S+\.\S+/.test(identity.email)) e.email = t("Email invalide");
     if (!identity.phone.trim()) e.phone = t("Requis");
     setIdentityErrors(e);
-    return Object.keys(e).length === 0;
+    const first = (["firstName", "lastName", "email", "phone"] as const).find((k) => e[k]);
+    if (first) document.getElementById(`ck-${first}`)?.focus();
+    return !first;
   };
 
   const validateDelivery = () => {
@@ -279,22 +334,22 @@ useEffect(() => {
     }
     // Comment out strict shipping option validation so users can still test if options aren't seeded yet
     // if (!selectedShippingOptionId) e.shipping = "Veuillez sélectionner une méthode de livraison";
-    
+
     setDeliveryErrors(e as any);
+    if (e.address) document.getElementById("ck-address")?.focus();
+    else if (e.store) document.getElementById("ck-stores")?.scrollIntoView({ behavior: "smooth", block: "center" });
     return Object.keys(e).length === 0;
   };
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleStep1Next = async () => {
-    if (!validateIdentity()) {
-      alert(t("Veuillez remplir correctement tous les champs d'identité."));
-      return;
-    }
+    setFormError("");
+    if (!validateIdentity()) return;
     if (!cartId) {
-      alert(t("Panier non initialisé"));
+      setFormError(t("Panier non initialisé"));
       return;
     }
-    
+
     setIsLoading(true);
     try {
       await sdk.store.cart.update(cartId, {
@@ -310,22 +365,20 @@ useEffect(() => {
       // Suggest the contact number for Mobile Money only when it is an MTN one (the only network enabled)
       const contactLocal = cameroonLocalNumber(identity.phone);
       if (!momoPhone && contactLocal && cameroonOperator(contactLocal) === "MTN") setMomoPhone(contactLocal);
-      setStep(2);
+      goToStep(2);
     } catch (err) {
       console.error(err);
-      alert(t("Erreur de connexion au serveur"));
+      setFormError(t("Erreur de connexion au serveur"));
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleSubmit = async () => {
-    if (!validateDelivery()) {
-      alert(t("Veuillez remplir tous les champs de livraison (voir les bordures rouges)."));
-      return;
-    }
+    setFormError("");
+    if (!validateDelivery()) return;
     if (!cartId) {
-      alert(t("Le panier n'est pas initialisé correctement."));
+      setFormError(t("Le panier n'est pas initialisé correctement."));
       return;
     }
     let momoLocal: string | null = null;
@@ -371,12 +424,12 @@ useEffect(() => {
         });
       } else if (shippingOptions.length > 0) {
         // Auto-select first matching option if user didn't select but options exist
-        const defaultOpt = shippingOptions.find(o => 
-          delivery.mode === "domicile" 
+        const defaultOpt = shippingOptions.find(o =>
+          delivery.mode === "domicile"
             ? o.name.toLowerCase().includes("domicile") || o.name.toLowerCase().includes(delivery.city.toLowerCase())
             : o.name.toLowerCase().includes("retrait")
         ) || shippingOptions[0];
-        
+
         if (defaultOpt) {
           await sdk.store.cart.addShippingMethod(cartId, { option_id: defaultOpt.id });
         }
@@ -435,7 +488,7 @@ useEffect(() => {
 
       // 5. Complete Checkout
       const response = await sdk.store.cart.complete(cartId);
-      
+
       let ref = "WLF-PENDING";
       let displayId: number | null = null;
       if (response.type === "order") {
@@ -473,607 +526,415 @@ useEffect(() => {
         createdAt: new Date().toISOString(),
       };
       sessionStorage.setItem("welfare_last_order", JSON.stringify(order));
-      
+
       clearCart();
       window.location.href = `/checkout/confirmation?ref=${ref}`;
     } catch (err: any) {
       console.error("Payment Error:", err);
       const msg = err?.message || err?.toString() || t("Erreur inconnue");
-      alert(t("Erreur lors de la validation: ") + msg);
+      setFormError(t("Erreur lors de la validation: ") + msg);
       setPaymentWait("");
       setIsLoading(false);
     }
   };
 
-  // ── Input helpers ────────────────────────────────────────────────────────────
-  const inputBase = "w-full px-4 py-3 rounded-xl border text-sm text-[#2A2424] bg-white outline-none transition-all";
-  const inputOk = "border-[#EDE0E0] focus:border-[#C08A8E] focus:ring-2 focus:ring-[#F4EAEB]";
-  const inputErr = "border-red-400 focus:ring-2 focus:ring-red-200";
-
-  const iClass = (field: keyof IdentityForm) => `${inputBase} ${identityErrors[field] ? inputErr : inputOk}`;
-  const dClass = (field: keyof DeliveryForm) => `${inputBase} ${deliveryErrors[field] ? inputErr : inputOk}`;
-
   if (items.length === 0) return null;
+
+  const cityData = citiesData.find(c => c.name === delivery.city);
+  const momoHint = (() => {
+    if (momoPhoneError) return { text: momoPhoneError, color: ERROR_RED };
+    const local = cameroonLocalNumber(momoPhone);
+    const operator = local ? cameroonOperator(local) : null;
+    if (operator === "MTN") return { text: t("Numéro MTN détecté"), color: GOOD_GREEN };
+    if (operator) return { text: t("Ce numéro est un numéro {op}. Le paiement automatisé n'accepte que les numéros MTN Mobile Money : saisissez un numéro MTN ou choisissez le paiement manuel.").replace("{op}", operator), color: ERROR_RED };
+    return null;
+  })();
+  const deliveryValue = step === 1
+    ? t("à calculer")
+    : delivery.mode === "retrait" ? t("Gratuit")
+    : effectiveLivraisonFee > 0 ? `${formatPrice(effectiveLivraisonFee)} FCFA` : t("Offerte");
+  const deliveryFree = step === 2 && (delivery.mode === "retrait" || effectiveLivraisonFee === 0);
+
+  const fade = { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -10 }, transition: { duration: 0.25 } };
 
   // ─── Render ──────────────────────────────────────────────────────────────────
   return (
-    <main className="min-h-screen bg-[#F8F5F2] text-[#2A2424]">
-      {/* Top bar */}
-      <div className="bg-white border-b border-[#EDE0E0] px-5 md:px-8 py-4 flex items-center justify-between">
-        <button
-          onClick={() => (step === 2 ? setStep(1) : router.push("/shop"))}
-          className="flex items-center gap-2 text-sm font-medium text-[#2A2424]/60 hover:text-[#2A2424] transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          {step === 2 ? t("Retour") : t("Retour à la boutique")}
-        </button>
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-[#2A2424]/50">
-          
-          {t("Paiement 100% sécurisé")}
+    <main className="min-h-screen" style={{ background: SK.ground, color: SK.ink }}>
+      <div className="w-full max-w-5xl mx-auto px-5 md:px-8 pt-6 pb-16 md:pt-10">
+
+        {/* top: back + reassurance */}
+        <div className="flex items-center justify-between gap-3 h-11 mb-5">
+          <button
+            onClick={() => (step === 2 ? goToStep(1) : router.push("/shop"))}
+            aria-label={step === 2 ? t("Retour") : t("Retour à la boutique")}
+            className="w-11 h-11 rounded-full flex items-center justify-center"
+            style={{ background: SK.surface, border: `1px solid ${SK.line}`, color: SK.ink }}
+          >
+            <ArrowLeft className="w-[18px] h-[18px]" />
+          </button>
+          <span className="px-3 py-[7px] rounded-full text-[12px] font-semibold flex items-center gap-1.5" style={{ background: SK.surface, border: `1px solid ${SK.line}` }}>
+            <Lock weight="fill" className="w-3.5 h-3.5" style={{ color: SK.accent }} /> {t("Paiement 100% sécurisé")}
+          </span>
         </div>
-      </div>
 
-      <div className="max-w-[1000px] mx-auto px-4 md:px-8 py-8 flex flex-col lg:flex-row gap-8">
+        <div className="flex flex-col gap-2 mb-6">
+          <Eyebrow>{step === 1 ? t("Étape 1 sur 2") : t("Étape 2 sur 2")}</Eyebrow>
+          <SectionTitle as="h1" light={t("Finaliser")} bold={t("ma commande")} size={40} />
+        </div>
 
-        {/* LEFT — Forms */}
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-[#2A2424] mb-1" style={{ letterSpacing: "-0.02em" }}>
-            {t("Finaliser ma commande")}
-          </h1>
-          <p className="text-sm text-[#2A2424]/50 mb-6">
-            {step === 1 ? t("Étape 1 sur 2 — Vos informations") : t("Étape 2 sur 2 — Mode de livraison")}
-          </p>
+        <div className="flex flex-col lg:flex-row lg:items-start gap-6 lg:gap-10">
 
-          <StepIndicator step={step} />
+          {/* ════════════ LEFT — forms ════════════ */}
+          <div className="flex-1 min-w-0 flex flex-col gap-4">
+            <Stepper step={step} />
 
-          <AnimatePresence mode="wait">
-            {/* ════════════════ STEP 1 — IDENTITÉ ════════════════ */}
-            {step === 1 && (
-              <motion.div
-                key="step1"
-                initial={{ opacity: 0, x: -24 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 24 }}
-                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 space-y-5">
-                  <div className="flex items-center gap-2 mb-1">
-                    
-                    <span className="text-xs font-bold uppercase tracking-widest text-[#2A2424]/50">{t("Identité")}</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">{t("Prénom")}</label>
-                      <input
-                        type="text"
-                        placeholder="Fatou"
-                        value={identity.firstName}
-                        onChange={(e) => setIdentity({ ...identity, firstName: e.target.value })}
-                        className={iClass("firstName")}
-                      />
-                      {identityErrors.firstName && <p className="text-[10px] text-red-500 mt-1">{identityErrors.firstName}</p>}
+            <AnimatePresence mode="wait">
+              {/* ───── STEP 1 — IDENTITÉ ───── */}
+              {step === 1 && (
+                <motion.div key="step1" {...fade} className="flex flex-col gap-4">
+                  <CardBlock title={t("Vos informations")}>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field id="ck-firstName" label={t("Prénom")} error={identityErrors.firstName}>
+                        <input id="ck-firstName" type="text" autoComplete="given-name" placeholder="Fatou" value={identity.firstName}
+                          onChange={(e) => setIdentity({ ...identity, firstName: e.target.value })}
+                          aria-invalid={!!identityErrors.firstName} className={fieldClass} style={fieldStyle(identityErrors.firstName)} />
+                      </Field>
+                      <Field id="ck-lastName" label={t("Nom")} error={identityErrors.lastName}>
+                        <input id="ck-lastName" type="text" autoComplete="family-name" placeholder="Mbarga" value={identity.lastName}
+                          onChange={(e) => setIdentity({ ...identity, lastName: e.target.value })}
+                          aria-invalid={!!identityErrors.lastName} className={fieldClass} style={fieldStyle(identityErrors.lastName)} />
+                      </Field>
                     </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">{t("Nom")}</label>
-                      <input
-                        type="text"
-                        placeholder="Diallo"
-                        value={identity.lastName}
-                        onChange={(e) => setIdentity({ ...identity, lastName: e.target.value })}
-                        className={iClass("lastName")}
-                      />
-                      {identityErrors.lastName && <p className="text-[10px] text-red-500 mt-1">{identityErrors.lastName}</p>}
+                    <Field id="ck-email" label={t("E-mail")} hint={t("· pour recevoir votre confirmation")} error={identityErrors.email}>
+                      <input id="ck-email" type="email" autoComplete="email" inputMode="email" placeholder="fatou@exemple.com" value={identity.email}
+                        onChange={(e) => setIdentity({ ...identity, email: e.target.value })}
+                        aria-invalid={!!identityErrors.email} className={fieldClass} style={fieldStyle(identityErrors.email)} />
+                    </Field>
+                    <Field id="ck-phone" label={t("Téléphone / WhatsApp")} hint={t("· pour le suivi de livraison")} error={identityErrors.phone}>
+                      <input id="ck-phone" type="tel" autoComplete="tel" inputMode="tel" placeholder="6XX XX XX XX" value={identity.phone}
+                        onChange={(e) => setIdentity({ ...identity, phone: e.target.value })}
+                        aria-invalid={!!identityErrors.phone} className={fieldClass} style={fieldStyle(identityErrors.phone)} />
+                    </Field>
+                  </CardBlock>
+                </motion.div>
+              )}
+
+              {/* ───── STEP 2 — LIVRAISON & PAIEMENT ───── */}
+              {step === 2 && (
+                <motion.div key="step2" {...fade} className="flex flex-col gap-4">
+                  {/* recap of step 1 */}
+                  <div className="rounded-[20px] px-4 py-3 flex items-center justify-between gap-3" style={{ background: SK.tint }}>
+                    <div className="min-w-0 text-[14px] leading-snug">
+                      <p className="font-bold truncate">{identity.firstName} {identity.lastName}</p>
+                      <p className="truncate" style={{ color: SK.muted }}>{identity.phone} · {identity.email}</p>
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">
-                      {t("Email")}
-                    </label>
-                    <input
-                      type="email"
-                      placeholder="fatou@exemple.com"
-                      value={identity.email}
-                      onChange={(e) => setIdentity({ ...identity, email: e.target.value })}
-                      className={iClass("email")}
-                    />
-                    {identityErrors.email && <p className="text-[10px] text-red-500 mt-1">{identityErrors.email}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">
-                      {t("Téléphone / WhatsApp")}
-                    </label>
-                    <input
-                      type="tel"
-                      placeholder="+221 77 000 00 00"
-                      value={identity.phone}
-                      onChange={(e) => setIdentity({ ...identity, phone: e.target.value })}
-                      className={iClass("phone")}
-                    />
-                    {identityErrors.phone && <p className="text-[10px] text-red-500 mt-1">{identityErrors.phone}</p>}
-                  </div>
-                </div>
-
-                <motion.button
-                  onClick={handleStep1Next}
-                  whileTap={{ scale: 0.97 }}
-                  className="mt-5 w-full py-4 bg-[#2A2424] text-white rounded-2xl text-sm font-bold shadow-lg hover:bg-black transition-colors flex items-center justify-center gap-2"
-                >
-                  {t("Continuer vers la livraison")} <CaretRight className="w-4 h-4" />
-                </motion.button>
-              </motion.div>
-            )}
-
-            {/* ════════════════ STEP 2 — LIVRAISON ════════════════ */}
-            {step === 2 && (
-              <motion.div
-                key="step2"
-                initial={{ opacity: 0, x: 24 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -24 }}
-                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                className="space-y-4"
-              >
-                {/* Mode selector */}
-                <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    
-                    <span className="text-xs font-bold uppercase tracking-widest text-[#2A2424]/50">{t("Mode de livraison")}</span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* Livraison à domicile */}
-                    <button
-                      onClick={() => setDelivery({ ...delivery, mode: "domicile", store: null })}
-                      className={`relative flex flex-col items-center gap-3 p-4 rounded-2xl border-2 text-center transition-all duration-200 ${
-                        delivery.mode === "domicile"
-                          ? "border-[#2A2424] bg-[#2A2424]/5"
-                          : "border-[#EDE0E0] hover:border-[#C08A8E]/50"
-                      }`}
-                    >
-                      {delivery.mode === "domicile" && (
-                        <span className="absolute top-2 right-2 w-4 h-4 bg-[#2A2424] rounded-full flex items-center justify-center">
-                          <Check className="w-2.5 h-2.5 text-white" />
-                        </span>
-                      )}
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${delivery.mode === "domicile" ? "bg-[#2A2424]" : "bg-[#F4EAEB]"}`}>
-                        <House className={`w-5 h-5 ${delivery.mode === "domicile" ? "text-white" : "text-[#C08A8E]"}`} />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-[#2A2424]">{t("Livraison")}</p>
-                        <p className="text-xs font-bold text-[#2A2424]">{t("à domicile")}</p>
-                        <p className="text-[10px] text-[#C08A8E] font-semibold mt-1">+{livraisonFee > 0 ? `+${formatPrice(livraisonFee)} FCFA` : t("Gratuit")}</p>
-                      </div>
-                    </button>
-
-                    {/* Retrait en magasin */}
-                    <button
-                      onClick={() => setDelivery({ ...delivery, mode: "retrait" })}
-                      className={`relative flex flex-col items-center gap-3 p-4 rounded-2xl border-2 text-center transition-all duration-200 ${
-                        delivery.mode === "retrait"
-                          ? "border-[#2A2424] bg-[#2A2424]/5"
-                          : "border-[#EDE0E0] hover:border-[#C08A8E]/50"
-                      }`}
-                    >
-                      {delivery.mode === "retrait" && (
-                        <span className="absolute top-2 right-2 w-4 h-4 bg-[#2A2424] rounded-full flex items-center justify-center">
-                          <Check className="w-2.5 h-2.5 text-white" />
-                        </span>
-                      )}
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${delivery.mode === "retrait" ? "bg-[#2A2424]" : "bg-[#F4EAEB]"}`}>
-                        
-                      <Storefront className={`w-5 h-5 ${delivery.mode === "retrait" ? "text-white" : "text-[#C08A8E]"}`} weight="light" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-[#2A2424]">{t("Retrait")}</p>
-                        <p className="text-xs font-bold text-[#2A2424]">{t("en magasin")}</p>
-                        <p className="text-[10px] text-emerald-600 font-semibold mt-1">{t("Gratuit")}</p>
-                      </div>
+                    <button onClick={() => goToStep(1)} className="h-9 px-3.5 rounded-full text-[13px] font-bold shrink-0" style={{ background: SK.surface, color: SK.ink }}>
+                      {t("Modifier")}
                     </button>
                   </div>
-                </div>
 
-                {/* ── Domicile fields ── */}
-                <AnimatePresence>
-                  {delivery.mode === "domicile" && (
-                    <motion.div
-                      key="domicile-fields"
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 space-y-4">
-                        <div className="flex items-center gap-2">
-                          
-                          <span className="text-xs font-bold uppercase tracking-widest text-[#2A2424]/50">{t("Adresse de livraison")}</span>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">{t("Adresse complète")}</label>
-                          <input
-                            type="text"
-                            placeholder="Rue 10, Villa 5, Sacré Cœur 3"
-                            value={delivery.address}
-                            onChange={(e) => setDelivery({ ...delivery, address: e.target.value })}
-                            className={dClass("address")}
-                          />
-                          {deliveryErrors.address && <p className="text-[10px] text-red-500 mt-1">{deliveryErrors.address}</p>}
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">{t("Ville")}</label>
-                            <select
-                              value={delivery.city}
-                              onChange={(e) => setDelivery({ ...delivery, city: e.target.value })}
-                              className="w-full px-4 py-3 rounded-xl border border-[#EDE0E0] focus:border-[#C08A8E] focus:ring-2 focus:ring-[#F4EAEB] text-sm text-[#2A2424] bg-white outline-none transition-all"
-                            >
-                              {CAMEROON_CITIES.map(c => (
-                                <option key={c} value={c}>{c}</option>
-                              ))}
-                            </select>
-                            {deliveryErrors.city && <p className="text-[10px] text-red-500 mt-1">{deliveryErrors.city}</p>}
-                          </div>
-                          <div>
-                            <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">{t("Pays")}</label>
-                            <select
-                              value={delivery.country}
-                              onChange={(e) => setDelivery({ ...delivery, country: e.target.value })}
-                              className="w-full px-4 py-3 rounded-xl border border-[#EDE0E0] focus:border-[#C08A8E] focus:ring-2 focus:ring-[#F4EAEB] text-sm text-[#2A2424] bg-white outline-none transition-all"
-                            >
-                              <option value="Cameroun">{t("Cameroun")}</option>
-                            </select>
-                          </div>
-                        </div>
+                  {/* delivery */}
+                  <CardBlock title={t("Mode de livraison")}>
+                    <div className="flex flex-col gap-2.5">
+                      <Choice
+                        selected={delivery.mode === "domicile"}
+                        onClick={() => setDelivery({ ...delivery, mode: "domicile", store: null })}
+                        icon={<House className="w-5 h-5" />}
+                        title={t("Livraison à domicile")}
+                        text={<>
+                          <span className="font-bold" style={{ color: effectiveLivraisonFee === 0 ? GOOD_GREEN : SK.ink }}>{effectiveLivraisonFee > 0 ? `${formatPrice(livraisonFee)} FCFA` : t("Offerte")}</span>
+                          {" · "}{eta ? `${t("Délai estimé :")} ${t(eta)}` : t("Partout au Cameroun")}
+                        </>}
+                      />
+                      <Choice
+                        selected={delivery.mode === "retrait"}
+                        onClick={() => setDelivery({ ...delivery, mode: "retrait" })}
+                        icon={<Storefront className="w-5 h-5" />}
+                        title={t("Retrait en boutique")}
+                        text={<><span className="font-bold" style={{ color: GOOD_GREEN }}>{t("Gratuit")}</span>{" · "}{t("Douala ou Yaoundé")}</>}
+                      />
+                    </div>
 
-                        {/* Quartier (Dynamic) */}
-                        {citiesData.find(c => c.name === delivery.city)?.has_neighborhoods && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            className="mt-3"
-                          >
-                            <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">{t("Quartier")}</label>
-                            <select
-                              value={deliveryNeighborhood}
-                              onChange={(e) => setDeliveryNeighborhood(e.target.value)}
-                              className="w-full px-4 py-3 rounded-xl border border-[#EDE0E0] focus:border-[#C08A8E] focus:ring-2 focus:ring-[#F4EAEB] text-sm text-[#2A2424] bg-white outline-none transition-all"
-                            >
-                              <option value="">{t("Sélectionnez un quartier")}</option>
-                              {citiesData.find(c => c.name === delivery.city)?.neighborhoods?.map((h: any) => (
-                                <option key={h.id} value={h.id}>{h.name}</option>
-                              ))}
-                            </select>
-                            {deliveryErrors.neighborhood && <p className="text-[10px] text-red-500 mt-1">{deliveryErrors.neighborhood}</p>}
-                          </motion.div>
-                        )}
-                        
-                        {/* ETA display */}
-                        {eta && (
-                          <div className="mt-2 flex items-center gap-2 text-[11px] text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg font-medium">
-                            <Clock className="w-3.5 h-3.5" />
-                            {t("Délai estimé :")} {eta}
-                          </div>
-                        )}
-                        <div>
-                          <label className="block text-xs font-semibold text-[#2A2424]/60 mb-1.5">
-                            {t("Instructions")} <span className="text-[#2A2424]/30">{t("(optionnel)")}</span>
-                          </label>
-                          <textarea
-                            rows={2}
-                            placeholder={t("Ex: Appeler avant de venir, passer par l'entrée latérale...")}
-                            value={delivery.notes}
-                            onChange={(e) => setDelivery({ ...delivery, notes: e.target.value })}
-                            className="w-full px-4 py-3 rounded-xl border border-[#EDE0E0] focus:border-[#C08A8E] focus:ring-2 focus:ring-[#F4EAEB] text-sm text-[#2A2424] bg-white outline-none transition-all resize-none"
-                          />
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* ── Store picker ── */}
-                <AnimatePresence>
-                  {delivery.mode === "retrait" && (
-                    <motion.div
-                      key="store-picker"
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 space-y-3">
-                        <div className="flex items-center gap-2 mb-1">
-                          
-                          <span className="text-xs font-bold uppercase tracking-widest text-[#2A2424]/50">{t("Choisissez votre magasin")}</span>
-                        </div>
-                        {deliveryErrors.store && (
-                          <p className="text-[10px] text-red-500">{deliveryErrors.store}</p>
-                        )}
-                        {STORES.map((store) => (
-                          <button
-                            key={store.id}
-                            onClick={() => setDelivery({ ...delivery, store: store.id })}
-                            className={`w-full flex items-start gap-4 p-4 rounded-xl border-2 text-left transition-all duration-200 ${
-                              delivery.store === store.id
-                                ? "border-[#2A2424] bg-[#2A2424]/5"
-                                : "border-[#EDE0E0] hover:border-[#C08A8E]/50"
-                            }`}
-                          >
-                            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${delivery.store === store.id ? "bg-[#2A2424]" : "bg-[#F4EAEB]"}`}>
-                              {store.icon}
+                    <AnimatePresence initial={false} mode="wait">
+                      {delivery.mode === "domicile" ? (
+                        <motion.div key="domicile" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                          <div className="flex flex-col gap-3 pt-1">
+                            <Field id="ck-address" label={t("Adresse complète")} error={deliveryErrors.address}>
+                              <input id="ck-address" type="text" autoComplete="street-address" placeholder={t("Rue, quartier, point de repère")} value={delivery.address}
+                                onChange={(e) => setDelivery({ ...delivery, address: e.target.value })}
+                                aria-invalid={!!deliveryErrors.address} className={fieldClass} style={fieldStyle(deliveryErrors.address)} />
+                            </Field>
+                            <div className="grid grid-cols-2 gap-3">
+                              <Field id="ck-city" label={t("Ville")} error={deliveryErrors.city}>
+                                <div className="relative">
+                                  <select id="ck-city" value={delivery.city} onChange={(e) => { setDelivery({ ...delivery, city: e.target.value }); setDeliveryNeighborhood(""); }}
+                                    className={`${fieldClass} pr-9`} style={fieldStyle(deliveryErrors.city)}>
+                                    {CAMEROON_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                  </select>
+                                  <CaretDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: SK.muted }} />
+                                </div>
+                              </Field>
+                              {cityData?.has_neighborhoods ? (
+                                <Field id="ck-hood" label={t("Quartier")} error={deliveryErrors.neighborhood}>
+                                  <div className="relative">
+                                    <select id="ck-hood" value={deliveryNeighborhood} onChange={(e) => setDeliveryNeighborhood(e.target.value)}
+                                      className={`${fieldClass} pr-9`} style={fieldStyle(deliveryErrors.neighborhood)}>
+                                      <option value="">{t("Sélectionnez un quartier")}</option>
+                                      {cityData.neighborhoods?.map((h: any) => <option key={h.id} value={h.id}>{h.name}</option>)}
+                                    </select>
+                                    <CaretDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: SK.muted }} />
+                                  </div>
+                                </Field>
+                              ) : (
+                                <Field id="ck-country" label={t("Pays")}>
+                                  <input id="ck-country" value={t("Cameroun")} disabled className={fieldClass} style={{ ...fieldStyle(), background: SK.ground, border: `1px solid ${SK.lineSoft}` }} />
+                                </Field>
+                              )}
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold text-[#2A2424]">{store.name}</p>
-                              <p className="text-xs text-[#2A2424]/50 mt-0.5">{store.address}</p>
-                              <p className="text-[10px] text-[#C08A8E] font-semibold mt-1 flex items-center gap-1">
-                                <Clock className="w-3 h-3" /> {t(store.hours)}
+                            {eta && (
+                              <p className="flex items-center gap-2 text-[13px] font-semibold rounded-[14px] px-3.5 py-2.5" style={{ background: "#EEF6F1", color: GOOD_GREEN }}>
+                                <Clock className="w-4 h-4 shrink-0" /> {t("Délai estimé :")} {t(eta)}
+                              </p>
+                            )}
+                            <Field id="ck-notes" label={t("Instructions")} hint={t("(optionnel)")}>
+                              <textarea id="ck-notes" rows={2} placeholder={t("Ex: Appeler avant de venir, passer par l'entrée latérale...")} value={delivery.notes}
+                                onChange={(e) => setDelivery({ ...delivery, notes: e.target.value })}
+                                className="w-full rounded-[14px] px-3.5 py-3 text-[15px] outline-none focus:ring-2 resize-none" style={fieldStyle()} />
+                            </Field>
+                          </div>
+                        </motion.div>
+                      ) : (
+                        <motion.div key="retrait" id="ck-stores" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                          <div className="flex flex-col gap-2.5 pt-1">
+                            <p className="text-[12px] font-bold" style={{ color: deliveryErrors.store ? ERROR_RED : SK.muted }}>
+                              {deliveryErrors.store || t("Choisissez votre magasin")}
+                            </p>
+                            {STORES.map((store) => (
+                              <Choice
+                                key={store.id}
+                                selected={delivery.store === store.id}
+                                onClick={() => { setDelivery({ ...delivery, store: store.id }); setDeliveryErrors((e) => ({ ...e, store: undefined })); }}
+                                icon={<Storefront weight="fill" className="w-5 h-5" />}
+                                title={store.name}
+                                text={<>{store.address}<span className="flex items-center gap-1 mt-0.5"><Clock className="w-3.5 h-3.5" /> {t(store.hours)}</span></>}
+                              />
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </CardBlock>
+
+                  {/* payment */}
+                  <CardBlock title={t("Mode de paiement")}>
+                    <div className="flex flex-col gap-2.5">
+                      <Choice
+                        selected={paymentMode === "pawapay"}
+                        onClick={() => setPaymentMode("pawapay")}
+                        icon={<DeviceMobile className="w-5 h-5" />}
+                        title={t("MTN Mobile Money")}
+                        text={t("Validation directe sur votre téléphone · frais 3 %")}
+                      />
+                      <AnimatePresence initial={false}>
+                        {paymentMode === "pawapay" && (
+                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                            <div className="flex flex-col gap-3 pt-1 pb-2">
+                              <Field id="momo-network" label={t("Réseau")}>
+                                <div className="relative">
+                                  <select id="momo-network" value={mobileNetwork} onChange={(e) => setMobileNetwork(e.target.value)} className={`${fieldClass} pr-9`} style={fieldStyle()}>
+                                    <option value="MTN_MOMO_CMR">{t("MTN MoMo Cameroun")}</option>
+                                    {/* Only MTN_MOMO_CMR is enabled on the PawaPay account (checked via /active-conf) */}
+                                    <option value="ORANGE_CEW_CMR" disabled>{t("Orange Money Cameroun")} ({t("bientôt disponible")})</option>
+                                  </select>
+                                  <CaretDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: SK.muted }} />
+                                </div>
+                              </Field>
+                              <Field id="momo-phone" label={t("Numéro MTN Mobile Money à débiter")}>
+                                <div className="relative">
+                                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px] font-semibold" style={{ color: SK.muted }}>+237</span>
+                                  <input
+                                    id="momo-phone" type="tel" inputMode="numeric" autoComplete="tel-national" placeholder="6XX XX XX XX"
+                                    value={momoPhone}
+                                    onChange={(e) => { setMomoPhone(e.target.value); setMomoPhoneError(""); }}
+                                    aria-invalid={!!momoPhoneError}
+                                    aria-describedby="momo-phone-hint"
+                                    className={`${fieldClass} pl-[62px]`}
+                                    style={fieldStyle(momoPhoneError)}
+                                  />
+                                </div>
+                              </Field>
+                              <p id="momo-phone-hint" className="text-[13px] leading-relaxed" style={{ color: momoHint?.color ?? SK.muted }}>
+                                {momoHint ? momoHint.text : t("Vous recevrez une notification (Push USSD) sur ce numéro pour valider le paiement avec votre code PIN.")}
                               </p>
                             </div>
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${delivery.store === store.id ? "border-[#2A2424] bg-[#2A2424]" : "border-[#EDE0E0]"}`}>
-                              {delivery.store === store.id && <Check className="w-3 h-3 text-white" />}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
 
-                {/* Payment info */}
-                <div className="bg-[#F4EAEB]/40 border border-[#EDE0E0] rounded-2xl p-5">
-                  <p className="text-xs font-bold uppercase tracking-widest text-[#C08A8E] mb-3 flex items-center gap-1.5">
-                     {t("Mode de paiement")}
-                  </p>
-                  
-                  <div className="space-y-3">
-                    <button
-                      onClick={() => setPaymentMode("pawapay")}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                        paymentMode === "pawapay" ? "border-[#2A2424] bg-white" : "border-transparent hover:border-[#EDE0E0] bg-white/60"
-                      }`}
-                    >
-                      
-                      <div className="flex-1">
-                        <p className="text-sm font-bold text-[#2A2424]">{t("Paiement automatisé (+3%)")}</p>
-                        <p className="text-xs text-[#2A2424]/50">{t("MTN Mobile Money, validation sur votre téléphone")}</p>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${paymentMode === "pawapay" ? "border-[#2A2424] bg-[#2A2424]" : "border-[#EDE0E0]"}`}>
-                        {paymentMode === "pawapay" && <Check className="w-3 h-3 text-white" />}
-                      </div>
-                    </button>
-
-                    <AnimatePresence>
-                      {paymentMode === "pawapay" && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="overflow-hidden px-1"
-                        >
-                          <div className="pt-1 pb-3">
-                                                          <select 
-                                value={mobileNetwork}
-                                onChange={(e) => setMobileNetwork(e.target.value)}
-                                className="w-full text-xs px-3 py-2.5 rounded-xl border border-[#EDE0E0] bg-white outline-none focus:border-[#C08A8E]"
+                      <Choice
+                        selected={paymentMode === "manuel"}
+                        onClick={() => setPaymentMode("manuel")}
+                        icon={<Phone className="w-5 h-5" />}
+                        title={t("Paiement manuel (USSD)")}
+                        text={t("Orange Money / MTN Mobile Money · sans frais")}
+                      />
+                      <AnimatePresence initial={false}>
+                        {paymentMode === "manuel" && (
+                          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                            <div className="flex flex-col gap-3 pt-1 pb-1">
+                              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t("Opérateur")}>
+                                {(["orange", "mtn"] as const).map((p) => {
+                                  const on = manualProvider === p;
+                                  return (
+                                    <button
+                                      key={p}
+                                      type="button"
+                                      role="radio"
+                                      aria-checked={on}
+                                      onClick={() => setManualProvider(p)}
+                                      className="h-11 rounded-full text-[14px] font-bold flex items-center justify-center gap-2"
+                                      style={on ? { background: SK.ink, color: "#FFFFFF" } : { background: SK.surface, color: SK.ink, border: `1px solid ${SK.line}` }}
+                                    >
+                                      <span className="w-2.5 h-2.5 rounded-full" style={{ background: p === "orange" ? "#FF7900" : "#FFCC00" }} aria-hidden="true" />
+                                      {MANUAL_PAYMENT[p].label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              <ol className="flex flex-col gap-2.5 rounded-[18px] p-4 text-[14px] leading-relaxed" style={{ background: SK.ground, border: `1px solid ${SK.lineSoft}` }}>
+                                {[
+                                  <>{t("Composez le code")} <strong className="whitespace-nowrap">{MANUAL_PAYMENT[manualProvider].code}</strong></>,
+                                  <>{t("Transférez le montant exact de")} <strong className="whitespace-nowrap">{formatPrice(total)} FCFA</strong></>,
+                                  <>{t("Revenez ici et confirmez votre commande.")}</>,
+                                ].map((line, i) => (
+                                  <li key={i} className="flex gap-2.5">
+                                    <span className="w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0" style={{ background: SK.tint, color: SK.accent }}>{i + 1}</span>
+                                    <span>{line}</span>
+                                  </li>
+                                ))}
+                              </ol>
+                              <a
+                                href={ussdHref(manualProvider)}
+                                className="h-[48px] rounded-full text-[15px] font-bold flex items-center justify-center gap-2"
+                                style={{ border: `1px solid ${SK.ink}`, color: SK.ink, background: SK.surface }}
                               >
-                                <option value="MTN_MOMO_CMR">{t("MTN MoMo Cameroun")}</option>
-                                {/* Only MTN_MOMO_CMR is enabled on the PawaPay account (checked via /active-conf) */}
-                                <option value="ORANGE_CEW_CMR" disabled>{t("Orange Money Cameroun")} ({t("bientôt disponible")})</option>
-                              </select>
-                            <label htmlFor="momo-phone" className="block text-[11px] font-bold text-[#2A2424] mt-3 mb-1.5">
-                              {t("Numéro MTN Mobile Money à débiter")}
-                            </label>
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#2A2424]/50">+237</span>
-                              <input
-                                id="momo-phone"
-                                type="tel"
-                                inputMode="numeric"
-                                autoComplete="tel-national"
-                                placeholder="6XX XX XX XX"
-                                value={momoPhone}
-                                onChange={(e) => { setMomoPhone(e.target.value); setMomoPhoneError(""); }}
-                                className={`${inputBase} pl-14 ${momoPhoneError ? inputErr : inputOk}`}
-                              />
+                                <Phone weight="fill" className="w-4 h-4" /> {t("Lancer le paiement (USSD)")}
+                              </a>
                             </div>
-                            {(() => {
-                              if (momoPhoneError) return <p className="text-[11px] text-red-500 mt-1.5 leading-relaxed">{momoPhoneError}</p>;
-                              const local = cameroonLocalNumber(momoPhone);
-                              const operator = local ? cameroonOperator(local) : null;
-                              if (operator === "MTN") return <p className="text-[11px] text-green-600 mt-1.5">{t("Numéro MTN détecté")}</p>;
-                              if (operator) return <p className="text-[11px] text-red-500 mt-1.5 leading-relaxed">{t("Ce numéro est un numéro {op}. Le paiement automatisé n'accepte que les numéros MTN Mobile Money : saisissez un numéro MTN ou choisissez le paiement manuel.").replace("{op}", operator)}</p>;
-                              return null;
-                            })()}
-                            <p className="text-[11px] text-[#2A2424]/50 mt-2 leading-relaxed">
-                              {t("Vous recevrez une notification (Push USSD) sur ce numéro pour valider le paiement avec votre code PIN.")}
-                            </p>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </CardBlock>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-                    <button
-                      onClick={() => setPaymentMode("manuel")}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                        paymentMode === "manuel" ? "border-[#2A2424] bg-white" : "border-transparent hover:border-[#EDE0E0] bg-white/60"
-                      }`}
-                    >
-                      
-                      <div className="flex-1">
-                        <p className="text-sm font-bold text-[#2A2424]">{t("Paiement manuel (USSD)")}</p>
-                        <p className="text-xs text-[#2A2424]/50">{t("Orange Money / MTN Mobile Money")}</p>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${paymentMode === "manuel" ? "border-[#2A2424] bg-[#2A2424]" : "border-[#EDE0E0]"}`}>
-                        {paymentMode === "manuel" && <Check className="w-3 h-3 text-white" />}
-                      </div>
-                    </button>
-
-                    <AnimatePresence>
-                      {paymentMode === "manuel" && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="overflow-hidden px-1"
-                        >
-                          <div className="pt-2 pb-4 text-xs bg-emerald-50/50 px-4 rounded-xl border border-emerald-100 mt-2 space-y-4">
-                            <p className="text-[#2A2424] font-semibold text-sm">{t("Instructions USSD :")}</p>
-                            
-                            <div className="flex gap-2">
-                              <button
-                                onClick={(e) => { e.preventDefault(); setManualProvider("orange"); }}
-                                className={`flex-1 py-2 rounded-lg font-bold transition-all border-2 ${manualProvider === "orange" ? "bg-orange-500 border-orange-500 text-white shadow-md" : "border-orange-200 text-orange-600 bg-white"}`}
-                              >
-                                Orange Money
-                              </button>
-                              <button
-                                onClick={(e) => { e.preventDefault(); setManualProvider("mtn"); }}
-                                className={`flex-1 py-2 rounded-lg font-bold transition-all border-2 ${manualProvider === "mtn" ? "bg-yellow-400 border-yellow-400 text-black shadow-md" : "border-yellow-200 text-yellow-700 bg-white"}`}
-                              >
-                                MTN MoMo
-                              </button>
-                            </div>
-
-                            <div className="space-y-2 text-[#2A2424]/80 leading-relaxed bg-white p-3 rounded-lg border border-emerald-100/50">
-                              <p><strong>1.</strong> {t("Cliquez sur")} <strong>"{t("Lancer le paiement")}"</strong> {t("ci-dessous pour ouvrir votre téléphone avec le code")} (<strong className="text-[#2A2424]">{MANUAL_PAYMENT[manualProvider].code}</strong>).</p>
-                              <p><strong>2.</strong> {t("Transférez le montant exact de")} <strong className="text-[#2A2424]">{formatPrice(total)} FCFA</strong>.</p>
-                              <p><strong>3.</strong> {t("Une fois terminé, cliquez sur \"Confirmer ma commande\" en bas de page pour valider votre achat.")}</p>
-                            </div>
-
-                            <a 
-                              href={ussdHref(manualProvider)} 
-                              className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-colors shadow-sm ${manualProvider === "orange" ? "bg-orange-500 hover:bg-orange-600 text-white" : "bg-yellow-400 hover:bg-yellow-500 text-black"}`}
-                            >
-                              {t("Lancer le paiement (USSD)")} 
-                            </a>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+            {/* payment in progress */}
+            {paymentWait && (
+              <div role="status" className="rounded-[22px] p-4 flex items-center gap-3.5" style={{ background: SK.tint }}>
+                <div className="w-11 h-11 rounded-full flex items-center justify-center shrink-0" style={{ background: SK.surface }}>
+                  <CircleNotch className="w-5 h-5 animate-spin" style={{ color: SK.accent }} />
                 </div>
-
-                {/* Submit */}
-                <motion.button
-                  onClick={handleSubmit}
-                  disabled={isLoading}
-                  whileTap={{ scale: 0.97 }}
-                  className="w-full py-4 bg-[#2A2424] text-white rounded-2xl text-sm font-bold shadow-lg hover:bg-black transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-                >
-                  {isLoading ? (
-                    <CircleNotch className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>{t("Confirmer ma commande")} <CaretRight className="w-4 h-4" /></>
-                  )}
-                </motion.button>
-
-                {paymentWait && (
-                  <p className="text-center text-xs font-semibold text-[#2A2424] bg-[#F4EAEB]/70 rounded-xl px-3 py-2.5">
-                    {paymentWait}
-                  </p>
-                )}
-
-                <button
-                  onClick={() => setStep(1)}
-                  className="w-full flex items-center justify-center gap-1.5 text-xs text-[#2A2424]/50 hover:text-[#2A2424] transition-colors py-1"
-                >
-                  <CaretLeft className="w-3.5 h-3.5" /> {t("Modifier mes informations")}
-                </button>
-              </motion.div>
+                <p className="text-[14px] font-bold leading-snug">{paymentWait}</p>
+              </div>
             )}
-          </AnimatePresence>
-        </div>
 
-        {/* RIGHT — Order summary */}
-        <motion.div
-          className="lg:w-[340px] shrink-0"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-        >
-          <div className="bg-white rounded-2xl border border-[#EDE0E0] p-6 sticky top-24">
-            <h2 className="text-sm font-bold text-[#2A2424] mb-4">{t("Récapitulatif")}</h2>
-
-            <div className="space-y-3 mb-4">
-              {items.map((item) => (
-                <div key={item.id} className="flex items-center gap-3">
-                  <div className="w-14 h-14 rounded-xl overflow-hidden bg-[#F4EAEB] shrink-0">
-                    <img
-                      src={item.thumbnail || "https://placehold.co/56x56/F4EAEB/2A2424?text="}
-                      alt={item.title}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-[#2A2424] line-clamp-2 leading-tight">{item.title}</p>
-                    <p className="text-[11px] text-[#2A2424]/50 mt-0.5">{t("Qté :")} {item.quantity}</p>
-                  </div>
-                  <p className="text-xs font-bold text-[#2A2424] shrink-0">
-                    {formatPrice(item.price * item.quantity)} FCFA
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <div className="w-full h-px bg-[#EDE0E0] mb-4" />
-
-            <div className="mb-4">
-              <PromoCodeField />
-            </div>
-
-            <div className="space-y-2.5 mb-5">
-              <div className="flex justify-between text-sm text-[#2A2424]/60">
-                <span>{t("Sous-total")}</span>
-                <span>{formatPrice(totalAmount)} FCFA</span>
+            {formError && (
+              <div role="alert" className="rounded-[18px] px-4 py-3 flex items-start gap-2.5 text-[14px]" style={{ background: "#FDECEC", color: "#9F1C12" }}>
+                <WarningCircle weight="fill" className="w-5 h-5 shrink-0 mt-px" />
+                <span>{formError}</span>
               </div>
-              {discountTotal > 0 && (
-                <div className="flex justify-between text-sm text-[#C2164A]">
-                  <span>{t("Réduction créateur")}</span>
-                  <span>-{formatPrice(discountTotal)} FCFA</span>
-                </div>
+            )}
+
+            {/* main action */}
+            <button
+              onClick={step === 1 ? handleStep1Next : handleSubmit}
+              disabled={isLoading}
+              className="h-[58px] rounded-full text-[16px] font-bold flex items-center justify-center gap-2 disabled:opacity-70"
+              style={{ background: SK.accent, color: "#FFFFFF" }}
+            >
+              {isLoading ? (
+                <CircleNotch className="w-5 h-5 animate-spin" />
+              ) : step === 1 ? (
+                <>{t("Continuer vers la livraison")} <ArrowRight className="w-5 h-5" /></>
+              ) : paymentMode === "pawapay" ? (
+                <>{t("Payer")} {formatPrice(total)} FCFA</>
+              ) : (
+                <>{t("Confirmer ma commande")} <ArrowRight className="w-5 h-5" /></>
               )}
-              <div className="flex justify-between text-sm text-[#2A2424]/60">
-                <span className="flex items-center gap-1.5">
-
-                  {delivery.mode === "retrait" ? t("Retrait magasin") : t("Livraison")}
-                </span>
-                <span className={(delivery.mode === "retrait" || freeShipping || freeShippingByThreshold) && step === 2 ? "text-emerald-600 font-semibold" : ""}>
-                  {step === 1 ? t("à calculer") : (delivery.mode === "retrait" ? t("Gratuit") : `${effectiveLivraisonFee > 0 ? `+${formatPrice(effectiveLivraisonFee)} FCFA` : t("Gratuit")}`)}
-                </span>
-              </div>
-              {paymentFee > 0 && step === 2 && (
-                <div className="flex justify-between text-sm text-[#2A2424]/60 mt-2.5">
-                  <span className="flex items-center gap-1.5">
-                    
-                    {t("Frais automatisé (3%)")}
-                  </span>
-                  <span>+{formatPrice(paymentFee)} FCFA</span>
-                </div>
-              )}
-              <div className="w-full h-px bg-[#F4EAEB] mt-2.5" />
-              <div className="flex justify-between">
-                <span className="text-sm font-bold text-[#2A2424]">{t("Total")}</span>
-                <span className="text-base font-bold text-[#2A2424]">{formatPrice(total)} FCFA</span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-center gap-4">
-              <div className="flex items-center gap-1 text-[10px] text-[#2A2424]/40">
-                 {t("Sécurisé")}
-              </div>
-              <div className="flex items-center gap-1 text-[10px] text-[#2A2424]/40">
-                 {t("Authentique")}
-              </div>
-              <div className="flex items-center gap-1 text-[10px] text-[#2A2424]/40">
-                 {t("Rapide")}
-              </div>
-            </div>
+            </button>
+            <p className="flex items-center justify-center gap-1.5 text-[12px] text-center" style={{ color: SK.muted }}>
+              <ShieldCheck className="w-4 h-4 shrink-0" />
+              {step === 1 ? t("Vos informations servent uniquement à la livraison de votre commande.") : t("Produits authentiques · Paiement sécurisé")}
+            </p>
           </div>
-        </motion.div>
+
+          {/* ════════════ RIGHT — summary (first and folded on the phone) ════════════ */}
+          <aside className="order-first lg:order-none lg:w-[360px] shrink-0 lg:sticky lg:top-28">
+            <div className="rounded-[26px] p-[18px] sm:p-5 flex flex-col gap-4" style={{ background: SK.surface, border: `1px solid ${SK.lineSoft}` }}>
+              <button
+                type="button"
+                onClick={() => setSummaryOpen((o) => !o)}
+                aria-expanded={summaryOpen}
+                aria-controls="ck-summary-items"
+                className="flex items-center justify-between gap-3 text-left lg:pointer-events-none"
+              >
+                <span className="min-w-0">
+                  <span className="block whitespace-nowrap" style={{ fontFamily: DISPLAY_FONT, fontSize: 21, lineHeight: 1.1, fontWeight: 300 }}>
+                    {t("Votre")} <span style={{ fontWeight: 700 }}>{t("commande")}</span>
+                  </span>
+                  <span className="block text-[13px] mt-0.5" style={{ color: SK.muted }}>{itemCount} {t(itemCount > 1 ? "articles" : "article")}</span>
+                </span>
+                <span className="flex items-center gap-2 lg:hidden">
+                  <span className="whitespace-nowrap" style={{ fontFamily: DISPLAY_FONT, fontSize: 19, fontWeight: 700 }}>{formatPrice(total)} FCFA</span>
+                  <CaretDown className={`w-4 h-4 transition-transform ${summaryOpen ? "rotate-180" : ""}`} />
+                </span>
+              </button>
+
+              <div id="ck-summary-items" className={`${summaryOpen ? "flex" : "hidden"} lg:flex flex-col gap-4`}>
+                <div className="flex flex-col gap-2.5">
+                  {items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-3">
+                      <div className="relative w-14 h-14 rounded-2xl overflow-hidden flex items-center justify-center shrink-0" style={{ background: SK.tint }}>
+                        {item.thumbnail
+                          // eslint-disable-next-line @next/next/no-img-element
+                          ? <img src={item.thumbnail} alt="" className="w-full h-full object-contain" />
+                          : <Package className="w-6 h-6" style={{ color: SK.muted }} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[14px] font-bold leading-snug line-clamp-2">{item.title}</p>
+                        <p className="text-[13px]" style={{ color: SK.muted }}>{t("Qté :")} {item.quantity}</p>
+                      </div>
+                      <p className="text-[14px] font-bold whitespace-nowrap">{formatPrice(item.price * item.quantity)} FCFA</p>
+                    </div>
+                  ))}
+                </div>
+
+                <PromoCodeField />
+
+                <div className="flex flex-col gap-2.5">
+                  <div className="flex justify-between text-[14px]"><span style={{ color: SK.muted }}>{t("Sous-total")}</span><span>{formatPrice(totalAmount)} FCFA</span></div>
+                  {discountTotal > 0 && (
+                    <div className="flex justify-between text-[14px]"><span style={{ color: SK.muted }}>{t("Réduction")}</span><span style={{ color: GOOD_GREEN }}>− {formatPrice(discountTotal)} FCFA</span></div>
+                  )}
+                  <div className="flex justify-between text-[14px]">
+                    <span style={{ color: SK.muted }}>{delivery.mode === "retrait" && step === 2 ? t("Retrait magasin") : t("Livraison")}</span>
+                    <span style={deliveryFree ? { color: GOOD_GREEN, fontWeight: 600 } : step === 1 ? { color: SK.muted } : undefined}>{deliveryValue}</span>
+                  </div>
+                  {paymentFee > 0 && step === 2 && (
+                    <div className="flex justify-between text-[14px]"><span style={{ color: SK.muted }}>{t("Frais Mobile Money (3 %)")}</span><span>{formatPrice(paymentFee)} FCFA</span></div>
+                  )}
+                  <div className="h-px" style={{ background: SK.lineSoft }} />
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-[15px] font-bold">{t("Total")}</span>
+                    <span style={{ fontFamily: DISPLAY_FONT, fontSize: 26, fontWeight: 700 }}>{formatPrice(total)} FCFA</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
       </div>
     </main>
   );
