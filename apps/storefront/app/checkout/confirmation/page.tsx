@@ -240,7 +240,7 @@ function ConfirmationContent() {
               <p className="whitespace-nowrap" style={{ fontFamily: DISPLAY_FONT, fontSize: 26, fontWeight: 700 }}>{formatPrice(total)} FCFA</p>
             </div>
             <p className="mt-3 flex items-center gap-1.5 text-[12px]" style={{ color: SK.muted }}>
-              <ShieldCheck className="w-4 h-4 shrink-0" style={{ color: GOOD_GREEN }} /> {isOrange ? t("Paiement sécurisé via Tara. Conservez le SMS de confirmation d'Orange.") : t("Paiement sécurisé via Tara. Conservez le SMS de confirmation de MTN.")}
+              <ShieldCheck className="w-4 h-4 shrink-0" style={{ color: GOOD_GREEN }} /> {isOrange ? t("Paiement sécurisé. Conservez le SMS de confirmation d'Orange Money.") : t("Paiement sécurisé. Conservez le SMS de confirmation de MTN Mobile Money.")}
             </p>
           </Block>
         )}

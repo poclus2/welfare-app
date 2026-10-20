@@ -54,7 +54,7 @@ class TaraProviderService extends AbstractPaymentProvider {
     const paymentId = data.taraPaymentId
 
     if (!isValidTaraPaymentId(paymentId)) {
-      throw new Error("Paiement Mobile Money introuvable : aucun paiement Tara valide n'est associé à cette commande.")
+      throw new Error("Paiement Mobile Money introuvable : aucun paiement valide n'est associé à cette commande.")
     }
 
     const { status, message } = await getTaraPaymentStatus(paymentId)
