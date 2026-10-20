@@ -569,7 +569,9 @@ async function runVisualAnalysis(images: FaceImages): Promise<{ ok: true; result
         },
       ],
     },
-    { timeoutMs: 90_000 }
+    // A Qwen provider sometimes never answers (VISUAL_AI_TIMEOUT in prod, 2026-10-20) while the others answer
+    // fast: one shorter try, then a second one, instead of a single 90 s wait that ends in an error
+    { timeoutMs: 70_000, timeoutRetries: 1 }
   );
   if (!ai.ok) return { ok: false, code: `VISUAL_${ai.code}`, error: aiErrorMessage(ai.code, "visual"), retryable: true };
 

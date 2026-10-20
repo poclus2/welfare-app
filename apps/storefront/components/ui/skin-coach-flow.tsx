@@ -9,6 +9,7 @@ import posthog from "posthog-js";
 import { FOLLOWUP_QUESTIONS, followUpQuestions } from "@/lib/skin-profile";
 import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
 import { rememberPendingScan } from "@/lib/pending-scans";
+import { describeActionFailure, type ActionFailureInfo } from "@/lib/action-failure";
 import { useRouter } from "next/navigation";
 import SmartCameraCapture, { CaptureResult } from "./smart-camera-capture";
 import { IconIA } from "@/components/ui/icons/IconIA";
@@ -381,7 +382,12 @@ export default function SkinCoachFlow() {
     setCaptures(result);
     setHasCaptured(true);
     posthog.capture("skin_coach_photos_captured");
-    earlyVisualRef.current = analyzeFace(result, photoConsent).catch(() => null);
+    const earlyStartedAt = Date.now();
+    earlyVisualRef.current = analyzeFace(result, photoConsent).catch((error) => {
+      // not shown to her (the final analysis runs the photos again), but it makes that request longer
+      posthog.capture("skin_coach_early_visual_failed", describeActionFailure(error, earlyStartedAt));
+      return null;
+    });
     const pendingAnswers = resumeAfterCaptureRef.current;
     if (pendingAnswers) {
       resumeAfterCaptureRef.current = null;
@@ -416,8 +422,8 @@ export default function SkinCoachFlow() {
     setHasCaptured(false);
   };
 
-  const showFailure = (failure: { code: string; error: string; retryable: boolean }) => {
-    posthog.capture("skin_coach_analysis_failed", { code: failure.code });
+  const showFailure = (failure: { code: string; error: string; retryable: boolean }, details?: ActionFailureInfo) => {
+    posthog.capture("skin_coach_analysis_failed", { code: failure.code, ...details });
     setMessages(prev => [...prev, {
       id: `msg-ai-err-${Date.now()}`,
       sender: "ai",
@@ -431,6 +437,7 @@ export default function SkinCoachFlow() {
   const executeAnalysis = async (finalResponses: UserResponse[], photos: CaptureResult | null = captures) => {
     if (!photos) return;
     posthog.capture("skin_coach_questionnaire_completed");
+    let startedAt = Date.now();
     try {
       const early = earlyVisualRef.current ? await earlyVisualRef.current : null;
       // glasses already seen by the early analysis: no need to ask the server again
@@ -441,6 +448,7 @@ export default function SkinCoachFlow() {
       try {
         customerToken = window.localStorage.getItem("medusa_auth_token");
       } catch {}
+      startedAt = Date.now();
       const result = await analyzeSkin(photos, finalResponses, photoConsent, early?.success ? early.visual : undefined, faceMapRef.current, customerToken);
       if (result.success) {
         posthog.capture("skin_coach_analysis_succeeded", { scan_id: result.data.scan_id, early_visual: !!early?.success });
@@ -456,11 +464,14 @@ export default function SkinCoachFlow() {
       }
     } catch (error) {
       console.error(error);
-      showFailure({
-        code: "NETWORK",
-        error: t("Connexion au serveur d'analyse impossible. Vérifiez votre connexion internet : vos photos et vos réponses sont conservées."),
-        retryable: true,
-      });
+      showFailure(
+        {
+          code: "NETWORK",
+          error: t("Connexion au serveur d'analyse impossible. Vérifiez votre connexion internet : vos photos et vos réponses sont conservées."),
+          retryable: true,
+        },
+        describeActionFailure(error, startedAt)
+      );
     }
   };
 

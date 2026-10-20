@@ -2,7 +2,7 @@
 // into an error code that is logged and shown to the customer, instead of a generic "something went wrong".
 //   AI_CREDITS  the OpenRouter account has no credit left: every scan fails until it is topped up
 //   AI_BUSY     rate limit / too many requests in flight: retried, then the customer is asked to retry
-//   AI_TIMEOUT  no answer in time
+//   AI_TIMEOUT  no answer in time (retried only when the caller asks for it)
 //   AI_ERROR    any other error from OpenRouter or the model provider
 //   AI_FORMAT   an answer came back but it is not usable JSON
 
@@ -18,13 +18,17 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export async function callOpenRouter(
   label: string,
   body: Record<string, unknown>,
-  opts: { timeoutMs?: number; attempts?: number } = {}
+  // timeoutRetries: how many timeouts are retried (a slow provider; OpenRouter often routes the retry to
+  // another one). 0 by default: the customer already waited for the first try.
+  opts: { timeoutMs?: number; attempts?: number; timeoutRetries?: number } = {}
 ): Promise<AiCallResult> {
   const attempts = opts.attempts ?? 3;
   const timeoutMs = opts.timeoutMs ?? 120_000;
+  let timeoutsLeft = opts.timeoutRetries ?? 0;
   let last: AiCallResult = { ok: false, code: "AI_ERROR", detail: "not called" };
 
   for (let attempt = 1; attempt <= attempts; attempt++) {
+    const startedAt = Date.now();
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     let retryAfterMs = 0;
@@ -57,7 +61,8 @@ export async function callOpenRouter(
             completion_tokens: Number(u.completion_tokens) || 0,
             cost: Number(u.cost) || 0,
           };
-          console.log(`[OpenRouter] ${label} ${usage.model}: ${usage.prompt_tokens} in / ${usage.completion_tokens} out, ${usage.cost.toFixed(4)} $`);
+          const secs = ((Date.now() - startedAt) / 1000).toFixed(1);
+          console.log(`[OpenRouter] ${label} ${usage.model}: ${usage.prompt_tokens} in / ${usage.completion_tokens} out, ${usage.cost.toFixed(4)} $, ${secs}s`);
           return { ok: true, content, usage };
         }
         last = { ok: false, code: "AI_FORMAT", status: res.status, detail: "empty answer" };
@@ -86,10 +91,13 @@ export async function callOpenRouter(
     } catch (e: any) {
       if (e?.name === "AbortError") {
         console.error(`[OpenRouter] ${label}: no answer after ${timeoutMs / 1000}s`);
-        return { ok: false, code: "AI_TIMEOUT", detail: `timeout ${timeoutMs}ms` }; // not retried: the customer already waited
+        last = { ok: false, code: "AI_TIMEOUT", detail: `timeout ${timeoutMs}ms` };
+        if (timeoutsLeft <= 0 || attempt >= attempts) return last;
+        timeoutsLeft--;
+      } else {
+        last = { ok: false, code: "AI_ERROR", detail: String(e?.message || e).slice(0, 300) };
+        retryAfterMs = 2000;
       }
-      last = { ok: false, code: "AI_ERROR", detail: String(e?.message || e).slice(0, 300) };
-      retryAfterMs = 2000;
     } finally {
       clearTimeout(timer);
     }
