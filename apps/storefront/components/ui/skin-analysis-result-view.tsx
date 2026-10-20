@@ -7,7 +7,7 @@ import { ADVISOR_WHATSAPP } from "@/lib/contact";
 import Link from "next/link";
 import posthog from "posthog-js";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useCart } from "@/lib/cart-context";
 import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
 import { sdk } from "@/lib/medusa";
@@ -17,6 +17,7 @@ import { DISPLAY_FONT, SK } from "@/components/ui/skin-coach/theme";
 import { RoutineAudioPlayer } from "@/components/ui/skin-coach/routine-audio-player";
 import { withoutScores } from "@/lib/coach-message";
 import { faceMarkersOf, metricDefsOf, ringOf } from "@/lib/skin-levels";
+import { useRoutineProducts, type ProductInfo } from "@/lib/routine-products";
 
 interface Props {
   result: SkinAnalysisResult;
@@ -42,48 +43,6 @@ function splitStepName(name: string): [string, string] {
 
 const fmtPrice = (amount: number, currency: string) =>
   `${Math.round(amount).toLocaleString("fr-FR")} ${currency.toUpperCase() === "XAF" ? "FCFA" : currency.toUpperCase()}`;
-
-// ─── Products of the routine, fetched once ───────────────────────────────────
-
-type ProductInfo = { title: string; brand?: string; thumbnail?: string; handle?: string; variantId?: string; amount?: number; currency: string };
-
-function useRoutineProducts(ids: string[]): Record<string, ProductInfo | null> {
-  const [products, setProducts] = useState<Record<string, ProductInfo | null>>({});
-  const key = ids.join(",");
-  useEffect(() => {
-    const url = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "https://api.thewelfarecm.com";
-    const pk = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "";
-    let cancelled = false;
-    Promise.all(
-      ids.map((id) =>
-        // prices and collection are not in the default store fields: without them no price was shown
-        fetch(`${url}/store/products/${id}?fields=*variants,*variants.prices,*collection`, { headers: { "x-publishable-api-key": pk } })
-          .then((r) => (r.ok ? r.json() : null))
-          .then((data): [string, ProductInfo | null] => {
-            const p = data?.product;
-            if (!p) return [id, null];
-            const variant = p.variants?.[0];
-            const amount = variant?.calculated_price?.calculated_amount ?? variant?.prices?.[0]?.amount;
-            return [id, {
-              title: p.title,
-              brand: p.collection?.title,
-              thumbnail: p.thumbnail || p.images?.[0]?.url,
-              handle: p.handle,
-              variantId: variant?.id,
-              amount: amount != null ? Number(amount) : undefined,
-              currency: variant?.calculated_price?.currency_code || variant?.prices?.[0]?.currency_code || "XAF",
-            }];
-          })
-          .catch((): [string, ProductInfo | null] => [id, null])
-      )
-    ).then((entries) => {
-      if (!cancelled) setProducts(Object.fromEntries(entries));
-    });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
-  return products;
-}
 
 const sectionTitle = (light: string, bold: string) => (
   <h2 style={{ fontFamily: DISPLAY_FONT, fontSize: 30, lineHeight: 1.05, fontWeight: 300, color: SK.ink, margin: 0 }}>
@@ -123,9 +82,18 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locked, thisScanId, faceIsThisScan]);
-  const [addedToCart, setAddedToCart] = useState<Set<string>>(new Set());
+  // What is "added" comes from the real cart: a product she removes from the cart can be added again.
+  // `adding` holds the variants on their way to the cart, shown as added at once (back if it fails);
+  // the ref stops a second tap from adding them twice before the state is updated.
+  const [adding, setAdding] = useState<Set<string>>(new Set());
+  const addingRef = useRef<Set<string>>(new Set());
   const [addingAll, setAddingAll] = useState(false);
-  const [allAdded, setAllAdded] = useState(false);
+  const inCart = new Set(cart.items.map((i) => i.variantId));
+  const isAdded = (variantId: string) => inCart.has(variantId) || adding.has(variantId);
+  const markAdding = (ids: string[], on: boolean) => {
+    ids.forEach((id) => (on ? addingRef.current.add(id) : addingRef.current.delete(id)));
+    setAdding(new Set(addingRef.current));
+  };
   const [selectedStep, setSelectedStep] = useState(0);
 
   const routine = result.kbeauty_routine;
@@ -156,10 +124,12 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
   }, [locked, result]);
 
   const handleAddToCart = async (variantId: string) => {
-    if (addedToCart.has(variantId)) return;
-    setAddedToCart((prev) => new Set([...prev, variantId]));
+    if (addingRef.current.has(variantId)) return;
+    if (inCart.has(variantId)) return cart.openCart(); // already there: show it rather than add a second one
+    markAdding([variantId], true);
     posthog.capture("skin_coach_add_to_cart", { variant_id: variantId, scan_id: result.scan_id });
-    await cart.addItem(variantId, 1, undefined, undefined, undefined, lineMetadata);
+    await cart.addMissingItems([variantId], lineMetadata);
+    markAdding([variantId], false);
   };
 
   // "Ajouter la routine" and its total: what she needs to buy, not the products she already has
@@ -171,17 +141,22 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
   const currency = routineProducts[0]?.currency || "XAF";
   const hasLinkedProducts = routine.some((s) => s.medusa_product_id);
 
+  // the same product can come back in two steps: one of each
+  const routineVariantIds = Array.from(new Set(routineProducts.map((p) => p.variantId!)));
+  const allAdded = routineVariantIds.length > 0 && routineVariantIds.every(isAdded);
+  // the button adds what is missing from the cart: its price is the price of that
+  const missingTotal = routineProducts.filter((p, i, all) => !isAdded(p.variantId!) && all.findIndex((q) => q.variantId === p.variantId) === i)
+    .reduce((sum, p) => sum + (p.amount || 0), 0);
+
   const handleAddAllToCart = async () => {
+    // what is missing from the cart only, so the products still there are not added twice
+    const variantIds = routineVariantIds.filter((id) => !inCart.has(id) && !addingRef.current.has(id));
+    if (addingAll || variantIds.length === 0) return;
     setAddingAll(true);
-    const variantIds = routineProducts.map((p) => p.variantId!).filter((id) => !addedToCart.has(id));
-    if (variantIds.length > 0) {
-      posthog.capture("skin_coach_add_routine", { products: variantIds.length, scan_id: result.scan_id });
-      for (const vId of variantIds) {
-        await cart.addItem(vId, 1, undefined, undefined, undefined, lineMetadata);
-      }
-      setAddedToCart((prev) => new Set([...prev, ...variantIds]));
-    }
-    setAllAdded(true);
+    markAdding(variantIds, true);
+    posthog.capture("skin_coach_add_routine", { products: variantIds.length, scan_id: result.scan_id });
+    await cart.addMissingItems(variantIds, lineMetadata);
+    markAdding(variantIds, false);
     setAddingAll(false);
   };
 
@@ -260,7 +235,7 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
   const step = routine[Math.min(selectedStep, routine.length - 1)];
   const stepProduct = step?.medusa_product_id ? products[step.medusa_product_id] : null;
   const stepLoading = !!step?.medusa_product_id && !(step.medusa_product_id in products);
-  const stepAdded = stepProduct?.variantId ? addedToCart.has(stepProduct.variantId) : false;
+  const stepAdded = stepProduct?.variantId ? isAdded(stepProduct.variantId) : false;
 
   const fadeUp = (delay: number) => ({ initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.45, ease: "easeOut" as const } });
 
@@ -450,7 +425,7 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
                     {stepLoading ? (
                       <div className="w-40 h-40 rounded-3xl animate-pulse" style={{ background: SK.lineSoft }} />
                     ) : stepProduct?.thumbnail ? (
-                      <img src={stepProduct.thumbnail} alt={stepProduct.title} className="h-[200px] w-[200px] object-contain" />
+                      <img src={stepProduct.thumbnail} alt={stepProduct.title} width={200} height={200} decoding="async" className="h-[200px] w-[200px] object-contain" />
                     ) : (
                       <Package className="w-12 h-12" style={{ color: SK.muted }} />
                     )}
@@ -499,10 +474,11 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
                         {stepProduct?.variantId ? (
                           <button
                             onClick={() => handleAddToCart(stepProduct.variantId!)}
-                            className="h-[46px] px-[18px] rounded-full text-[14px] font-bold flex items-center gap-1.5"
+                            aria-busy={adding.has(stepProduct.variantId)}
+                            className="h-[46px] px-[18px] rounded-full text-[14px] font-bold flex items-center gap-1.5 active:scale-[0.97] transition-transform"
                             style={stepAdded ? { background: SK.tint, color: SK.ink } : { background: SK.surface, border: `1px solid ${SK.ink}`, color: SK.ink }}
                           >
-                            {stepAdded ? <><CheckCircle className="w-4 h-4" style={{ color: SK.accent }} /> Ajouté</> : <><Plus className="w-4 h-4" /> Ajouter</>}
+                            {stepAdded ? <>{adding.has(stepProduct.variantId) ? <CircleNotch className="w-4 h-4 animate-spin" style={{ color: SK.accent }} /> : <CheckCircle className="w-4 h-4" style={{ color: SK.accent }} />} Ajouté</> : <><Plus className="w-4 h-4" /> Ajouter</>}
                           </button>
                         ) : !stepLoading ? (
                           <button
@@ -626,18 +602,18 @@ export default function SkinAnalysisResultView({ result, onRetake, locked = fals
                   className="flex-1 h-[60px] px-5 rounded-full font-bold text-[16px] flex justify-center items-center gap-2.5 active:scale-[0.98] transition-transform disabled:opacity-80"
                   style={{ background: allAdded ? SK.ink : SK.accent, color: "#FFFFFF" }}
                 >
-                  {allAdded ? (
+                  {addingAll ? (
+                    <><CircleNotch className="w-5 h-5 animate-spin" /> Ajout en cours…</>
+                  ) : allAdded ? (
                     <><CheckCircle className="w-5 h-5" /> Routine ajoutée</>
                   ) : routine.every((s) => !s.medusa_product_id || s.already_owned) ? (
                     <><CheckCircle className="w-5 h-5" /> Vous avez déjà tout</>
-                  ) : addingAll ? (
-                    <>Ajout en cours…</>
                   ) : (
                     <>
                       <ShoppingBag className="w-5 h-5 shrink-0" />
                       <span className="flex flex-col items-start leading-tight">
                         <span className="text-[16px] font-bold whitespace-nowrap">Ajouter la routine</span>
-                        {total > 0 && <span className="text-[13px] font-semibold whitespace-nowrap" style={{ opacity: 0.9 }}>{fmtPrice(total, currency)}</span>}
+                        {missingTotal > 0 && <span className="text-[13px] font-semibold whitespace-nowrap" style={{ opacity: 0.9 }}>{fmtPrice(missingTotal, currency)}</span>}
                       </span>
                     </>
                   )}
