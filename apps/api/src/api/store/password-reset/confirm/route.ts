@@ -2,6 +2,7 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules } from "@medusajs/framework/utils"
 import { verifyOtp } from "../../../../lib/otp"
 import { OTP_MODULE } from "../../../../modules/otp"
+import { findPhonepassIdentity, phonepassEntityId } from "../../../../lib/phone-identity"
 
 const MIN_PASSWORD_LENGTH = 8
 
@@ -23,15 +24,13 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   }
 
   const authModuleService = req.scope.resolve(Modules.AUTH)
-  const identities = await authModuleService.listAuthIdentities(
-    { provider_identities: { entity_id: phone, provider: "phonepass" } },
-    { relations: ["provider_identities"] }
-  )
-  if (!identities.length) {
+  // the number as stored at signup, which may be spelled differently from the one typed here
+  const entityId = phonepassEntityId(await findPhonepassIdentity(authModuleService, phone))
+  if (!entityId) {
     return res.status(400).json({ message: "Code invalide ou expiré." })
   }
 
-  const result: any = await authModuleService.updateProvider("phonepass", { entity_id: phone, password })
+  const result: any = await authModuleService.updateProvider("phonepass", { entity_id: entityId, password })
   if (!result?.success) {
     console.error("[store/password-reset/confirm] update failed:", result?.error)
     return res.status(500).json({ message: "Impossible de mettre à jour le mot de passe pour le moment." })

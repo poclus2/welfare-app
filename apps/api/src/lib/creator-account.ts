@@ -1,6 +1,7 @@
 import { Modules } from "@medusajs/framework/utils"
 import { CREATOR_PARTNER_MODULE } from "../modules/creator_partner"
 import { isWhatsappSimulated, toE164 } from "./whatsapp-client"
+import { phoneSpellings } from "./phone-identity"
 
 // A creator space is tied to a customer account through the phone number: it is the only thing the
 // customer proved she owns (WhatsApp code at signup, see lib/login-ticket.ts). The e-mail is never
@@ -11,14 +12,6 @@ const phoneIsTrusted = () => !(isWhatsappSimulated() && process.env.NODE_ENV ===
 
 export function samePhone(a?: string | null, b?: string | null): boolean {
   return !!a && !!b && toE164(a) === toE164(b)
-}
-
-// Phones are stored as typed ("654815887", "+237654815887"...): every spelling of the same number
-function phoneSpellings(phone: string): string[] {
-  const e164 = toE164(phone)
-  const spellings = new Set([phone.trim(), e164, e164.slice(1), `00${e164.slice(1)}`])
-  if (e164.startsWith("+237")) spellings.add(e164.slice(4))
-  return [...spellings].filter(Boolean)
 }
 
 const isCustomerId = (id?: string | null) => !!id && id.startsWith("cus_")

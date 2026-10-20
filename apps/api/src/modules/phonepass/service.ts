@@ -2,6 +2,7 @@ import { AbstractAuthModuleProvider, isString, MedusaError } from "@medusajs/fra
 import { isPresent } from "@medusajs/framework/utils"
 import scrypt from "scrypt-kdf"
 import { verifySignupTicket } from "../../lib/login-ticket"
+import { phoneSpellings } from "../../lib/phone-identity"
 
 type PhonePassOptions = {
   hashConfig?: { logN: number; r: number; p: number }
@@ -77,26 +78,18 @@ class PhonePassAuthService extends AbstractAuthModuleProvider {
       return { success: false, error: "Phone should be a string" }
     }
 
-    let authIdentity
+    // The number may have been stored under another spelling at signup (lib/phone-identity.ts)
+    let identities: any[]
     try {
-      authIdentity = await authIdentityService.retrieve({ entity_id: phone })
+      identities = await this.findIdentities_(phone, authIdentityService)
     } catch (error: any) {
-      if (error.type === MedusaError.Types.NOT_FOUND) {
-        return { success: false, error: "Invalid phone number or password" }
-      }
       return { success: false, error: error.message }
     }
 
-    const providerIdentity = authIdentity.provider_identities?.find(
-      (pi: any) => pi.provider === this.provider
-    )
-    const passwordHash = providerIdentity?.provider_metadata?.password
-
-    if (isString(passwordHash)) {
-      const buf = Buffer.from(passwordHash, "base64")
-      const success = await scrypt.verify(buf, password)
-      if (success) {
-        return { success, authIdentity: this.sanitizeAuthIdentity_(authIdentity) }
+    for (const authIdentity of identities) {
+      const passwordHash = this.getProviderIdentity_(authIdentity)?.provider_metadata?.password
+      if (isString(passwordHash) && (await scrypt.verify(Buffer.from(passwordHash, "base64"), password))) {
+        return { success: true, authIdentity: this.sanitizeAuthIdentity_(authIdentity) }
       }
     }
 
@@ -119,30 +112,46 @@ class PhonePassAuthService extends AbstractAuthModuleProvider {
     }
 
     try {
-      const identity = await authIdentityService.retrieve({ entity_id: phone })
+      // The same number under another spelling is the same person: no second identity for it
+      const identities = await this.findIdentities_(phone, authIdentityService)
+      if (identities.some((identity) => isPresent(identity.app_metadata))) {
+        return { success: false, error: "Identity with phone number already exists" }
+      }
 
       // If app_metadata is not defined or empty, no actor was assigned yet (still "claimable")
-      if (!isPresent(identity.app_metadata)) {
+      const claimable = identities[0]
+      if (claimable) {
         const updatedAuthIdentity = await this.upsertAuthIdentity("update", {
-          phone,
+          phone: this.getProviderIdentity_(claimable).entity_id,
           password,
           authIdentityService,
         })
         return { success: true, authIdentity: updatedAuthIdentity }
       }
 
-      return { success: false, error: "Identity with phone number already exists" }
+      const createdAuthIdentity = await this.upsertAuthIdentity("create", {
+        phone,
+        password,
+        authIdentityService,
+      })
+      return { success: true, authIdentity: createdAuthIdentity }
     } catch (error: any) {
-      if (error.type === MedusaError.Types.NOT_FOUND) {
-        const createdAuthIdentity = await this.upsertAuthIdentity("create", {
-          phone,
-          password,
-          authIdentityService,
-        })
-        return { success: true, authIdentity: createdAuthIdentity }
-      }
       return { success: false, error: error.message }
     }
+  }
+
+  // The identities stored under any spelling of this number, the exact spelling first
+  async findIdentities_(phone: string, authIdentityService: any): Promise<any[]> {
+    const found: any[] = []
+    for (const entityId of phoneSpellings(phone)) {
+      try {
+        const identity = await authIdentityService.retrieve({ entity_id: entityId })
+        if (!found.some((f) => f.id === identity.id)) found.push(identity)
+      } catch (error: any) {
+        if (error.type !== MedusaError.Types.NOT_FOUND) throw error
+      }
+    }
+    return found
   }
 
   async upsertAuthIdentity(

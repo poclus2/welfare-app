@@ -4,6 +4,7 @@ import { clientIp, tooManyRequests } from "../../../../lib/rate-limit"
 import { generateAndSendOtp, OtpRateLimitError, OtpPurpose } from "../../../../lib/otp"
 import { isWhatsappSimulated } from "../../../../lib/whatsapp-client"
 import { OTP_MODULE } from "../../../../modules/otp"
+import { findPhonepassIdentity } from "../../../../lib/phone-identity"
 
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const { phone, purpose, email } = (req.body || {}) as { phone?: string; purpose?: OtpPurpose; email?: string }
@@ -33,11 +34,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   // Login: don't spend a WhatsApp message on a number that has no account (nor reveal whether it has one).
   if (purpose === "login") {
     const authModuleService = req.scope.resolve(Modules.AUTH)
-    const identities = await authModuleService.listAuthIdentities(
-      { provider_identities: { entity_id: phone, provider: "phonepass" } },
-      { relations: ["provider_identities"] }
-    )
-    if (!identities.length) {
+    if (!(await findPhonepassIdentity(authModuleService, phone))) {
       res.json({ sent: true })
       return
     }

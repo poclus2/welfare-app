@@ -3,6 +3,7 @@ import { Modules } from "@medusajs/framework/utils"
 import { generateAndSendOtp, OtpRateLimitError } from "../../../../lib/otp"
 import { isWhatsappSimulated } from "../../../../lib/whatsapp-client"
 import { OTP_MODULE } from "../../../../modules/otp"
+import { findPhonepassIdentity } from "../../../../lib/phone-identity"
 
 // POST /store/password-reset/request { phone }
 //
@@ -27,11 +28,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
   // Same answer whether or not the number has an account, so the form can't be used to find out.
   const authModuleService = req.scope.resolve(Modules.AUTH)
-  const identities = await authModuleService.listAuthIdentities(
-    { provider_identities: { entity_id: phone, provider: "phonepass" } },
-    { relations: ["provider_identities"] }
-  )
-  if (!identities.length) {
+  if (!(await findPhonepassIdentity(authModuleService, phone))) {
     return res.json({ sent: true })
   }
 

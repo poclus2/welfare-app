@@ -3,6 +3,7 @@ import { Modules } from "@medusajs/framework/utils"
 import { verifyOtp, OtpPurpose } from "../../../../lib/otp"
 import { OTP_MODULE } from "../../../../modules/otp"
 import { issueLoginTicket, issueSignupTicket } from "../../../../lib/login-ticket"
+import { findPhonepassIdentity } from "../../../../lib/phone-identity"
 
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const { phone, code, purpose } = (req.body || {}) as { phone?: string; code?: string; purpose?: OtpPurpose }
@@ -22,17 +23,14 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
   if (purpose === "login") {
     const authModuleService = req.scope.resolve(Modules.AUTH)
-    const identities = await authModuleService.listAuthIdentities(
-      { provider_identities: { entity_id: phone, provider: "phonepass" } },
-      { relations: ["provider_identities"] }
-    )
+    const identity = await findPhonepassIdentity(authModuleService, phone)
 
-    if (!identities.length) {
+    if (!identity) {
       res.status(400).json({ message: "Aucun compte associé à ce numéro.", verified: true })
       return
     }
 
-    res.json({ verified: true, login_ticket: issueLoginTicket(identities[0]) })
+    res.json({ verified: true, login_ticket: issueLoginTicket(identity) })
     return
   }
 
