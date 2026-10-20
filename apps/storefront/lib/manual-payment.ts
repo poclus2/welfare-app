@@ -1,7 +1,7 @@
 // Merchant USSD codes for the manual Mobile Money payment, shared by the checkout and the order
 // confirmation page so they can never drift apart.
 export const MANUAL_PAYMENT = {
-  orange: { label: "Orange Money", code: "#150*47*356456#" },
+  orange: { label: "Orange Money", code: "#150*47*1089819#" },
   mtn: { label: "MTN MoMo", code: "*126*14*673464553#" },
 } as const;
 
