@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 // Keep in sync with the code when a data flow changes: photo retention (api/src/jobs/purge-skin-scan-photos.ts),
 // the service providers below, cookies and local storage.
-const UPDATED = "11 octobre 2026";
+const UPDATED = "20 octobre 2026";
 const CONTACT = "contact@thewelfarecm.com";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -92,7 +92,8 @@ export default function PrivacyPage() {
             items={[
               <><strong>Hostinger</strong> : hébergement du site et de la base de données (serveurs en Lituanie, Union européenne).</>,
               <><strong>OpenRouter</strong> (États-Unis) et les fournisseurs de modèles d'intelligence artificielle auxquels il transmet les requêtes : analyse des photos et rédaction du diagnostic du Skin Coach, réponses de l'assistant de discussion.</>,
-              <><strong>PawaPay</strong> : traitement des paiements Mobile Money.</>,
+              <><strong>Tara</strong> (Dikalo SARL, Cameroun) : traitement des paiements MTN Mobile Money et Orange Money.</>,
+              <><strong>PawaPay</strong> : versement des commissions des créatrices partenaires par Mobile Money.</>,
               <><strong>Zindua et WhatsApp</strong> : envoi des codes de vérification de votre numéro.</>,
               <><strong>Resend</strong> (États-Unis) : envoi des e-mails (confirmation de commande, réinitialisation de mot de passe…).</>,
               <><strong>PostHog</strong> (États-Unis) : mesure d'audience.</>,
