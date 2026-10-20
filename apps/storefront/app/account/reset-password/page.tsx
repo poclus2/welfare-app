@@ -4,10 +4,12 @@ import { useState, Suspense } from "react";
 import { sdk } from "@/lib/medusa";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Phone, LockKey, ArrowRight, CheckCircle } from "@phosphor-icons/react";
+import { LockKey, ArrowRight, CheckCircle } from "@phosphor-icons/react";
 import Link from "next/link";
 import { OtpCodeInput } from "@/components/account/OtpCodeInput";
 import { useI18n } from "@/lib/i18n-context";
+import { PhoneInput } from "@/components/ui/phone-input";
+import { formatPhoneForDisplay } from "@/lib/phone";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -100,7 +102,7 @@ function ResetPasswordForm() {
         {error && <div className="bg-red-50 text-red-500 p-3 rounded-lg text-sm text-center">{error}</div>}
 
         <p className="text-sm text-gray-600">
-          {t("Entrez le code à 6 chiffres envoyé par WhatsApp au")} <span className="font-medium text-gray-900">{phone}</span>
+          {t("Entrez le code à 6 chiffres envoyé par WhatsApp au")} <span className="font-medium text-gray-900">{formatPhoneForDisplay(phone)}</span>
         </p>
         <OtpCodeInput value={code} onChange={setCode} onResend={requestCode} />
 
@@ -143,18 +145,15 @@ function ResetPasswordForm() {
       {error && <div className="bg-red-50 text-red-500 p-3 rounded-lg text-sm text-center">{error}</div>}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700">{t("Numéro de téléphone")}</label>
-        <div className="mt-1 relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-            <Phone weight="light" className="w-5 h-5" />
-          </div>
-          <input
-            type="tel"
+        <label htmlFor="reset-phone" className="block text-sm font-medium text-gray-700">{t("Numéro de téléphone")}</label>
+        <div className="mt-1">
+          <PhoneInput
+            id="reset-phone"
             required
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className={inputClass}
-            placeholder="+237 6XX XXX XXX"
+            onChange={setPhone}
+            boxClassName="rounded-xl border border-gray-200 px-3 py-3 shadow-sm sm:text-sm transition-colors focus-within:border-[#2A2424] focus-within:ring-1 focus-within:ring-[#2A2424]"
+            inputClassName="appearance-none block w-full px-3 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[#2A2424] focus:border-[#2A2424] sm:text-sm transition-colors"
           />
         </div>
       </div>

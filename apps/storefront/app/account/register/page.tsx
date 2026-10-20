@@ -11,6 +11,8 @@ import { IconIA } from "@/components/ui/icons/IconIA";
 import { useI18n } from "@/lib/i18n-context";
 import { AuthShowcase } from "@/components/account/AuthShowcase";
 import { OtpCodeInput } from "@/components/account/OtpCodeInput";
+import { PhoneInput } from "@/components/ui/phone-input";
+import { formatPhoneForDisplay } from "@/lib/phone";
 
 const benefits = [
   { icon: Star, text: "Cumulez des points à chaque achat" },
@@ -156,7 +158,7 @@ function RegisterForm() {
 
         <div className="space-y-2">
           <p className="text-sm text-gray-600">
-            {t("Entrez le code à 6 chiffres envoyé par WhatsApp au")} <span className="font-medium text-gray-900">{phone}</span>
+            {t("Entrez le code à 6 chiffres envoyé par WhatsApp au")} <span className="font-medium text-gray-900">{formatPhoneForDisplay(phone)}</span>
           </p>
           <OtpCodeInput value={code} onChange={setCode} onResend={sendOtp} />
         </div>
@@ -249,14 +251,14 @@ function RegisterForm() {
 
       {/* Téléphone */}
       <div className="space-y-2">
-        <label className="block text-[13px] font-medium text-gray-700">{t("Numéro de téléphone")}</label>
-        <input
-          type="tel"
+        <label htmlFor="register-phone" className="block text-[13px] font-medium text-gray-700">{t("Numéro de téléphone")}</label>
+        <PhoneInput
+          id="register-phone"
           required
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          className="block w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-black focus:bg-white focus:outline-none focus:ring-1 focus:ring-black"
-          placeholder={t("+237 6XX XXX XXX")}
+          onChange={setPhone}
+          boxClassName="rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-3 text-sm text-gray-900 transition-all focus-within:border-black focus-within:bg-white focus-within:ring-1 focus-within:ring-black"
+          inputClassName="block w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-black focus:bg-white focus:outline-none focus:ring-1 focus:ring-black"
         />
         <p className="text-[12px] text-gray-400">{t("Un code de vérification vous sera envoyé par WhatsApp.")}</p>
       </div>

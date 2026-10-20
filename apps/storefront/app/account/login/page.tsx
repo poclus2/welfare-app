@@ -10,12 +10,20 @@ import Link from "next/link";
 import { useI18n } from "@/lib/i18n-context";
 import { AuthShowcase } from "@/components/account/AuthShowcase";
 import { OtpCodeInput } from "@/components/account/OtpCodeInput";
+import { PhoneInput } from "@/components/ui/phone-input";
+import { formatPhoneForDisplay } from "@/lib/phone";
 
 const benefits = [
   { icon: Star, text: "Cumulez des points à chaque achat" },
   { icon: Gift, text: "Accédez à des offres exclusives membres" },
   { icon: ShoppingBag, text: "Suivez toutes vos commandes en temps réel" },
 ];
+
+const PHONE_ID = "login-phone";
+const PHONE_BOX_CLASS =
+  "rounded-xl border border-gray-200 bg-gray-50/50 px-3 py-3 text-sm text-gray-900 transition-all focus-within:border-black focus-within:bg-white focus-within:ring-1 focus-within:ring-black";
+const PHONE_INPUT_CLASS =
+  "block w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-black focus:bg-white focus:outline-none focus:ring-1 focus:ring-black";
 
 export default function LoginPage() {
   const { t } = useI18n();
@@ -220,16 +228,16 @@ export default function LoginPage() {
 
               {/* Téléphone */}
               <div className="space-y-2">
-                <label className="block text-[13px] font-medium text-gray-700">
+                <label htmlFor={PHONE_ID} className="block text-[13px] font-medium text-gray-700">
                   {t("Numéro de téléphone")}
                 </label>
-                <input
-                  type="tel"
+                <PhoneInput
+                  id={PHONE_ID}
                   required
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="block w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-black focus:bg-white focus:outline-none focus:ring-1 focus:ring-black"
-                  placeholder={t("+237 6XX XXX XXX")}
+                  onChange={setPhone}
+                  boxClassName={PHONE_BOX_CLASS}
+                  inputClassName={PHONE_INPUT_CLASS}
                 />
               </div>
 
@@ -307,16 +315,16 @@ export default function LoginPage() {
               </AnimatePresence>
 
               <div className="space-y-2">
-                <label className="block text-[13px] font-medium text-gray-700">
+                <label htmlFor={PHONE_ID} className="block text-[13px] font-medium text-gray-700">
                   {t("Numéro de téléphone")}
                 </label>
-                <input
-                  type="tel"
+                <PhoneInput
+                  id={PHONE_ID}
                   required
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="block w-full rounded-xl border border-gray-200 bg-gray-50/50 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 transition-all focus:border-black focus:bg-white focus:outline-none focus:ring-1 focus:ring-black"
-                  placeholder={t("+237 6XX XXX XXX")}
+                  onChange={setPhone}
+                  boxClassName={PHONE_BOX_CLASS}
+                  inputClassName={PHONE_INPUT_CLASS}
                 />
               </div>
 
@@ -361,7 +369,7 @@ export default function LoginPage() {
 
               <div className="space-y-2">
                 <p className="text-sm text-gray-600">
-                  {t("Entrez le code à 6 chiffres envoyé par WhatsApp au")} <span className="font-medium text-gray-900">{phone}</span>
+                  {t("Entrez le code à 6 chiffres envoyé par WhatsApp au")} <span className="font-medium text-gray-900">{formatPhoneForDisplay(phone)}</span>
                 </p>
                 <OtpCodeInput value={code} onChange={setCode} onResend={sendLoginOtp} />
               </div>

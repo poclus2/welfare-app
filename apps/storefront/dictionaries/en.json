@@ -1059,5 +1059,22 @@
   "Numéro Orange Money à débiter": "Orange Money number to charge",
   "Nous avons bien reçu votre paiement Orange Money. Votre commande part en préparation.": "We have received your Orange Money payment. Your order is being prepared.",
   "Paiement sécurisé. Conservez le SMS de confirmation d'Orange Money.": "Secure payment. Keep the Orange Money confirmation SMS.",
-  "Paiement sécurisé. Conservez le SMS de confirmation de MTN Mobile Money.": "Secure payment. Keep the MTN Mobile Money confirmation SMS."
+  "Paiement sécurisé. Conservez le SMS de confirmation de MTN Mobile Money.": "Secure payment. Keep the MTN Mobile Money confirmation SMS.",
+  "Indicatif pays": "Country code",
+  "Autre indicatif": "Other country code",
+  "Indicatif et numéro": "Country code and number",
+  "Ce numéro ne semble pas complet pour ce pays.": "This number doesn't look complete for this country.",
+  "Gabon": "Gabon",
+  "Congo": "Congo",
+  "Tchad": "Chad",
+  "Centrafrique": "Central African Republic",
+  "Guinée équatoriale": "Equatorial Guinea",
+  "Nigeria": "Nigeria",
+  "Côte d'Ivoire": "Côte d'Ivoire",
+  "Sénégal": "Senegal",
+  "France": "France",
+  "Belgique": "Belgium",
+  "Suisse": "Switzerland",
+  "Royaume-Uni": "United Kingdom",
+  "États-Unis / Canada": "United States / Canada"
 }

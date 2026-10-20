@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { CircleNotch, Headset } from "@phosphor-icons/react";
 import { loginAdvisor, type LoginState } from "@/app/conseillere/actions";
 import { DISPLAY_FONT, SK } from "@/components/ui/skin-coach/theme";
+import { PhoneInput } from "@/components/ui/phone-input";
 
 export function LoginForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState<LoginState, FormData>(loginAdvisor, {});
@@ -21,10 +22,19 @@ export function LoginForm({ next }: { next: string }) {
           </div>
         </div>
         <input type="hidden" name="next" value={next} />
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-semibold" style={{ color: SK.muted }}>Numéro WhatsApp</span>
-          <input name="whatsapp" inputMode="tel" autoComplete="username" required placeholder="6 90 12 34 56" className="h-12 px-4 rounded-2xl text-[16px] outline-none" style={{ border: `1px solid ${SK.line}` }} />
-        </label>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="advisor-whatsapp" className="text-[13px] font-semibold" style={{ color: SK.muted }}>Numéro WhatsApp</label>
+          <PhoneInput
+            id="advisor-whatsapp"
+            name="whatsapp"
+            autoComplete="username"
+            required
+            boxClassName="h-12 px-3 rounded-2xl text-[16px]"
+            boxStyle={{ border: `1px solid ${SK.line}` }}
+            inputClassName="h-12 px-4 rounded-2xl text-[16px] outline-none"
+            inputStyle={{ border: `1px solid ${SK.line}` }}
+          />
+        </div>
         <label className="flex flex-col gap-1.5">
           <span className="text-[13px] font-semibold" style={{ color: SK.muted }}>Mot de passe</span>
           <input name="password" type="password" autoComplete="current-password" required className="h-12 px-4 rounded-2xl text-[16px] outline-none" style={{ border: `1px solid ${SK.line}` }} />
