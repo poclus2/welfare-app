@@ -39,7 +39,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const isPawapay = payment.includes("pawapay");
   const isTara = payment.includes("tara");
   if (isPawapay) payment = "Mobile Money (PawaPay)";
-  else if (isTara) payment = "Orange Money (Tara)";
+  else if (isTara) payment = "Mobile Money (Tara)";
 
   // The 3 % Mobile Money fee is debited on top of the order total and is not an order line:
   // what was really charged is kept on the payment (amount_charged, or the PawaPay deposit itself).

@@ -10,7 +10,7 @@ const PaymentSessionStatus = {
 }
 
 /**
- * Orange Money Cameroun through Tara Money. Same flow as the PawaPay provider: the push is sent beforehand
+ * MTN and Orange Mobile Money (Cameroon) through Tara Money. Same flow as the PawaPay provider: the push is sent beforehand
  * by POST /store/tara/mobilepay, and the order is only created once Tara reports the payment as SUCCESS.
  * Session data: { taraPaymentId, amount_requested, tara_token } — the token (checked by the
  * /store/carts/:id/complete middleware) proves we requested that amount for that cart.
@@ -54,7 +54,7 @@ class TaraProviderService extends AbstractPaymentProvider {
     const paymentId = data.taraPaymentId
 
     if (!isValidTaraPaymentId(paymentId)) {
-      throw new Error("Paiement Orange Money introuvable : aucun paiement Tara valide n'est associé à cette commande.")
+      throw new Error("Paiement Mobile Money introuvable : aucun paiement Tara valide n'est associé à cette commande.")
     }
 
     const { status, message } = await getTaraPaymentStatus(paymentId)
@@ -68,7 +68,7 @@ class TaraProviderService extends AbstractPaymentProvider {
     const paid = Number(data.amount_requested ?? 0)
     const expected = Number(data.expected_amount ?? 0)
     if (!(paid > 0) || (expected > 0 && paid < expected)) {
-      throw new Error(`Montant Orange Money insuffisant (${paid} payé, ${expected} attendu).`)
+      throw new Error(`Montant Mobile Money insuffisant (${paid} payé, ${expected} attendu).`)
     }
 
     return {

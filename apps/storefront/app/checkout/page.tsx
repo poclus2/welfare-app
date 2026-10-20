@@ -64,6 +64,8 @@ interface DeliveryForm {
 const LIVRAISON_FEE = 1500;
 const ERROR_RED = "#B3261E";
 const GOOD_GREEN = "#0B6B45";
+// Mobile Money networks collected by Tara; any network left out goes back to PawaPay (/store/pawapay/deposit)
+const TARA_NETWORKS = ["MTN_MOMO_CMR", "ORANGE_CMR"];
 
 const STORES = [
   {
@@ -450,11 +452,11 @@ export default function CheckoutPage() {
       }
 
       // 3. Mobile Money: send the push to the customer's phone and wait for them to confirm it.
-      // MTN goes through PawaPay, Orange through Tara. The order is only created once the payment is confirmed.
+      // Networks in TARA_NETWORKS go through Tara, the others through PawaPay. The order is only created once the payment is confirmed.
       let depositId: string | null = null;
       let depositToken: string | null = null;
       let taraPayment: { paymentId: string; tara_token: string; amount: number } | null = null;
-      if (paymentMode === "pawapay" && isOrange) {
+      if (paymentMode === "pawapay" && TARA_NETWORKS.includes(mobileNetwork)) {
         taraPayment = await sdk.client.fetch<{ paymentId: string; tara_token: string; amount: number }>("/store/tara/mobilepay", {
           method: "POST",
           body: { cart_id: cartId, phone: momoLocal },
@@ -778,7 +780,7 @@ export default function CheckoutPage() {
                               <Field id="momo-network" label={t("Réseau")}>
                                 <div className="relative">
                                   <select id="momo-network" value={mobileNetwork} onChange={(e) => setMobileNetwork(e.target.value)} className={`${fieldClass} pr-9`} style={fieldStyle()}>
-                                    {/* MTN is collected by PawaPay, Orange by Tara (Orange is not enabled on the PawaPay account) */}
+                                    {/* Both networks are collected by Tara (see TARA_NETWORKS) */}
                                     <option value="MTN_MOMO_CMR">{t("MTN MoMo Cameroun")}</option>
                                     <option value="ORANGE_CMR">{t("Orange Money Cameroun")}</option>
                                   </select>

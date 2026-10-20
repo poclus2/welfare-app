@@ -24,7 +24,7 @@ export default async function OrdersPage() {
     let payment = o.payment_collections?.[0]?.payments?.[0]?.provider_id || "Non spécifié";
     // Medusa prefixes provider ids ("pp_pawapay_pawapay")
     if (payment.includes("pawapay")) payment = "Mobile Money (PawaPay)";
-    else if (payment.includes("tara")) payment = "Orange Money (Tara)";
+    else if (payment.includes("tara")) payment = "Mobile Money (Tara)";
 
     // Delivery metadata handling
     let delivery = "domicile";

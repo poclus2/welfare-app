@@ -1,4 +1,4 @@
-// Minimal Tara Money client (Orange Money Cameroun). Docs: dashboard → API → Documentation (taramoney.com/app/api).
+// Minimal Tara Money client (MTN and Orange Mobile Money, Cameroon). Docs: dashboard → API → Documentation (taramoney.com/app/api).
 // Tara has no sandbox: every call moves real money.
 //
 // What the API gives us, and what it doesn't:
@@ -84,6 +84,8 @@ export type TaraStatus = "SUCCESS" | "FAILURE" | "PENDING"
 export async function getTaraPaymentStatus(paymentId: string): Promise<{ status: TaraStatus; message?: string }> {
   const data = await post("/transactions/status", { productId: paymentId })
   const raw = String(data?.status || "").toUpperCase()
+  // TRANSACTION_NOT_FOUND right after the push is normal; any other ERROR (e.g. BUSINESS_NONEXISTENT = bad keys) is not
+  if (raw === "ERROR" && data?.message !== "TRANSACTION_NOT_FOUND") console.error("[Tara] status error:", data?.message)
   const status: TaraStatus =
     raw === "SUCCESS" || raw === "PAID" || raw === "SUCCESSFUL" || raw === "COMPLETED"
       ? "SUCCESS"
@@ -95,6 +97,6 @@ export async function getTaraPaymentStatus(paymentId: string): Promise<{ status:
 
 export function describeTaraFailure(message?: string): string {
   return message
-    ? `Le paiement Orange Money a été refusé ou annulé (${message}).`
-    : "Le paiement Orange Money a été refusé ou annulé (solde insuffisant, code PIN erroné ou délai dépassé)."
+    ? `Le paiement Mobile Money a été refusé ou annulé (${message}).`
+    : "Le paiement Mobile Money a été refusé ou annulé (solde insuffisant, code PIN erroné ou délai dépassé)."
 }
