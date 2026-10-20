@@ -7,6 +7,7 @@ import { useEffect, useState, useRef } from "react";
 import { CircleNotch } from "@phosphor-icons/react";
 import { sdk } from "@/lib/medusa";
 import { claimPendingScans, rememberPendingScan } from "@/lib/pending-scans";
+import { fetchRoutineProducts } from "@/lib/routine-products";
 
 export default function SkinCoachResultPage() {
   const result = useSkinCoachStore((state) => state.result);
@@ -22,6 +23,18 @@ export default function SkinCoachResultPage() {
   // 1. Vérifier si l'utilisateur est connecté
   useEffect(() => {
     let mounted = true;
+    // no session saved in this browser (lib/medusa.ts): not logged in, without waiting for the server
+    let hasToken = true;
+    try { hasToken = !!localStorage.getItem("medusa_auth_token"); } catch { /* storage blocked: ask the server */ }
+    if (!hasToken) {
+      setIsCheckingAuth(false);
+      return;
+    }
+    // her products are fetched while her account is checked, instead of after (read from the store: the
+    // first render, which matches the server one, does not have her saved result yet)
+    const saved = useSkinCoachStore.getState().result;
+    const ids = (saved?.kbeauty_routine || []).map((s) => s.medusa_product_id).filter((id): id is string => !!id);
+    if (ids.length) fetchRoutineProducts(ids);
     const checkAuth = async () => {
       try {
         const { customer } = await sdk.store.customer.retrieve();
@@ -45,7 +58,8 @@ export default function SkinCoachResultPage() {
 
   // 2. Rediriger si pas de résultat
   useEffect(() => {
-    if (!result && !isCheckingAuth) {
+    // (the store itself: the first render does not have her saved result yet, see above)
+    if (!result && !isCheckingAuth && !useSkinCoachStore.getState().result) {
       router.replace("/skin-coach");
     }
   }, [result, router, isCheckingAuth]);
