@@ -31,6 +31,9 @@ function getStock(product: Product): number {
   );
 }
 
+// Products the team can pick per step (the API caps it too: apps/api/src/api/admin/ai-config/route.ts)
+const MAX_PER_STEP = 20;
+
 // The steps of the manual catalogue, in the client's order (2026-10-18): the oil / balm make-up remover has
 // its own step, apart from the water-based cleansers (evening double cleanse). The keys are stored in the
 // config and read by the storefront as each product's category: never rename them, only the labels.
@@ -176,7 +179,7 @@ export function SkinCoachSettings({
       if (isSelected) {
         stepMap[activeStep] = arr.filter(id => id !== product.id);
       } else {
-        if (arr.length >= 10 || wrongStep(product)) return c; // max 10 per step, only products of this step
+        if (arr.length >= MAX_PER_STEP || wrongStep(product)) return c; // only products of this step
         stepMap[activeStep] = [...arr, product.id];
       }
       return { ...c, manual_products_by_step: stepMap };
@@ -406,10 +409,10 @@ export function SkinCoachSettings({
           <div className="mb-2 flex justify-between items-end">
             <div>
               <h3 className="text-sm font-bold text-[#2A2424]">Étape : {active.label}</h3>
-              <p className="text-xs text-[#2A2424]/40">{active.hint}. Max 10 produits pour cette étape.</p>
+              <p className="text-xs text-[#2A2424]/40">{active.hint}. Max {MAX_PER_STEP} produits pour cette étape.</p>
             </div>
             <span className="text-xs font-bold bg-[#F5F0EB] text-[#2A2424] px-2.5 py-1 rounded-full">
-              {(config.manual_products_by_step?.[activeStep] || []).length} / 10 produits
+              {(config.manual_products_by_step?.[activeStep] || []).length} / {MAX_PER_STEP} produits
             </span>
           </div>
 
@@ -509,7 +512,7 @@ export function SkinCoachSettings({
                   <button
                     key={p.id}
                     onClick={() => toggleProduct(p)}
-                    disabled={!isSelected && (stepArr.length >= 10 || !!notHere)}
+                    disabled={!isSelected && (stepArr.length >= MAX_PER_STEP || !!notHere)}
                     title={notHere || undefined}
                     className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
                       isSelected

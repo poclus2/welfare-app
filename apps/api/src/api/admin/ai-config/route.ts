@@ -5,13 +5,13 @@ import { AIConfig, readAIConfig as readConfig, writeAIConfig as writeConfig } fr
 
 export type { AIConfig }
 
-// Mirrors the 10-per-step cap enforced client-side (SkinCoachSettings.tsx) —
+// Mirrors the 20-per-step cap enforced client-side (SkinCoachSettings.tsx) —
 // without this, a malformed/oversized payload could bypass that UI limit.
 function sanitizeByStep(value: unknown, fallback: Record<string, string[]>): Record<string, string[]> {
   if (!value || typeof value !== "object") return fallback
   const result: Record<string, string[]> = {}
   for (const [step, ids] of Object.entries(value as Record<string, unknown>)) {
-    result[step] = Array.isArray(ids) ? ids.filter((id) => typeof id === "string").slice(0, 10) : []
+    result[step] = Array.isArray(ids) ? ids.filter((id) => typeof id === "string").slice(0, 20) : []
   }
   return result
 }
