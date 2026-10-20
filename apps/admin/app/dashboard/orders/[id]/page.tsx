@@ -37,11 +37,13 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   let payment = paymentRecord?.provider_id || "Non spécifié";
   // Medusa prefixes provider ids ("pp_pawapay_pawapay")
   const isPawapay = payment.includes("pawapay");
+  const isTara = payment.includes("tara");
   if (isPawapay) payment = "Mobile Money (PawaPay)";
+  else if (isTara) payment = "Orange Money (Tara)";
 
   // The 3 % Mobile Money fee is debited on top of the order total and is not an order line:
   // what was really charged is kept on the payment (amount_charged, or the PawaPay deposit itself).
-  const charged = isPawapay
+  const charged = isPawapay || isTara
     ? Number(paymentRecord?.data?.amount_charged ?? paymentRecord?.data?.pawapay_deposit?.depositedAmount ?? 0)
     : 0;
   const mobileMoneyFee = charged > (o.total || 0) ? charged - (o.total || 0) : 0;

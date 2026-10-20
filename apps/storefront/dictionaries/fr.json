@@ -985,5 +985,13 @@
   "Nos guides sur les actifs et les besoins de la peau.": "Nos guides sur les actifs et les besoins de la peau.",
   "Voir les": "Voir les",
   "résultats": "résultats",
-  "Voir les résultats": "Voir les résultats"
+  "Voir les résultats": "Voir les résultats",
+  "Saisissez votre numéro Mobile Money (9 chiffres, ex : 6XXXXXXXX).": "Saisissez votre numéro Mobile Money (9 chiffres, ex : 6XXXXXXXX).",
+  "Les numéros Nexttel ne sont pas acceptés : saisissez un numéro MTN ou Orange Money, ou choisissez le paiement manuel.": "Les numéros Nexttel ne sont pas acceptés : saisissez un numéro MTN ou Orange Money, ou choisissez le paiement manuel.",
+  "Ce numéro est un numéro {op} : choisissez le réseau {op} ou saisissez un numéro {net}.": "Ce numéro est un numéro {op} : choisissez le réseau {op} ou saisissez un numéro {net}.",
+  "Numéro {op} détecté": "Numéro {op} détecté",
+  "Mobile Money (MTN / Orange)": "Mobile Money (MTN / Orange)",
+  "Numéro Orange Money à débiter": "Numéro Orange Money à débiter",
+  "Nous avons bien reçu votre paiement Orange Money. Votre commande part en préparation.": "Nous avons bien reçu votre paiement Orange Money. Votre commande part en préparation.",
+  "Paiement sécurisé via Tara. Conservez le SMS de confirmation d'Orange.": "Paiement sécurisé via Tara. Conservez le SMS de confirmation d'Orange."
 }

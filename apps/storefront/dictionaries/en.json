@@ -1050,5 +1050,13 @@
   "enregistré : livraison offerte au choix de la livraison": "saved: free delivery once you choose delivery",
   "Retirer le code": "Remove the code",
   "Code promo": "Promo code",
-  "Appliquer": "Apply"
+  "Appliquer": "Apply",
+  "Saisissez votre numéro Mobile Money (9 chiffres, ex : 6XXXXXXXX).": "Enter your Mobile Money number (9 digits, e.g. 6XXXXXXXX).",
+  "Les numéros Nexttel ne sont pas acceptés : saisissez un numéro MTN ou Orange Money, ou choisissez le paiement manuel.": "Nexttel numbers are not accepted: enter an MTN or Orange Money number, or choose manual payment.",
+  "Ce numéro est un numéro {op} : choisissez le réseau {op} ou saisissez un numéro {net}.": "This is an {op} number: choose the {op} network or enter an {net} number.",
+  "Numéro {op} détecté": "{op} number detected",
+  "Mobile Money (MTN / Orange)": "Mobile Money (MTN / Orange)",
+  "Numéro Orange Money à débiter": "Orange Money number to charge",
+  "Nous avons bien reçu votre paiement Orange Money. Votre commande part en préparation.": "We have received your Orange Money payment. Your order is being prepared.",
+  "Paiement sécurisé via Tara. Conservez le SMS de confirmation d'Orange.": "Secure payment via Tara. Keep Orange's confirmation SMS."
 }

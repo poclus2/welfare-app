@@ -70,6 +70,11 @@ module.exports = defineConfig({
             id: "pawapay",
             options: {},
           },
+          {
+            resolve: "./src/modules/tara",
+            id: "tara",
+            options: {},
+          },
         ],
       },
     },

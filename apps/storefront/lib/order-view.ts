@@ -71,7 +71,7 @@ export function getTrackingNumber(order: any): string | null {
 export function getPaymentInfo(order: any): { method: "mobile_money" | "cash" | "other"; paid: boolean } {
   const payments = (order?.payment_collections || []).flatMap((pc: any) => pc?.payments || []);
   const provider = String(payments[0]?.provider_id || "");
-  const method = provider.includes("pawapay") ? "mobile_money" : provider.includes("system") ? "cash" : "other";
+  const method = provider.includes("pawapay") || provider.includes("tara") ? "mobile_money" : provider.includes("system") ? "cash" : "other";
   // a payment is "paid" once it has been captured
   const paid =
     order?.payment_status != null

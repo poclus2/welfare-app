@@ -46,6 +46,7 @@ type StoredOrder = {
   total?: number;
   paymentMode?: "pawapay" | "manuel";
   mobileMoneyPhone?: string | null;
+  mobileNetwork?: string | null;
   manualProvider?: ManualProvider | null;
 };
 
@@ -115,6 +116,7 @@ function ConfirmationContent() {
   const orderNumber = order?.displayId ? orderCode(order.displayId) : ref ? `#WF-${ref.replace(/^order_/, "").slice(-6).toUpperCase()}` : "";
   const isPawapay = order?.paymentMode === "pawapay";
   const isManual = order?.paymentMode === "manuel";
+  const isOrange = order?.mobileNetwork === "ORANGE_CMR";
   const isPickup = order?.delivery?.mode === "retrait";
   const amounts = order?.amounts;
   const total = amounts?.total ?? order?.total ?? 0;
@@ -148,7 +150,9 @@ function ConfirmationContent() {
       ? [t("Commande"), t("enregistrée.")]
       : [t("Merci pour"), t("votre commande.")];
   const heroText = isPawapay
-    ? t("Nous avons bien reçu votre paiement MTN Mobile Money. Votre commande part en préparation.")
+    ? isOrange
+      ? t("Nous avons bien reçu votre paiement Orange Money. Votre commande part en préparation.")
+      : t("Nous avons bien reçu votre paiement MTN Mobile Money. Votre commande part en préparation.")
     : isManual
       ? t("Notre équipe vérifie la réception de votre paiement Mobile Money. Vous serez contacté(e) dès qu'il est confirmé.")
       : t("Votre commande a bien été enregistrée. Vous serez contacté(e) pour la suite.");
@@ -230,13 +234,13 @@ function ConfirmationContent() {
             </div>
             <div className="flex items-end justify-between gap-3">
               <div>
-                <p className="text-[15px] font-bold">MTN Mobile Money</p>
+                <p className="text-[15px] font-bold">{isOrange ? "Orange Money" : "MTN Mobile Money"}</p>
                 {order?.mobileMoneyPhone && <p className="text-[13px]" style={{ color: SK.muted }}>{formatLocalPhone(order.mobileMoneyPhone)}</p>}
               </div>
               <p className="whitespace-nowrap" style={{ fontFamily: DISPLAY_FONT, fontSize: 26, fontWeight: 700 }}>{formatPrice(total)} FCFA</p>
             </div>
             <p className="mt-3 flex items-center gap-1.5 text-[12px]" style={{ color: SK.muted }}>
-              <ShieldCheck className="w-4 h-4 shrink-0" style={{ color: GOOD_GREEN }} /> {t("Paiement sécurisé via PawaPay. Conservez le SMS de confirmation de MTN.")}
+              <ShieldCheck className="w-4 h-4 shrink-0" style={{ color: GOOD_GREEN }} /> {isOrange ? t("Paiement sécurisé via Tara. Conservez le SMS de confirmation d'Orange.") : t("Paiement sécurisé via PawaPay. Conservez le SMS de confirmation de MTN.")}
             </p>
           </Block>
         )}

@@ -78,7 +78,8 @@ export default async function DashboardPage() {
   const paymentMethodCounts: Record<string, number> = {};
   allOrders.forEach(o => {
     let method = o.payment_collections?.[0]?.payments?.[0]?.provider_id || "Non spécifié";
-    if (method === "pawapay") method = "Mobile Money (PawaPay)";
+    if (method.includes("pawapay")) method = "Mobile Money (PawaPay)";
+    else if (method.includes("tara")) method = "Orange Money (Tara)";
     paymentMethodCounts[method] = (paymentMethodCounts[method] || 0) + 1;
   });
 

@@ -127,7 +127,7 @@ export default function OrderDetailClient({ order }: { order: Order }) {
     order.status !== "delivered" &&
     !(order.fulfillments || []).some((f: any) => !f.canceled_at);
   const isPaid = order.payment_status === "captured" || order.payment_status === "paid";
-  const isMobileMoney = order.payment.includes("PawaPay");
+  const isMobileMoney = order.payment.includes("PawaPay") || order.payment.includes("Tara");
 
   const handleCancelOrder = async () => {
     setIsCancelling(true);
@@ -390,7 +390,7 @@ export default function OrderDetailClient({ order }: { order: Order }) {
                     <li>La commande passe au statut « Annulé » ; c&apos;est irréversible.</li>
                     {isPaid && isMobileMoney && (
                       <li className="text-red-600 font-semibold">
-                        Le client a payé par Mobile Money : il n&apos;est PAS remboursé automatiquement. Remboursez-le depuis votre compte PawaPay ({formatPrice(order.mobile_money_charged || order.amount)} FCFA débités).
+                        Le client a payé par Mobile Money : il n&apos;est PAS remboursé automatiquement. Remboursez-le depuis votre compte {order.payment.includes("Tara") ? "Tara" : "PawaPay"} ({formatPrice(order.mobile_money_charged || order.amount)} FCFA débités).
                       </li>
                     )}
                     {isPaid && !isMobileMoney && <li>Le paiement sera marqué comme remboursé.</li>}

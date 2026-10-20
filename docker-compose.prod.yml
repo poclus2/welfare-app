@@ -56,6 +56,8 @@ services:
       - COOKIE_SECRET=${COOKIE_SECRET:-super_secret}
       - PAWAPAY_API_KEY=${PAWAPAY_API_KEY}
       - PAWAPAY_PAYOUT_RECIPIENTS=${PAWAPAY_PAYOUT_RECIPIENTS} # numbers allowed to receive withdrawals (admin Paiements)
+      - TARA_API_KEY=${TARA_API_KEY} # Tara Money (Orange Money collections), production key: Tara has no sandbox
+      - TARA_BUSINESS_ID=${TARA_BUSINESS_ID}
       - WHATSAPP_ACCESS_TOKEN=${WHATSAPP_ACCESS_TOKEN}
       - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID}
       - WHATSAPP_OTP_TEMPLATE_NAME=${WHATSAPP_OTP_TEMPLATE_NAME:-otp_code}
