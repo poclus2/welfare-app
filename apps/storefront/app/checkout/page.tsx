@@ -7,6 +7,8 @@ import { useI18n } from "@/lib/i18n-context";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { sdk } from "@/lib/medusa";
+import { SHOP_WHATSAPP } from "@/lib/contact";
+import posthog from "posthog-js";
 import { PromoCodeField } from "@/components/cart/PromoCodeField";
 import { DISPLAY_FONT, Eyebrow, SK, SectionTitle } from "@/components/account/account-ui";
 import {
@@ -180,6 +182,8 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [paymentWait, setPaymentWait] = useState("");
   const [formError, setFormError] = useState("");
+  // Cart id of a finalisation Medusa refused (the customer quotes it on WhatsApp)
+  const [completeFailedRef, setCompleteFailedRef] = useState<string | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false); // phone only: the summary starts folded
   const [mobileNetwork, setMobileNetwork] = useState("MTN_MOMO_CMR");
   // Number charged by the Mobile Money push — may differ from the contact/WhatsApp number
@@ -382,8 +386,18 @@ export default function CheckoutPage() {
     }
   };
 
+  // Finalisation refused: no order exists, so the cart stays and the customer is told not to pay again
+  const reportCompleteFailure = (message: string, providerId: string, amount: number) => {
+    console.error("Cart completion failed:", message);
+    posthog.capture("checkout_complete_failed", { message, provider_id: providerId, amount, cart_id: cartId, payment_mode: paymentMode });
+    setCompleteFailedRef(cartId);
+    setPaymentWait("");
+    setIsLoading(false);
+  };
+
   const handleSubmit = async () => {
     setFormError("");
+    setCompleteFailedRef(null);
     if (!validateDelivery()) return;
     if (!cartId) {
       setFormError(t("Le panier n'est pas initialisé correctement."));
@@ -513,9 +527,10 @@ export default function CheckoutPage() {
       }
 
       // 4. Initiate Payment Session
+      const providerId = paymentMode !== "pawapay" ? "pp_system_default" : taraPayment ? "pp_tara_tara" : "pp_pawapay_pawapay";
       const { cart } = await sdk.store.cart.retrieve(cartId);
       await sdk.store.payment.initiatePaymentSession(cart as any, {
-          provider_id: paymentMode !== "pawapay" ? "pp_system_default" : taraPayment ? "pp_tara_tara" : "pp_pawapay_pawapay",
+          provider_id: providerId,
           data: paymentMode !== "pawapay"
             ? {}
             : taraPayment
@@ -523,17 +538,24 @@ export default function CheckoutPage() {
               : { depositId, deposit_token: depositToken, correspondent: mobileNetwork },
         });
 
-      // 5. Complete Checkout
-      const response = await sdk.store.cart.complete(cartId);
-
-      let ref = "WLF-PENDING";
-      let displayId: number | null = null;
-      if (response.type === "order") {
-        ref = response.order.id;
-        displayId = (response.order as any).display_id ?? null;
-      } else if (response.type === "cart") {
-        ref = response.cart.id;
+      // 5. Complete Checkout. Medusa answers 200 { type: "cart", error } when it refuses (payment not authorized,
+      // amount short, stock...): only an order with an id is a success, anything else keeps the cart.
+      const amount = taraPayment?.amount ?? total;
+      let response: Awaited<ReturnType<typeof sdk.store.cart.complete>>;
+      try {
+        response = await sdk.store.cart.complete(cartId);
+      } catch (err: any) {
+        reportCompleteFailure(err?.message || String(err), providerId, amount);
+        return;
       }
+      if (response.type !== "order" || !response.order?.id) {
+        const medusaError = response.type === "cart" ? response.error?.message : "";
+        reportCompleteFailure(medusaError || "cart.complete returned no order", providerId, amount);
+        return;
+      }
+
+      const ref = response.order.id;
+      const displayId: number | null = (response.order as any).display_id ?? null;
 
       // Store in session storage for the confirmation page UI only (it adapts to the payment mode)
       const pickupStore = delivery.mode === "retrait" ? STORES.find(s => s.id === delivery.store) : null;
@@ -890,6 +912,25 @@ export default function CheckoutPage() {
               <div role="alert" className="rounded-[18px] px-4 py-3 flex items-start gap-2.5 text-[14px]" style={{ background: "#FDECEC", color: "#9F1C12" }}>
                 <WarningCircle weight="fill" className="w-5 h-5 shrink-0 mt-px" />
                 <span>{formError}</span>
+              </div>
+            )}
+
+            {completeFailedRef && (
+              <div role="alert" className="rounded-[18px] px-4 py-3 flex items-start gap-2.5 text-[14px]" style={{ background: "#FDECEC", color: "#9F1C12" }}>
+                <WarningCircle weight="fill" className="w-5 h-5 shrink-0 mt-px" />
+                <div className="min-w-0 space-y-1.5">
+                  <p className="font-bold">{t("Votre paiement n'a pas pu être finalisé : aucune commande n'a été créée.")}</p>
+                  <p>{t("Si vous avez été débitée, ne repayez pas : contactez-nous sur WhatsApp en indiquant cette référence.")}</p>
+                  <p className="break-all">{t("Référence :")} <strong>{completeFailedRef}</strong></p>
+                  <a
+                    href={`https://wa.me/${SHOP_WHATSAPP}?text=${encodeURIComponent(`${t("Bonjour, mon paiement n'a pas été finalisé sur le site. Référence du panier :")} ${completeFailedRef}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block font-bold underline"
+                  >
+                    {t("Nous écrire sur WhatsApp")}
+                  </a>
+                </div>
               </div>
             )}
 
