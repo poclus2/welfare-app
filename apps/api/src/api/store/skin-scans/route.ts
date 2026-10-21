@@ -102,8 +102,12 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     notices: Array.isArray(body.notices) ? json(body.notices.slice(0, 10)) : null,
   })
 
-  // the customer's login only picks her usual advisor; the scan itself stays unattached until she claims it
-  const advisor = await pickAdvisor(skinScanService, (req as any).auth_context?.actor_id).catch((e: any) => {
+  // the customer's login (or her earlier scans in this browser) only picks her usual advisor; the scan itself
+  // stays unattached until she claims it
+  const previousScanIds = Array.isArray(body.previous_scan_ids)
+    ? body.previous_scan_ids.filter((id: unknown) => typeof id === "string" && /^[0-9A-Za-z_]{10,40}$/.test(id)).slice(0, 10)
+    : []
+  const advisor = await pickAdvisor(skinScanService, (req as any).auth_context?.actor_id, previousScanIds).catch((e: any) => {
     console.error("[skin-scans] No advisor picked:", e?.message || e)
     return null
   })

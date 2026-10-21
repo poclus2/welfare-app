@@ -46,3 +46,25 @@ export async function claimPendingScans(): Promise<void> {
   }
   write(left);
 }
+
+// The last diagnostics made in this browser, kept with no time limit: a new scan goes to the skin advisor of
+// the previous one, so a customer who scans again without being logged in keeps the same advisor
+// (lib/skin-advisors.ts in the API). Only ids: they say nothing about her.
+const HISTORY_KEY = "welfare-skin-scan-history";
+const HISTORY_MAX = 5;
+
+export function previousScanIds(): string[] {
+  try {
+    const list = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    return Array.isArray(list) ? list.filter((id) => typeof id === "string").slice(0, HISTORY_MAX) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function rememberScanInHistory(id: string | undefined) {
+  if (!id) return;
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify([id, ...previousScanIds().filter((p) => p !== id)].slice(0, HISTORY_MAX)));
+  } catch {}
+}

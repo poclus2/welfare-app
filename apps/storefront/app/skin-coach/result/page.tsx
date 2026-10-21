@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import { CircleNotch } from "@phosphor-icons/react";
 import { sdk } from "@/lib/medusa";
-import { claimPendingScans, rememberPendingScan } from "@/lib/pending-scans";
+import { claimPendingScans, rememberPendingScan, rememberScanInHistory } from "@/lib/pending-scans";
 import { fetchRoutineProducts } from "@/lib/routine-products";
 
 export default function SkinCoachResultPage() {
@@ -69,6 +69,13 @@ export default function SkinCoachResultPage() {
   // rattaché) : on le revendique simplement pour cette cliente, au lieu d'en créer un doublon.
   // Les scans faits sans être connectée sont aussi rattachés à la connexion et sur la page compte
   // (lib/pending-scans.ts).
+  // A diagnostic shown here (new, or reopened from her account on another phone) makes her next scan in this
+  // browser go to the same skin advisor
+  const shownScanId = result?.scan_id || (result as any)?.id; // (id = rouvert depuis l'historique)
+  useEffect(() => {
+    if (typeof shownScanId === "string") rememberScanInHistory(shownScanId);
+  }, [shownScanId]);
+
   useEffect(() => {
     if (!isAuthenticated || !result || !customerId || hasSavedRef.current) return;
     hasSavedRef.current = true;

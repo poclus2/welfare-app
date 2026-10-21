@@ -8,7 +8,7 @@ import { analyzeFace, analyzeSkin, SkinAnalysisResult } from "@/app/actions/anal
 import posthog from "posthog-js";
 import { FOLLOWUP_QUESTIONS, followUpQuestions } from "@/lib/skin-profile";
 import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
-import { rememberPendingScan } from "@/lib/pending-scans";
+import { previousScanIds, rememberPendingScan, rememberScanInHistory } from "@/lib/pending-scans";
 import { describeActionFailure, type ActionFailureInfo } from "@/lib/action-failure";
 import { useRouter } from "next/navigation";
 import SmartCameraCapture, { CaptureResult } from "./smart-camera-capture";
@@ -449,10 +449,11 @@ export default function SkinCoachFlow() {
         customerToken = window.localStorage.getItem("medusa_auth_token");
       } catch {}
       startedAt = Date.now();
-      const result = await analyzeSkin(photos, finalResponses, photoConsent, early?.success ? early.visual : undefined, faceMapRef.current, customerToken);
+      const result = await analyzeSkin(photos, finalResponses, photoConsent, early?.success ? early.visual : undefined, faceMapRef.current, customerToken, previousScanIds());
       if (result.success) {
         posthog.capture("skin_coach_analysis_succeeded", { scan_id: result.data.scan_id, early_visual: !!early?.success });
         rememberPendingScan(result.data.scan_id); // attached to the account as soon as she is logged in
+        rememberScanInHistory(result.data.scan_id); // her next scan goes to the same skin advisor
         setResult(result.data);
         setFace(photos.front, faceMapRef.current, result.data.scan_id ?? null); // memory; also saved with the photos
         setAnalysisProgress(100);

@@ -665,7 +665,9 @@ export async function analyzeSkin(
   // analysis filter again when she reopens the diagnostic. The API validates it.
   faceMap?: FaceMap | null,
   // her Medusa login when she is logged in: the routine then builds on the face care she already bought
-  customerToken?: string | null
+  customerToken?: string | null,
+  // the scans made before in her browser: the API gives this one to the same skin advisor
+  previousScanIds?: string[]
 ): Promise<{ success: true; data: SkinAnalysisResult } | ActionFailure> {
   try {
     const invalid = checkInputs(images, photoConsent);
@@ -1401,6 +1403,7 @@ FORMAT JSON ATTENDU :
           // the notices (doctor's opinion, budget, missing step) are kept with the message for the admin
           claude_raw_summary: finalResult.empathetic_message || "",
           notices,
+          previous_scan_ids: Array.isArray(previousScanIds) ? previousScanIds.filter((id) => typeof id === "string").slice(0, 10) : [],
           // the questionnaire as answered (product photos left out) and the audit trail
           responses: userResponses.map((r) => ({ questionId: r.questionId, answer: typeof r.answer === "string" ? r.answer : "[photo de produit]" })),
           analysis_log: {

@@ -92,8 +92,12 @@ export const publicAdvisor = (a: any) => (a?.active ? { name: a.name as string, 
 
 // The advisor already following this customer (the one of her latest scan that had one), when still active
 async function advisorOfCustomer(service: any, customerId: string, exceptScanId?: string): Promise<any | null> {
+  return advisorOfLatestScan(service, { customer_id: customerId, ...(exceptScanId ? { id: { $ne: exceptScanId } } : {}) })
+}
+
+async function advisorOfLatestScan(service: any, filters: Record<string, unknown>): Promise<any | null> {
   const [last] = await service.listSkinScans(
-    { customer_id: customerId, advisor_id: { $ne: null }, ...(exceptScanId ? { id: { $ne: exceptScanId } } : {}) },
+    { ...filters, advisor_id: { $ne: null } },
     { select: ["id", "advisor_id"], order: { created_at: "DESC" }, take: 1 }
   )
   if (!last?.advisor_id) return null
@@ -101,10 +105,17 @@ async function advisorOfCustomer(service: any, customerId: string, exceptScanId?
   return advisor?.active ? advisor : null
 }
 
-// Who gets a new scan: her usual advisor, otherwise the active one who has waited longest since her last scan
-export async function pickAdvisor(service: any, customerId?: string | null): Promise<any | null> {
+// Who gets a new scan: her usual advisor, otherwise the active one who has waited longest since her last scan.
+// Her usual advisor is the one of her account's scans, or, when she scans without being logged in, the one of
+// the scans made before in the same browser (previousScanIds, remembered by the shop): a customer who scans
+// twice must not get advice from two advisors (owner's feedback, 2026-10-21).
+export async function pickAdvisor(service: any, customerId?: string | null, previousScanIds: string[] = []): Promise<any | null> {
   if (customerId) {
     const usual = await advisorOfCustomer(service, customerId)
+    if (usual) return usual
+  }
+  if (previousScanIds.length) {
+    const usual = await advisorOfLatestScan(service, { id: previousScanIds })
     if (usual) return usual
   }
   const active = await service.listSkinAdvisors({ active: true }, { select: ["id", "name", "whatsapp", "active", "last_assigned_at", "created_at"] })
