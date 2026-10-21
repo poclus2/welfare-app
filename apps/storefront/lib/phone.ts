@@ -6,7 +6,6 @@ export type PhoneCountry = {
   iso: string;
   name: string; // French, translated through the dictionaries
   dial: string; // without the "+"
-  flag: string;
   dropLeadingZero?: boolean; // a 0 typed before the national number is not part of the international form
   lengths?: number[]; // national digit counts, when we know them for sure
   placeholder?: string;
@@ -16,25 +15,25 @@ export const OTHER_COUNTRY = "ZZ"; // "Autre indicatif": the full number is type
 
 export const PHONE_COUNTRIES: PhoneCountry[] = [
   // Cameroon has no trunk 0, but customers often type one out of habit
-  { iso: "CM", name: "Cameroun", dial: "237", flag: "🇨🇲", dropLeadingZero: true, lengths: [9], placeholder: "6XX XXX XXX" },
-  { iso: "GA", name: "Gabon", dial: "241", flag: "🇬🇦" },
-  { iso: "CG", name: "Congo", dial: "242", flag: "🇨🇬" },
-  { iso: "TD", name: "Tchad", dial: "235", flag: "🇹🇩" },
-  { iso: "CF", name: "Centrafrique", dial: "236", flag: "🇨🇫" },
-  { iso: "GQ", name: "Guinée équatoriale", dial: "240", flag: "🇬🇶" },
-  { iso: "NG", name: "Nigeria", dial: "234", flag: "🇳🇬", dropLeadingZero: true },
-  { iso: "CI", name: "Côte d'Ivoire", dial: "225", flag: "🇨🇮" },
-  { iso: "SN", name: "Sénégal", dial: "221", flag: "🇸🇳" },
-  { iso: "FR", name: "France", dial: "33", flag: "🇫🇷", dropLeadingZero: true, lengths: [9], placeholder: "6 12 34 56 78" },
-  { iso: "BE", name: "Belgique", dial: "32", flag: "🇧🇪", dropLeadingZero: true },
-  { iso: "CH", name: "Suisse", dial: "41", flag: "🇨🇭", dropLeadingZero: true },
-  { iso: "GB", name: "Royaume-Uni", dial: "44", flag: "🇬🇧", dropLeadingZero: true },
-  { iso: "US", name: "États-Unis / Canada", dial: "1", flag: "🇺🇸" },
+  { iso: "CM", name: "Cameroun", dial: "237", dropLeadingZero: true, lengths: [9], placeholder: "6XX XXX XXX" },
+  { iso: "GA", name: "Gabon", dial: "241" },
+  { iso: "CG", name: "Congo", dial: "242" },
+  { iso: "TD", name: "Tchad", dial: "235" },
+  { iso: "CF", name: "Centrafrique", dial: "236" },
+  { iso: "GQ", name: "Guinée équatoriale", dial: "240" },
+  { iso: "NG", name: "Nigeria", dial: "234", dropLeadingZero: true },
+  { iso: "CI", name: "Côte d'Ivoire", dial: "225" },
+  { iso: "SN", name: "Sénégal", dial: "221" },
+  { iso: "FR", name: "France", dial: "33", dropLeadingZero: true, lengths: [9], placeholder: "6 12 34 56 78" },
+  { iso: "BE", name: "Belgique", dial: "32", dropLeadingZero: true },
+  { iso: "CH", name: "Suisse", dial: "41", dropLeadingZero: true },
+  { iso: "GB", name: "Royaume-Uni", dial: "44", dropLeadingZero: true },
+  { iso: "US", name: "États-Unis / Canada", dial: "1" },
 ];
 
 export const DEFAULT_PHONE_COUNTRY = "CM";
 
-const OTHER: PhoneCountry = { iso: OTHER_COUNTRY, name: "Autre indicatif", dial: "", flag: "🌐" };
+const OTHER: PhoneCountry = { iso: OTHER_COUNTRY, name: "Autre indicatif", dial: "" };
 
 export function findCountry(iso: string): PhoneCountry {
   if (iso === OTHER_COUNTRY) return OTHER;
