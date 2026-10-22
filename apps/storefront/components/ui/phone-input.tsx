@@ -29,6 +29,7 @@ type Props = {
   autoComplete?: string;
   /** Country button (focus-within: classes give it the same focus ring as the number field) */
   boxClassName?: string;
+  // passed on as `object`: the Docker build resolves two csstype versions (same fix as ambassadrices/landing.tsx)
   boxStyle?: CSSProperties;
   inputClassName?: string;
   inputStyle?: CSSProperties;
@@ -163,7 +164,7 @@ export function PhoneInput({
           onClick={() => (open ? setOpen(false) : openList())}
           onKeyDown={handleListKey}
           className={`flex h-full cursor-pointer items-center gap-1.5 outline-none ${boxClassName}`}
-          style={boxStyle}
+          style={boxStyle as object}
         >
           <CountryFlag iso={iso} />
           <span className="tabular-nums">+{country.dial}</span>
@@ -213,7 +214,7 @@ export function PhoneInput({
         onBlur={() => iso !== OTHER_COUNTRY && setText(formatNational(iso, text))}
         placeholder={iso === OTHER_COUNTRY ? t("Indicatif et numéro") : country.placeholder ?? ""}
         className={`min-w-0 flex-1 ${inputClassName}`}
-        style={inputStyle}
+        style={inputStyle as object}
       />
       {name && <input type="hidden" name={name} value={e164} />}
     </div>
