@@ -6,6 +6,15 @@ const nextConfig = {
       bodySizeLimit: '15mb',
     },
   },
+  // The questions read aloud (lib/question-audio.ts): a file name changes with its text, so it never goes stale
+  async headers() {
+    return [
+      {
+        source: '/audio/skin-coach/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+    ];
+  },
   webpack: (config, { isServer }) => {
     // The diagnostic PDF is drawn in the browser only. On the server Next externalises react-pdf and,
     // preloading the pages at start-up, loaded its Node build (which fails on missing pdfkit files).

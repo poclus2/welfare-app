@@ -2,11 +2,20 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CaretRight, Camera, ArrowCounterClockwise, PaperPlaneTilt, Images, X, Check } from "@phosphor-icons/react";
+import { CaretRight, Camera, ArrowCounterClockwise, PaperPlaneTilt, Images, X, Check, SpeakerHigh, SpeakerSlash } from "@phosphor-icons/react";
 import Webcam from "react-webcam";
 import { analyzeFace, analyzeSkin, SkinAnalysisResult } from "@/app/actions/analyze-skin";
 import posthog from "posthog-js";
 import { FOLLOWUP_QUESTIONS, followUpQuestions } from "@/lib/skin-profile";
+import { ANALYSIS_START_MESSAGE, DECISION_TREE, type Option, type QuestionNode } from "@/lib/skin-question-tree";
+import {
+  playQuestionAudio,
+  preloadQuestionAudio,
+  primeQuestionAudio,
+  questionVoiceOn,
+  setQuestionVoiceOn,
+  stopQuestionAudio,
+} from "@/lib/question-audio";
 import { useSkinCoachStore } from "@/lib/store/use-skin-coach-store";
 import { previousScanIds, rememberPendingScan, rememberScanInHistory } from "@/lib/pending-scans";
 import { describeActionFailure, type ActionFailureInfo } from "@/lib/action-failure";
@@ -63,197 +72,10 @@ function resizeImageFile(file: File, maxSide = 1280, quality = 0.8): Promise<str
   });
 }
 
-type Option = {
-  label: string;
-  nextQuestionId?: string;
-};
-
-type QuestionNode = {
-  id: string;
-  text: string;
-  subtitle?: string;
-  type: "choice" | "multi_choice" | "text" | "text_or_photo";
-  options?: Option[];
-  nextQuestionId?: string;
-};
-
 type UserResponse = {
   questionId: string;
   answer: string | { type: "image"; base64: string };
 };
-
-// ─── Flow Data ──────────────────────────────────────────────────────────────
-
-const DECISION_TREE: QuestionNode[] = [
-  {
-    id: "q_main_goal",
-    text: "👋 Bonjour ! Pendant que j'analyse vos photos, dites-m'en plus sur vous. Quel est votre objectif numéro 1 aujourd'hui ?",
-    type: "choice",
-    options: [
-      { label: "Combattre l'acné & imperfections", nextQuestionId: "q_post_wash" },
-      { label: "Atténuer les taches (Hyperpigmentation)", nextQuestionId: "q_active_acne" },
-      { label: "Hydratation & effet Glow", nextQuestionId: "q_active_acne" },
-      { label: "Anti-âge & fermeté", nextQuestionId: "q_post_wash" }
-    ]
-  },
-  {
-    // Acne comes first: someone who wants to fade spots (or glow) but has active pimples is steered to an
-    // acne-calming routine (see analyze-skin.ts). This question is the declared half of that decision;
-    // the photo scan is the other half.
-    id: "q_active_acne",
-    text: "Une précision importante pour bien vous conseiller : avez-vous des boutons actifs ou inflammés en ce moment ?",
-    type: "choice",
-    options: [
-      { label: "Oui, j'ai des boutons actifs ou inflammés", nextQuestionId: "q_lightening" },
-      { label: "Non, ma peau est plutôt calme", nextQuestionId: "q_lightening" }
-    ]
-  },
-  {
-    // Asked on the spots / glow paths. Current use: no depigmenting active is added on top, and she is advised
-    // to talk to a professional (lib/skin-safety.ts reads "actuellement"). An unusual pigmentation seen on the
-    // photos leads to a dermatologist referral.
-    id: "q_lightening",
-    text: "Utilisez-vous, ou avez-vous déjà utilisé, des produits éclaircissants ou « blanchissants » (crèmes, laits ou savons) ?",
-    type: "choice",
-    options: [
-      { label: "Oui, actuellement", nextQuestionId: "q_post_wash" },
-      { label: "Oui, par le passé", nextQuestionId: "q_post_wash" },
-      { label: "Non, jamais", nextQuestionId: "q_post_wash" }
-    ]
-  },
-  {
-    id: "q_post_wash",
-    text: "Pour bien comprendre votre métabolisme, dites-moi : comment ressentez-vous votre peau dans les minutes qui suivent son nettoyage ?",
-    type: "choice",
-    options: [
-      { label: "Elle tiraille, j'ai un besoin urgent de l'hydrater", nextQuestionId: "q_midday_behavior" },
-      { label: "Elle est normale et plutôt confortable", nextQuestionId: "q_midday_behavior" },
-      { label: "Elle regraisse très rapidement", nextQuestionId: "q_midday_behavior" }
-    ]
-  },
-  {
-    id: "q_midday_behavior",
-    text: "Et au milieu de la journée (vers 14h), comment évolue-t-elle généralement ?",
-    type: "choice",
-    options: [
-      { label: "Elle brille sur tout le visage", nextQuestionId: "q_sensitivity" },
-      { label: "Elle brille uniquement sur la zone T (Front, Nez, Menton)", nextQuestionId: "q_sensitivity" },
-      { label: "Elle reste mate, mais j'ai des zones sèches ou squameuses", nextQuestionId: "q_sensitivity" },
-      { label: "Elle ne bouge pas, elle reste confortable", nextQuestionId: "q_sensitivity" }
-    ]
-  },
-  {
-    id: "q_sensitivity",
-    text: "C'est noté. Comment réagit généralement votre peau aux nouveaux produits ?",
-    type: "choice",
-    options: [
-      { label: "Très bien, elle supporte tout", nextQuestionId: "q_pregnancy" },
-      { label: "Sensible, parfois des rougeurs", nextQuestionId: "q_pregnancy" },
-      { label: "Très réactive et intolérante", nextQuestionId: "q_pregnancy" }
-    ]
-  },
-  {
-    // Pregnancy / breastfeeding: some actives are then excluded in code (lib/skin-safety.ts reads "Oui...")
-    id: "q_pregnancy",
-    text: "Êtes-vous actuellement enceinte ou en train d'allaiter ?",
-    type: "choice",
-    options: [
-      { label: "Oui, enceinte ou allaitante", nextQuestionId: "q_derm_treatment" },
-      { label: "Non, ou je ne suis pas concernée", nextQuestionId: "q_derm_treatment" }
-    ]
-  },
-  {
-    // Under treatment: no irritating active is added on top, and she is told to check with her doctor
-    // (lib/skin-safety.ts reads "Oui...")
-    id: "q_derm_treatment",
-    text: "Suivez-vous actuellement un traitement prescrit par un médecin pour votre peau (crème, gel ou comprimés contre l'acné, par exemple) ?",
-    type: "choice",
-    options: [
-      { label: "Oui, j'ai un traitement en cours", nextQuestionId: "q_has_allergies" },
-      { label: "Non", nextQuestionId: "q_has_allergies" }
-    ]
-  },
-  {
-    id: "q_has_allergies",
-    text: "Faites-vous des allergies à certains produits cosmétiques ?",
-    type: "choice",
-    options: [
-      { label: "Oui", nextQuestionId: "q_allergies_list" },
-      { label: "Non", nextQuestionId: "q_current_routine" }
-    ]
-  },
-  {
-    id: "q_allergies_list",
-    text: "À quels ingrédients êtes-vous allergique ou sensible ?",
-    subtitle: "Vous pouvez en sélectionner plusieurs.",
-    type: "multi_choice",
-    options: [
-      { label: "Parfums synthétiques (Fragrance)" },
-      { label: "Huiles Essentielles (Tea tree, Lavande, Agrumes...)" },
-      { label: "Extraits Botaniques (Aloé Vera, Armoise, Thé vert...)" },
-      { label: "Mucine d'escargot (Snail Mucin)" },
-      { label: "Propolis / Miel / Venin d'abeille" },
-      { label: "Centella Asiatica (Cica)" },
-      { label: "Ferments (Galactomyces, Bifida...)" },
-      { label: "Vitamine C pure (Acide L-Ascorbique)" },
-      { label: "Rétinol / Rétinoïdes (Vitamine A)" },
-      { label: "Acides Exfoliants (AHA, BHA, Acide Glycolique...)" },
-      { label: "Niacinamide (Vitamine B3)" },
-      { label: "Alcools asséchants (Alcohol Denat, Ethanol)" },
-      { label: "Filtres Solaires Chimiques (Oxybenzone, Octocrylene...)" },
-      { label: "Silicones (Dimethicone...)" },
-      { label: "Autres (à préciser)" }
-    ],
-    nextQuestionId: "q_current_routine"
-  },
-  {
-    id: "q_current_routine",
-    text: "Utilisez-vous déjà une routine de soins au quotidien ?",
-    type: "choice",
-    options: [
-      { label: "Oui", nextQuestionId: "q_routine_details" },
-      { label: "Non, je commence tout juste", nextQuestionId: "q_sun_exposure" }
-    ]
-  },
-  {
-    id: "q_routine_details",
-    text: "Super ! Écrivez-moi le nom des produits que vous utilisez, ou prenez-les simplement en photo 📸 :",
-    type: "text_or_photo",
-    nextQuestionId: "q_sun_exposure"
-  },
-  {
-    id: "q_sun_exposure",
-    text: "À quelle fréquence êtes-vous exposée au soleil dans la journée ?",
-    type: "choice",
-    options: [
-      { label: "Très peu (surtout en intérieur)", nextQuestionId: "q_makeup" },
-      { label: "Modérément (trajets, balades)", nextQuestionId: "q_makeup" },
-      { label: "Beaucoup (travail/sport en extérieur)", nextQuestionId: "q_makeup" }
-    ]
-  },
-  {
-    // decides the evening double cleanse with a make-up remover (lib/skin-routine.ts, client's rule 2026-10-18)
-    id: "q_makeup",
-    text: "Vous maquillez-vous régulièrement ?",
-    type: "choice",
-    options: [
-      { label: "Oui, presque tous les jours", nextQuestionId: "q_budget" },
-      { label: "Oui, de temps en temps", nextQuestionId: "q_budget" },
-      { label: "Rarement", nextQuestionId: "q_budget" },
-      { label: "Jamais", nextQuestionId: "q_budget" }
-    ]
-  },
-  {
-    id: "q_budget",
-    text: "Dernière question ! Pour que je puisse adapter mes recommandations de produits à vos attentes, quel budget souhaitez-vous idéalement allouer à votre routine soin ?",
-    type: "choice",
-    options: [
-      { label: "Essentiel (25k - 35k FCFA)", nextQuestionId: "q_finish" },
-      { label: "Intermédiaire (35k - 45k FCFA)", nextQuestionId: "q_finish" },
-      { label: "Premium (50k+ FCFA)", nextQuestionId: "q_finish" }
-    ]
-  }
-];
 
 // Follow-up questions asked at the end when the photos and the answers disagree, or the photos show
 // something she didn't mention (lib/skin-profile.ts). Each one leads to FOLLOWUP_DONE: the next queued
@@ -369,6 +191,30 @@ export default function SkinCoachFlow() {
     }
   }, [hasCaptured, messages.length]);
 
+  // Each new question is read aloud as it appears (lib/question-audio.ts); her messages and errors are not
+  const [voiceOn, setVoiceOn] = useState(true);
+  const spokenRef = useRef<Message | null>(null);
+  useEffect(() => setVoiceOn(questionVoiceOn()), []);
+  useEffect(() => () => stopQuestionAudio(), []);
+  useEffect(() => {
+    const last = messages[messages.length - 1];
+    if (!last || last === spokenRef.current || last.sender !== "ai" || !last.text) return;
+    spokenRef.current = last;
+    playQuestionAudio(t(last.text));
+  }, [messages, t]);
+
+  const toggleVoice = () => {
+    const on = !voiceOn;
+    setVoiceOn(on);
+    setQuestionVoiceOn(on);
+    posthog.capture("skin_coach_voice_toggled", { on });
+    if (!on) return;
+    primeQuestionAudio();
+    preloadQuestionAudio();
+    const last = messages[messages.length - 1];
+    if (last?.sender === "ai" && last.text) playQuestionAudio(t(last.text));
+  };
+
   // The photo analysis starts as soon as the photos are taken and runs while she answers the questions;
   // analyzeSkin reuses it at the end (or runs it again if it failed).
   const earlyVisualRef = useRef<Promise<Awaited<ReturnType<typeof analyzeFace>> | null> | null>(null);
@@ -398,6 +244,7 @@ export default function SkinCoachFlow() {
   };
 
   const handleRetake = () => {
+    stopQuestionAudio();
     earlyVisualRef.current = null;
     followUpQueueRef.current = [];
     resumeAfterCaptureRef.current = null;
@@ -554,6 +401,9 @@ export default function SkinCoachFlow() {
   };
 
   const processNextStep = (newResponses: UserResponse[], nextQuestionId: string) => {
+    // she answered (a tap): the question's voice stops, and the audio is woken up for the next one
+    stopQuestionAudio();
+    primeQuestionAudio();
     setIsTyping(true);
     setStepIndex(prev => Math.min(prev + 1, TOTAL_STEPS));
     setProgressPercent((prev) => {
@@ -581,7 +431,7 @@ export default function SkinCoachFlow() {
         setIsTyping(false);
         setMessages((prev) => [
           ...prev,
-          { id: `msg-ai-${Date.now()}`, sender: "ai", text: t("Parfait ! Laissez-moi analyser tout ça... Génération de votre routine personnalisée en cours ✨") }
+          { id: `msg-ai-${Date.now()}`, sender: "ai", text: t(ANALYSIS_START_MESSAGE) }
         ]);
         executeAnalysis(newResponses);
       } else {
@@ -623,7 +473,12 @@ export default function SkinCoachFlow() {
           <SmartCameraCapture
             onComplete={handleCaptureComplete}
             onCancel={() => router.push("/")}
-            onConsent={() => setPhotoConsent(true)}
+            onConsent={() => {
+              setPhotoConsent(true);
+              // her tap unlocks the voice of the questions, loaded while she takes the photos
+              primeQuestionAudio();
+              preloadQuestionAudio();
+            }}
           />
         ) : (
           <div className="relative w-full h-full flex flex-row">
@@ -676,7 +531,17 @@ export default function SkinCoachFlow() {
             <div className="w-10 h-1 rounded-full mx-auto" style={{ background: SK.line }} />
             <div className="flex items-center justify-between">
               <span className="text-[13px] font-semibold uppercase tracking-[0.08em]" style={{ color: SK.muted }}>Skin Coach</span>
-              <span className="text-[15px] font-semibold" style={{ fontFamily: DISPLAY_FONT, color: SK.ink }}>{t("Questionnaire")}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[15px] font-semibold" style={{ fontFamily: DISPLAY_FONT, color: SK.ink }}>{t("Questionnaire")}</span>
+                <button
+                  onClick={toggleVoice}
+                  aria-label={voiceOn ? t("Couper la voix") : t("Activer la voix")}
+                  className="w-10 h-10 -my-2 -mr-2 rounded-full flex items-center justify-center active:scale-95 transition-transform"
+                  style={{ color: voiceOn ? SK.accent : SK.muted }}
+                >
+                  {voiceOn ? <SpeakerHigh className="w-5 h-5" /> : <SpeakerSlash className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-12 gap-1" aria-hidden="true">
               {Array.from({ length: 12 }, (_, i) => (

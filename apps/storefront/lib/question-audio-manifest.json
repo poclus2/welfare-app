@@ -1,0 +1,106 @@
+{
+  "model": "google/gemini-3.8-flash-tts",
+  "voice": "Sulafat",
+  "clips": [
+    {
+      "id": "q_main_goal",
+      "hash": "2746e9bf",
+      "file": "q_main_goal.2746e9bf.mp3"
+    },
+    {
+      "id": "q_active_acne",
+      "hash": "92a7afbf",
+      "file": "q_active_acne.92a7afbf.mp3"
+    },
+    {
+      "id": "q_lightening",
+      "hash": "c8baa35e",
+      "file": "q_lightening.c8baa35e.mp3"
+    },
+    {
+      "id": "q_post_wash",
+      "hash": "226464c3",
+      "file": "q_post_wash.226464c3.mp3"
+    },
+    {
+      "id": "q_midday_behavior",
+      "hash": "1ba6f260",
+      "file": "q_midday_behavior.1ba6f260.mp3"
+    },
+    {
+      "id": "q_sensitivity",
+      "hash": "65472b46",
+      "file": "q_sensitivity.65472b46.mp3"
+    },
+    {
+      "id": "q_pregnancy",
+      "hash": "43715768",
+      "file": "q_pregnancy.43715768.mp3"
+    },
+    {
+      "id": "q_derm_treatment",
+      "hash": "f8519076",
+      "file": "q_derm_treatment.f8519076.mp3"
+    },
+    {
+      "id": "q_has_allergies",
+      "hash": "03630a95",
+      "file": "q_has_allergies.03630a95.mp3"
+    },
+    {
+      "id": "q_allergies_list",
+      "hash": "ae2bf044",
+      "file": "q_allergies_list.ae2bf044.mp3"
+    },
+    {
+      "id": "q_current_routine",
+      "hash": "a16e70e1",
+      "file": "q_current_routine.a16e70e1.mp3"
+    },
+    {
+      "id": "q_routine_details",
+      "hash": "dc95df57",
+      "file": "q_routine_details.dc95df57.mp3"
+    },
+    {
+      "id": "q_sun_exposure",
+      "hash": "58dfea32",
+      "file": "q_sun_exposure.58dfea32.mp3"
+    },
+    {
+      "id": "q_makeup",
+      "hash": "f6003b9c",
+      "file": "q_makeup.f6003b9c.mp3"
+    },
+    {
+      "id": "q_budget",
+      "hash": "975bbf15",
+      "file": "q_budget.975bbf15.mp3"
+    },
+    {
+      "id": "q_followup_acne",
+      "hash": "6153c70a",
+      "file": "q_followup_acne.6153c70a.mp3"
+    },
+    {
+      "id": "q_followup_spots",
+      "hash": "6d339913",
+      "file": "q_followup_spots.6d339913.mp3"
+    },
+    {
+      "id": "q_followup_dark_since",
+      "hash": "67266b4e",
+      "file": "q_followup_dark_since.67266b4e.mp3"
+    },
+    {
+      "id": "q_followup_dark_origin",
+      "hash": "8d661914",
+      "file": "q_followup_dark_origin.8d661914.mp3"
+    },
+    {
+      "id": "analysis_start",
+      "hash": "18581d05",
+      "file": "analysis_start.18581d05.mp3"
+    }
+  ]
+}
