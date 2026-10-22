@@ -76,6 +76,28 @@ export default function SkinCoachResultPage() {
     if (typeof shownScanId === "string") rememberScanInHistory(shownScanId);
   }, [shownScanId]);
 
+  // Her diagnostic is kept in this browser as it was at the end of the scan: once her skin advisor has
+  // reviewed it, she must see the corrected routine here too, not only from her account (2026-10-22)
+  const reviewCheckedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isAuthenticated || typeof shownScanId !== "string" || reviewCheckedRef.current === shownScanId) return;
+    reviewCheckedRef.current = shownScanId;
+    sdk.client
+      .fetch<{ scans?: any[] }>("/store/skin-scans", { method: "GET" })
+      .then((data) => {
+        const scan = (data?.scans || []).find((s: any) => s.id === shownScanId);
+        const current = useSkinCoachStore.getState().result;
+        if (!scan?.review_status || !current) return;
+        const reviewed = Array.isArray(scan.reviewed_routine) && scan.reviewed_routine.length ? scan.reviewed_routine : null;
+        useSkinCoachStore.getState().setResult({
+          ...current,
+          kbeauty_routine: reviewed || current.kbeauty_routine,
+          review: { status: scan.review_status, corrections: scan.review_corrections || [] },
+        });
+      })
+      .catch(() => {}); // her saved diagnostic is still shown
+  }, [isAuthenticated, shownScanId]);
+
   useEffect(() => {
     if (!isAuthenticated || !result || !customerId || hasSavedRef.current) return;
     hasSavedRef.current = true;

@@ -3,7 +3,7 @@
 // mistakes, they are not taken as truth by the Skin Coach. Shared by the admin (POST /admin/skin-scans/:id/review)
 // and the advisors' space (POST /advisor/skin-scans/:id/review).
 //
-// body: { status: "validated" }
+// body: { status: "validated" } (refused on a corrected routine unless discard_corrections: true)
 //    or { status: "corrected", routine: RoutineStep[], corrections: [{ step_name, from, to, reason }] }
 
 const MAX_STEPS = 8
@@ -20,6 +20,12 @@ export async function saveScanReview(
   }
 
   if (status === "validated") {
+    // "Valider telle quelle" clicked right after saving corrections wiped them (2026-10-22, the customer never
+    // saw her corrected routine): a corrected routine is only dropped when that is explicitly asked for
+    const current = await service.retrieveSkinScan(scanId, { select: ["review_status"] }).catch(() => null)
+    if (current?.review_status === "corrected" && body?.discard_corrections !== true) {
+      return { error: { status: 409, message: "Cette routine a déjà été corrigée : la valider telle quelle effacerait les corrections." } }
+    }
     await service.updateSkinScans({
       id: scanId,
       review_status: "validated",

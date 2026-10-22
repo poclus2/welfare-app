@@ -98,7 +98,8 @@ export function ScanReview({
     reset();
   };
 
-  const save = async (status: "validated" | "corrected") => {
+  // discard: back to the Skin Coach's routine on purpose (a plain validation no longer erases corrections)
+  const save = async (status: "validated" | "corrected", discard = false) => {
     setSaving(true);
     setError(null);
     try {
@@ -106,7 +107,7 @@ export function ScanReview({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // a routine already corrected keeps its earlier corrections
-        body: JSON.stringify(status === "validated" ? { status } : { status, routine: steps, corrections: [...(reviewedRoutine?.length ? savedCorrections || [] : []), ...corrections] }),
+        body: JSON.stringify(status === "validated" ? { status, ...(discard ? { discard_corrections: true } : {}) } : { status, routine: steps, corrections: [...(reviewedRoutine?.length ? savedCorrections || [] : []), ...corrections] }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || data.error || "Enregistrement impossible");
@@ -211,9 +212,20 @@ export function ScanReview({
       {error && <p className="text-xs text-red-600 mb-3">{error}</p>}
 
       <div className="flex flex-col sm:flex-row gap-2">
-        <button onClick={() => save("validated")} disabled={saving || corrections.length > 0} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold border border-emerald-200 text-emerald-700 hover:bg-emerald-50 disabled:opacity-40">
-          Valider la routine telle quelle
-        </button>
+        {/* Once corrected, a plain validation would wipe the corrections (an advisor did it on 2026-10-22) */}
+        {reviewStatus === "corrected" ? (
+          <button
+            onClick={() => confirm("Effacer les corrections et revenir à la routine proposée par le Skin Coach ?") && save("validated", true)}
+            disabled={saving || corrections.length > 0}
+            className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-40"
+          >
+            Revenir à la routine du Skin Coach
+          </button>
+        ) : (
+          <button onClick={() => save("validated")} disabled={saving || corrections.length > 0} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold border border-emerald-200 text-emerald-700 hover:bg-emerald-50 disabled:opacity-40">
+            Valider la routine telle quelle
+          </button>
+        )}
         <button onClick={() => save("corrected")} disabled={saving || corrections.length === 0} className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-[#2A2424] text-white disabled:opacity-40">
           {saving ? "Enregistrement…" : `Enregistrer ${corrections.length || ""} correction${corrections.length > 1 ? "s" : ""}`}
         </button>

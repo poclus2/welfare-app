@@ -231,14 +231,21 @@ export function AdvisorReview({
           {saving && <CircleNotch className="w-5 h-5 animate-spin" />}
           {corrections.length ? `Enregistrer ${corrections.length} correction${corrections.length > 1 ? "s" : ""}` : "Enregistrer les corrections"}
         </button>
-        <button
-          onClick={() => save("validated")}
-          disabled={saving || corrections.length > 0}
-          className="h-[52px] rounded-full flex items-center justify-center text-[15px] font-bold disabled:opacity-40"
-          style={{ border: "1px solid #0B6B45", color: "#0B6B45" }}
-        >
-          Valider la routine telle quelle
-        </button>
+        {/* Once corrected, "valider telle quelle" would wipe the corrections (it did on 2026-10-22): not offered */}
+        {reviewStatus === "corrected" ? (
+          <p className="text-[13px] font-semibold text-center" style={{ color: "#0B6B45" }}>
+            Votre routine corrigée est enregistrée : la cliente la voit dans son espace. Rien d&apos;autre à valider.
+          </p>
+        ) : (
+          <button
+            onClick={() => save("validated")}
+            disabled={saving || corrections.length > 0}
+            className="h-[52px] rounded-full flex items-center justify-center text-[15px] font-bold disabled:opacity-40"
+            style={{ border: "1px solid #0B6B45", color: "#0B6B45" }}
+          >
+            Valider la routine telle quelle
+          </button>
+        )}
       </div>
     </section>
   );
