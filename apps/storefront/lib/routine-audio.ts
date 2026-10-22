@@ -1,13 +1,12 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
-// Audio version of the Skin Coach's message (ElevenLabs through OpenRouter, generated only when she taps
-// "Écouter"). Only the message frame is read (owner's request, 2026-10-14), not the routine steps.
+// Audio version of the Skin Coach's message, in the coach's voice (lib/coach-voice.ts, the same as the
+// questions since 2026-10-22), generated only when she taps "Écouter". Only the message frame is read
+// (owner's request, 2026-10-14), not the routine steps.
 // The script is written by the server at the end of the analysis and signed with the server secret: the
 // audio route reads nothing else, so nobody can have arbitrary text read at our expense.
 
-export const ROUTINE_VOICE_MODEL = "elevenlabs/eleven-multilingual-v2";
-export const ROUTINE_VOICE = "lily"; // chosen by the owner from samples, 2026-10-14
-export const MAX_SCRIPT_CHARS = 2200; // about 2 minutes of speech, ~0.05 $ per generation
+export const MAX_SCRIPT_CHARS = 2200; // about 2 minutes of speech
 
 const clean = (s: string | undefined) =>
   (s || "")

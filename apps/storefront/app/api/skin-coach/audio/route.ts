@@ -1,11 +1,12 @@
 import { NextRequest } from "next/server";
-import { MAX_SCRIPT_CHARS, ROUTINE_VOICE, ROUTINE_VOICE_MODEL, scriptIsAuthentic } from "@/lib/routine-audio";
+import { SpeechError, speak } from "@/lib/coach-voice";
+import { MAX_SCRIPT_CHARS, scriptIsAuthentic } from "@/lib/routine-audio";
 
-// POST { script, sig } → the routine read aloud (mp3), ElevenLabs through OpenRouter's speech endpoint.
+// POST { script, sig } → the routine read aloud (mp3) in the coach's voice, through OpenRouter's speech endpoint.
 // Only scripts signed by the analysis are read; each one is generated once and kept in memory, so
 // listening again (or another tap) costs nothing.
 
-const CACHE_MAX = 40; // ~1-2 MB each
+const CACHE_MAX = 40; // ~0.5 MB each
 const cache = new Map<string, Buffer>();
 const inflight = new Map<string, Promise<Buffer | { error: string; status: number }>>();
 
@@ -26,21 +27,15 @@ function rateLimited(ip: string): boolean {
 async function generate(script: string): Promise<Buffer | { error: string; status: number }> {
   const started = Date.now();
   try {
-    const res = await fetch("https://openrouter.ai/api/v1/audio/speech", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: ROUTINE_VOICE_MODEL, input: script, voice: ROUTINE_VOICE, response_format: "mp3" }),
-      signal: AbortSignal.timeout(60_000),
-    });
-    if (!res.ok) {
-      const detail = (await res.text().catch(() => "")).slice(0, 300);
-      console.error(`[RoutineAudio] OpenRouter ${res.status}: ${detail}`);
-      return { error: res.status === 402 ? "credits" : "provider", status: 502 };
-    }
-    const audio = Buffer.from(await res.arrayBuffer());
-    console.log(`[RoutineAudio] ${script.length} chars → ${audio.length} bytes in ${Date.now() - started} ms (${res.headers.get("x-generation-id")})`);
-    return audio;
+    // Gemini answers in 15 to 80 s for a whole message (measured 2026-10-22): a short timeout failed real ones
+    const { mp3, generationIds } = await speak(script, 120_000);
+    console.log(`[RoutineAudio] ${script.length} chars → ${mp3.length} bytes in ${Date.now() - started} ms (${generationIds})`);
+    return mp3;
   } catch (e: any) {
+    if (e instanceof SpeechError) {
+      console.error(`[RoutineAudio] ${e.message}`);
+      return { error: e.status === 402 ? "credits" : "provider", status: 502 };
+    }
     console.error("[RoutineAudio] generation failed:", e?.message || e);
     return { error: "timeout", status: 504 };
   }

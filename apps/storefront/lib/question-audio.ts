@@ -1,14 +1,12 @@
 import manifest from "./question-audio-manifest.json";
 
 // Each Skin Coach question read aloud when it appears (owner's request, 2026-10-22): only the question, not
-// the choices, in French. Recorded once by scripts/generate-question-audio.ts with the voice the owner chose
-// from 6 samples, served from public/ and preloaded while she takes her photos.
+// the choices, in French. Recorded once by scripts/generate-question-audio.ts with the coach's voice
+// (lib/coach-voice.ts), served from public/ and preloaded while she takes her photos.
 // Web Audio rather than an <audio> element: once unlocked by her tap on "Commencer le scan" it plays every
 // question without another tap (iOS), and on an iPhone in silent mode it stays silent.
 // The voice is on by default; she can turn it off, remembered on her phone.
 
-export const QUESTION_VOICE_MODEL = "google/gemini-3.8-flash-tts";
-export const QUESTION_VOICE = "Sulafat"; // voice B of the blind test, 2026-10-22
 export const QUESTION_AUDIO_DIR = "/audio/skin-coach/fr";
 
 export type QuestionClip = { id: string; hash: string; file: string };
