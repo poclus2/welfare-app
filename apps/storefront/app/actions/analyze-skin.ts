@@ -32,6 +32,7 @@ import {
 } from "@/lib/skin-routine";
 import { callOpenRouter, parseJsonAnswer, type AiErrorCode, type AiUsage } from "@/lib/openrouter";
 import { buildRoutineScript, signScript } from "@/lib/routine-audio";
+import { startRoutineAudio } from "@/lib/routine-audio-store";
 import { withoutScores } from "@/lib/coach-message";
 import type { FaceMap } from "@/lib/face-map";
 import { acneGradingFromCounts, ACNE_SCAN_LOW, ACNE_SCAN_THRESHOLD, answerOf, FOLLOWUP_QUESTIONS, moisturizerTextures, readAcne, readDarkSpots, readSkinProfile, TEXTURE_LABEL } from "@/lib/skin-profile";
@@ -1426,7 +1427,11 @@ FORMAT JSON ATTENDU :
 
     const audioScript = buildRoutineScript(finalResult);
     const audioSig = signScript(audioScript);
-    if (audioSig) finalResult.audio = { script: audioScript, sig: audioSig };
+    if (audioSig) {
+      finalResult.audio = { script: audioScript, sig: audioSig };
+      // generated now, while she reads her results: ready (or nearly) when she taps "Écouter"
+      void startRoutineAudio(audioScript, audioSig);
+    }
 
     return { success: true, data: finalResult };
   } catch (error: any) {
